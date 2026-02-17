@@ -4,6 +4,46 @@ import QtQuick.Layouts
 
 ApplicationWindow {
     visible: true; width: 900; height: 600; title: "Tux-TI83"; color: "#2E3440"
+    
+    // Completely custom Popup instead of Menu to bypass system themes
+    Popup {
+        id: logicPopup
+        width: 140; height: 320
+        padding: 5
+        background: Rectangle { 
+            color: "#88C0D0" // Bright Frost Blue background
+            radius: 8
+            border.color: "#ECEFF4"
+            border.width: 2
+        }
+
+        ColumnLayout {
+            anchors.fill: parent; spacing: 2
+            Repeater {
+                model: ["=", "≠", "<", ">", "and", "or", "not"]
+                delegate: Rectangle {
+                    Layout.fillWidth: true; Layout.preferredHeight: 40
+                    color: mouseArea.containsMouse ? "#4C566A" : "transparent"
+                    radius: 4
+                    Text {
+                        anchors.centerIn: parent
+                        text: modelData
+                        font.pixelSize: 18; font.bold: true
+                        // Dark text on Light Blue background
+                        color: mouseArea.containsMouse ? "#ECEFF4" : "#2E3440"
+                    }
+                    MouseArea {
+                        id: mouseArea; anchors.fill: parent; hoverEnabled: true
+                        onClicked: {
+                            uiController.processInput(modelData)
+                            logicPopup.close()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     RowLayout {
         anchors.fill: parent; spacing: 0
         Rectangle {
@@ -18,21 +58,15 @@ ApplicationWindow {
                         Repeater {
                             model: ["Y1", "Y2", "Y3"]
                             delegate: Button {
-                                contentItem: Text {
-                                    text: modelData; font.bold: true
-                                    color: uiController.activeFunctionIndex === index ? "#2E3440" : "#ECEFF4"
-                                }
-                                background: Rectangle {
-                                    implicitWidth: 60; implicitHeight: 35
-                                    color: uiController.activeFunctionIndex === index ? "#88C0D0" : "#434C5E"; radius: 4
-                                }
+                                contentItem: Text { text: modelData; font.bold: true; color: uiController.activeFunctionIndex === index ? "#2E3440" : "#ECEFF4" }
+                                background: Rectangle { implicitWidth: 60; implicitHeight: 35; color: uiController.activeFunctionIndex === index ? "#88C0D0" : "#434C5E"; radius: 4 }
                                 onClicked: uiController.setActiveFunction(index)
                             }
                         }
                         Item { Layout.fillWidth: true }
                         Button {
                             background: Rectangle { implicitWidth: 80; implicitHeight: 35; color: "#EBCB8B"; radius: 4 }
-                            contentItem: Text { text: uiController.isGraphMode ? "KEYS" : "GRAPH"; font.bold: true; color: "#2E3440"; horizontalAlignment: Text.AlignHCenter }
+                            contentItem: Text { text: uiController.isGraphMode ? "KEYS" : "GRAPH"; font.bold: true; color: "#2E3440" }
                             onClicked: uiController.toggleGraphMode()
                         }
                     }
@@ -47,27 +81,27 @@ ApplicationWindow {
                         Layout.fillWidth: true; Layout.fillHeight: true
                         
                         GridLayout {
-                            columns: 5; rowSpacing: 8; columnSpacing: 8
+                            id: keypadGrid; columns: 6; rowSpacing: 8; columnSpacing: 8
                             Repeater {
-                                model: [
-                                    "7","8","9","÷","sin",
-                                    "4","5","6","×","cos",
-                                    "1","2","3","−","tan",
-                                    "0",".","π","+","√",
-                                    "C", "(", ")", "ENTER", "X"
-                                ]
+                                model: ["7","8","9","÷","sin","asin","4","5","6","×","cos","acos","1","2","3","−","tan","atan","0",".","π","+","√","^","X","log","ln","(","LOGIC",")","C","ENTER"]
                                 delegate: Rectangle {
+                                    id: buttonRect
                                     Layout.fillWidth: true; Layout.fillHeight: true; radius: 6
-                                    color: (modelData === "ENTER") ? "#88C0D0" : 
-                                           (modelData === "X") ? "#A3BE8C" : 
-                                           (["sin","cos","tan","√"].indexOf(modelData) !== -1) ? "#B48EAD" : "#4C566A"
-                                    Text { 
-                                        anchors.centerIn: parent; text: modelData; font.bold: true
-                                        color: (modelData === "ENTER" || modelData === "X") ? "#2E3440" : "#ECEFF4" 
-                                    }
+                                    Layout.columnSpan: modelData === "ENTER" ? 5 : 1
+                                    color: (modelData === "ENTER") ? "#88C0D0" : (modelData === "X") ? "#A3BE8C" : (modelData === "LOGIC") ? "#EBCB8B" : (["sin","cos","tan","asin","acos","atan","√","log","ln","^"].indexOf(modelData) !== -1) ? "#B48EAD" : "#4C566A"
+                                    Text { anchors.centerIn: parent; text: modelData; font.bold: true; color: (modelData === "ENTER" || modelData === "X" || modelData === "LOGIC") ? "#2E3440" : "#ECEFF4" }
                                     MouseArea { 
                                         anchors.fill: parent
-                                        onClicked: (mouse) => uiController.processInput(modelData) 
+                                        onClicked: {
+                                            if (modelData === "LOGIC") {
+                                                // Center the popup over the workspacePane for visibility
+                                                logicPopup.x = (workspacePane.width - logicPopup.width) / 2
+                                                logicPopup.y = (workspacePane.height - logicPopup.height) / 2
+                                                logicPopup.open()
+                                            } else {
+                                                uiController.processInput(modelData)
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -77,33 +111,24 @@ ApplicationWindow {
                             color: "#1A1D23"; radius: 6; clip: true
                             Canvas {
                                 id: graphCanvas; anchors.fill: parent
+                                onWidthChanged: requestPaint(); onHeightChanged: requestPaint()
                                 onPaint: {
                                     var ctx = getContext("2d"); ctx.clearRect(0, 0, width, height);
-                                    function toPx(x, y) {
-                                        return {
-                                            x: (x - uiController.xMin) * (width / (uiController.xMax - uiController.xMin)),
-                                            y: height - (y - uiController.yMin) * (height / (uiController.yMax - uiController.yMin))
-                                        };
-                                    }
-
+                                    function toPx(x, y) { return { x: (x - uiController.xMin) * (width / (uiController.xMax - uiController.xMin)), y: height - (y - uiController.yMin) * (height / (uiController.yMax - uiController.yMin)) }; }
                                     var rangeX = uiController.xMax - uiController.xMin;
-                                    var step = 1;
-                                    if (rangeX > 50) step = 10; else if (rangeX < 5) step = 0.5;
-
-                                    ctx.lineWidth = 1; ctx.font = "10px sans-serif";
+                                    var step = rangeX > 50 ? 10 : (rangeX < 5 ? 0.5 : 1);
+                                    
                                     for (var x = Math.floor(uiController.xMin / step) * step; x <= uiController.xMax; x += step) {
-                                        var p = toPx(x, 0);
-                                        ctx.strokeStyle = (Math.abs(x) < 0.0001) ? "#D8DEE9" : "#2E3440";
-                                        ctx.beginPath(); ctx.moveTo(p.x, 0); ctx.lineTo(p.x, height); ctx.stroke();
-                                        if (Math.abs(x) > 0.0001) { ctx.fillStyle = "#4C566A"; ctx.fillText(x.toFixed(1), p.x + 2, height - 5); }
+                                        var px = toPx(x, 0); ctx.strokeStyle = (Math.abs(x) < 0.0001) ? "#D8DEE9" : "#2E3440";
+                                        ctx.beginPath(); ctx.moveTo(px.x, 0); ctx.lineTo(px.x, height); ctx.stroke();
+                                        if (Math.abs(x) > 0.0001) { ctx.fillStyle = "#4C566A"; ctx.fillText(x.toFixed(1), px.x + 2, height - 5); }
                                     }
                                     for (var y = Math.floor(uiController.yMin / step) * step; y <= uiController.yMax; y += step) {
-                                        var p = toPx(0, y);
-                                        ctx.strokeStyle = (Math.abs(y) < 0.0001) ? "#D8DEE9" : "#2E3440";
-                                        ctx.beginPath(); ctx.moveTo(0, p.y); ctx.lineTo(width, p.y); ctx.stroke();
-                                        if (Math.abs(y) > 0.0001) { ctx.fillStyle = "#4C566A"; ctx.fillText(y.toFixed(1), 5, p.y - 2); }
+                                        var py = toPx(0, y); ctx.strokeStyle = (Math.abs(y) < 0.0001) ? "#D8DEE9" : "#2E3440";
+                                        ctx.beginPath(); ctx.moveTo(0, py.y); ctx.lineTo(width, py.y); ctx.stroke();
+                                        if (Math.abs(y) > 0.0001) { ctx.fillStyle = "#4C566A"; ctx.fillText(y.toFixed(1), 5, py.y - 2); }
                                     }
-
+                                    
                                     var colors = ["#88C0D0", "#BF616A", "#A3BE8C"];
                                     var multiPts = uiController.getMultiGraphPoints(600);
                                     for (var f=0; f < multiPts.length; f++) {

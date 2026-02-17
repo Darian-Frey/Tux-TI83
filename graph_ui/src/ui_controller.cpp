@@ -1,5 +1,6 @@
 #include "ui_controller.hpp"
 #include <map>
+#include <cmath>
 
 namespace tux_ti83 {
 
@@ -15,6 +16,7 @@ void UIController::processInput(const QString& input) {
     auto& currentStr = m_displayStrings[m_activeIdx];
 
     if (input == "C") { currentStr = ""; currentBuf.clear(); emit displayChanged(); return; }
+    
     if (input == "ENTER") {
         MathStateMachine msm;
         CalculationResult result = msm.evaluate(currentBuf);
@@ -31,13 +33,19 @@ void UIController::processInput(const QString& input) {
         {"4", Token::Num4}, {"5", Token::Num5}, {"6", Token::Num6}, {"7", Token::Num7},
         {"8", Token::Num8}, {"9", Token::Num9}, {"+", Token::Add}, {"−", Token::Sub},
         {"×", Token::Mul}, {"÷", Token::Div}, {"(", Token::LeftParen}, {")", Token::RightParen},
-        {".", Token::Decimal}, {"π", Token::Pi}, {"X", Token::VarX},
-        {"sin", Token::Sin}, {"cos", Token::Cos}, {"tan", Token::Tan}, {"√", Token::Sqrt}
+        {".", Token::Decimal}, {"π", Token::Pi}, {"X", Token::VarX}, {"^", Token::Pow},
+        {"sin", Token::Sin}, {"cos", Token::Cos}, {"tan", Token::Tan}, {"√", Token::Sqrt},
+        {"log", Token::Log}, {"ln", Token::Ln}, {"asin", Token::ASin}, {"acos", Token::ACos}, {"atan", Token::ATan},
+        {"=", Token::Equal}, {"≠", Token::NotEqual}, {"<", Token::Less}, {">", Token::Greater},
+        {"and", Token::And}, {"or", Token::Or}, {"not", Token::Not}
     };
 
     if (tokenMap.count(input)) {
         currentBuf.push_back(tokenMap.at(input));
-        currentStr += (input == "sin" || input == "cos" || input == "tan" || input == "√") ? input + "(" : input;
+        bool isFunc = (input == "sin" || input == "cos" || input == "tan" || 
+                       input == "√" || input == "log" || input == "ln" ||
+                       input == "asin" || input == "acos" || input == "atan" || input == "not");
+        currentStr += isFunc ? input + "(" : (tokenMap.at(input) >= Token::And ? " " + input + " " : input);
         emit displayChanged();
     }
 }

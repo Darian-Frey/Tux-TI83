@@ -9,8 +9,10 @@ namespace tux_ti83 {
     enum class Token {
         Num0, Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8, Num9,
         Decimal, Pi, E, Add, Sub, Mul, Div, Pow, ImplicitMul,
-        Sin, Cos, Tan, Log, Ln, Sqrt, Negate, Inverse, Square, Factorial,
-        LeftParen, RightParen, Comma, VarX
+        Sin, Cos, Tan, Log, Ln, Sqrt, ASin, ACos, ATan,
+        Equal, NotEqual, Less, LessEq, Greater, GreaterEq, // Relational
+        And, Or, Xor, Not, // Logical
+        LeftParen, RightParen, VarX
     };
 
     struct CalculationResult {
