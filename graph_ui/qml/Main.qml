@@ -5,40 +5,71 @@ import QtQuick.Layouts
 ApplicationWindow {
     visible: true; width: 900; height: 600; title: "Tux-TI83"; color: "#2E3440"
     
-    // Completely custom Popup instead of Menu to bypass system themes
+    Popup {
+        id: windowPopup
+        width: 220; height: 420 // Increased height for new buttons
+        modal: true; focus: true
+        x: (workspacePane.width - width) / 2; y: (workspacePane.height - height) / 2
+        background: Rectangle { color: "#3B4252"; radius: 8; border.color: "#81A1C1"; border.width: 2 }
+        
+        ColumnLayout {
+            anchors.fill: parent; anchors.margins: 15; spacing: 10
+            Text { text: "WINDOW SETTINGS"; color: "#88C0D0"; font.bold: true; Layout.alignment: Qt.AlignHCenter }
+            
+            Repeater {
+                model: [{l: "Xmin:", p: "xMin"}, {l: "Xmax:", p: "xMax"}, {l: "Ymin:", p: "yMin"}, {l: "Ymax:", p: "yMax"}]
+                delegate: RowLayout {
+                    Text { text: modelData.l; color: "#ECEFF4"; Layout.preferredWidth: 50 }
+                    TextField {
+                        text: uiController[modelData.p].toFixed(2)
+                        color: "#ECEFF4"; Layout.fillWidth: true
+                        background: Rectangle { color: "#2E3440"; radius: 4; border.color: parent.activeFocus ? "#88C0D0" : "#4C566A" }
+                        onEditingFinished: uiController[modelData.p] = parseFloat(text)
+                    }
+                }
+            }
+            
+            Rectangle { Layout.fillWidth: true; height: 1; color: "#4C566A"; Layout.topMargin: 5 }
+
+            Button {
+                text: "ZSTANDARD (-10, 10)"; Layout.fillWidth: true
+                onClicked: uiController.resetViewport()
+                background: Rectangle { color: "#81A1C1"; radius: 4 }
+                contentItem: Text { text: parent.text; color: "#2E3440"; font.bold: true; horizontalAlignment: Text.AlignHCenter }
+            }
+
+            Button {
+                text: "ZOOM FIT (Y-Axis)"; Layout.fillWidth: true
+                onClicked: uiController.zoomFit()
+                background: Rectangle { color: "#A3BE8C"; radius: 4 }
+                contentItem: Text { text: parent.text; color: "#2E3440"; font.bold: true; horizontalAlignment: Text.AlignHCenter }
+            }
+
+            Button {
+                text: "DONE"; Layout.fillWidth: true
+                onClicked: windowPopup.close()
+                background: Rectangle { color: "#4C566A"; radius: 4 }
+                contentItem: Text { text: parent.text; color: "#ECEFF4"; horizontalAlignment: Text.AlignHCenter }
+            }
+        }
+    }
+
+    // Logic Popup (Unchanged)
     Popup {
         id: logicPopup
-        width: 140; height: 320
-        padding: 5
-        background: Rectangle { 
-            color: "#88C0D0" // Bright Frost Blue background
-            radius: 8
-            border.color: "#ECEFF4"
-            border.width: 2
-        }
-
+        width: 160; height: 380; modal: true; focus: true; x: (workspacePane.width - width) / 2; y: (workspacePane.height - height) / 2
+        background: Rectangle { color: "#88C0D0"; radius: 8; border.color: "#ECEFF4"; border.width: 3 }
         ColumnLayout {
-            anchors.fill: parent; spacing: 2
+            anchors.fill: parent; anchors.margins: 10; spacing: 5
+            Text { text: "LOGIC & MATH"; Layout.alignment: Qt.AlignHCenter; font.bold: true; color: "#2E3440"; font.pixelSize: 14 }
+            Rectangle { Layout.fillWidth: true; height: 2; color: "#2E3440"; opacity: 0.2 }
             Repeater {
-                model: ["=", "≠", "<", ">", "and", "or", "not"]
+                model: ["=", "≠", "<", ">", "and", "or", "not", "▶Frac"]
                 delegate: Rectangle {
-                    Layout.fillWidth: true; Layout.preferredHeight: 40
-                    color: mouseArea.containsMouse ? "#4C566A" : "transparent"
-                    radius: 4
-                    Text {
-                        anchors.centerIn: parent
-                        text: modelData
-                        font.pixelSize: 18; font.bold: true
-                        // Dark text on Light Blue background
-                        color: mouseArea.containsMouse ? "#ECEFF4" : "#2E3440"
-                    }
-                    MouseArea {
-                        id: mouseArea; anchors.fill: parent; hoverEnabled: true
-                        onClicked: {
-                            uiController.processInput(modelData)
-                            logicPopup.close()
-                        }
-                    }
+                    Layout.fillWidth: true; Layout.preferredHeight: 35
+                    color: mouseArea.containsMouse ? "#4C566A" : "white"; radius: 4
+                    Text { anchors.centerIn: parent; text: modelData; font.pixelSize: 16; font.bold: true; color: mouseArea.containsMouse ? "#ECEFF4" : "#2E3440" }
+                    MouseArea { id: mouseArea; anchors.fill: parent; hoverEnabled: true; onClicked: { uiController.processInput(modelData); logicPopup.close() } }
                 }
             }
         }
@@ -52,7 +83,6 @@ ApplicationWindow {
                 anchors.fill: parent; anchors.margins: 16
                 ColumnLayout {
                     anchors.fill: parent; spacing: 12
-                    
                     RowLayout {
                         spacing: 10
                         Repeater {
@@ -65,48 +95,36 @@ ApplicationWindow {
                         }
                         Item { Layout.fillWidth: true }
                         Button {
+                            background: Rectangle { implicitWidth: 80; implicitHeight: 35; color: "#81A1C1"; radius: 4 }
+                            contentItem: Text { text: "WINDOW"; font.bold: true; color: "#2E3440" }
+                            onClicked: windowPopup.open()
+                        }
+                        Button {
                             background: Rectangle { implicitWidth: 80; implicitHeight: 35; color: "#EBCB8B"; radius: 4 }
                             contentItem: Text { text: uiController.isGraphMode ? "KEYS" : "GRAPH"; font.bold: true; color: "#2E3440" }
                             onClicked: uiController.toggleGraphMode()
                         }
                     }
-
                     Rectangle {
                         Layout.fillWidth: true; Layout.preferredHeight: 60; color: "#3B4252"; radius: 6
                         Text { anchors.centerIn: parent; text: uiController.currentDisplay; font.pixelSize: 24; color: "#ECEFF4" }
                     }
-
                     StackLayout {
                         currentIndex: uiController.isGraphMode ? 1 : 0
                         Layout.fillWidth: true; Layout.fillHeight: true
-                        
                         GridLayout {
-                            id: keypadGrid; columns: 6; rowSpacing: 8; columnSpacing: 8
+                            columns: 6; rowSpacing: 8; columnSpacing: 8
                             Repeater {
-                                model: ["7","8","9","÷","sin","asin","4","5","6","×","cos","acos","1","2","3","−","tan","atan","0",".","π","+","√","^","X","log","ln","(","LOGIC",")","C","ENTER"]
+                                model: ["7","8","9","÷","sin","asin","4","5","6","×","cos","acos","1","2","3","−","tan","atan","0",".","π","+","√","^","X","log","ln","(","LOGIC",")","DEL","C","ENTER"]
                                 delegate: Rectangle {
-                                    id: buttonRect
                                     Layout.fillWidth: true; Layout.fillHeight: true; radius: 6
-                                    Layout.columnSpan: modelData === "ENTER" ? 5 : 1
-                                    color: (modelData === "ENTER") ? "#88C0D0" : (modelData === "X") ? "#A3BE8C" : (modelData === "LOGIC") ? "#EBCB8B" : (["sin","cos","tan","asin","acos","atan","√","log","ln","^"].indexOf(modelData) !== -1) ? "#B48EAD" : "#4C566A"
-                                    Text { anchors.centerIn: parent; text: modelData; font.bold: true; color: (modelData === "ENTER" || modelData === "X" || modelData === "LOGIC") ? "#2E3440" : "#ECEFF4" }
-                                    MouseArea { 
-                                        anchors.fill: parent
-                                        onClicked: {
-                                            if (modelData === "LOGIC") {
-                                                // Center the popup over the workspacePane for visibility
-                                                logicPopup.x = (workspacePane.width - logicPopup.width) / 2
-                                                logicPopup.y = (workspacePane.height - logicPopup.height) / 2
-                                                logicPopup.open()
-                                            } else {
-                                                uiController.processInput(modelData)
-                                            }
-                                        }
-                                    }
+                                    Layout.columnSpan: modelData === "ENTER" ? 4 : 1
+                                    color: (modelData === "ENTER") ? "#88C0D0" : (modelData === "DEL" || modelData === "C") ? "#BF616A" : (modelData === "X") ? "#A3BE8C" : (modelData === "LOGIC") ? "#EBCB8B" : (["sin","cos","tan","asin","acos","atan","√","log","ln","^"].indexOf(modelData) !== -1) ? "#B48EAD" : "#4C566A"
+                                    Text { anchors.centerIn: parent; text: modelData; font.bold: true; color: (["ENTER","X","LOGIC"].indexOf(modelData) !== -1) ? "#2E3440" : "#ECEFF4" }
+                                    MouseArea { anchors.fill: parent; onClicked: { if (modelData === "LOGIC") logicPopup.open(); else uiController.processInput(modelData) } }
                                 }
                             }
                         }
-
                         Rectangle {
                             color: "#1A1D23"; radius: 6; clip: true
                             Canvas {
@@ -117,7 +135,6 @@ ApplicationWindow {
                                     function toPx(x, y) { return { x: (x - uiController.xMin) * (width / (uiController.xMax - uiController.xMin)), y: height - (y - uiController.yMin) * (height / (uiController.yMax - uiController.yMin)) }; }
                                     var rangeX = uiController.xMax - uiController.xMin;
                                     var step = rangeX > 50 ? 10 : (rangeX < 5 ? 0.5 : 1);
-                                    
                                     for (var x = Math.floor(uiController.xMin / step) * step; x <= uiController.xMax; x += step) {
                                         var px = toPx(x, 0); ctx.strokeStyle = (Math.abs(x) < 0.0001) ? "#D8DEE9" : "#2E3440";
                                         ctx.beginPath(); ctx.moveTo(px.x, 0); ctx.lineTo(px.x, height); ctx.stroke();
@@ -128,7 +145,6 @@ ApplicationWindow {
                                         ctx.beginPath(); ctx.moveTo(0, py.y); ctx.lineTo(width, py.y); ctx.stroke();
                                         if (Math.abs(y) > 0.0001) { ctx.fillStyle = "#4C566A"; ctx.fillText(y.toFixed(1), 5, py.y - 2); }
                                     }
-                                    
                                     var colors = ["#88C0D0", "#BF616A", "#A3BE8C"];
                                     var multiPts = uiController.getMultiGraphPoints(600);
                                     for (var f=0; f < multiPts.length; f++) {

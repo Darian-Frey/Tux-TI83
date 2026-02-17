@@ -1,8 +1,7 @@
 #pragma once
 #include <vector>
-#include <map>
-#include <optional>
 #include <string>
+#include <utility>
 
 namespace tux_ti83 {
 
@@ -10,8 +9,8 @@ namespace tux_ti83 {
         Num0, Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8, Num9,
         Decimal, Pi, E, Add, Sub, Mul, Div, Pow, ImplicitMul,
         Sin, Cos, Tan, Log, Ln, Sqrt, ASin, ACos, ATan,
-        Equal, NotEqual, Less, LessEq, Greater, GreaterEq, // Relational
-        And, Or, Xor, Not, // Logical
+        Equal, NotEqual, Less, LessEq, Greater, GreaterEq,
+        And, Or, Xor, Not,
         LeftParen, RightParen, VarX
     };
 
@@ -19,6 +18,7 @@ namespace tux_ti83 {
         bool success;
         double value;
         std::string error_message;
+        std::string fraction_view; // New field for ▶Frac
     };
 
     class EOSPrecedence {
@@ -32,5 +32,6 @@ namespace tux_ti83 {
     class MathStateMachine {
     public:
         CalculationResult evaluate(const std::vector<Token>& graph, double xValue = 0.0);
+        static std::string toFraction(double value, double tolerance = 1.0e-9);
     };
 }

@@ -3,7 +3,7 @@
 
 CMakeFiles/graph_ui.dir/graph_ui/src/ui_controller.cpp.o: /home/azathoth/Tux-TI83/graph_ui/src/ui_controller.cpp \
   /home/azathoth/Tux-TI83/core_math/include/capsules/capsule_math.hpp \
-  /home/azathoth/Tux-TI83/graph_ui/include/ui_controller.hpp \
+  /home/azathoth/Tux-TI83/graph_ui/src/ui_controller.hpp \
   /usr/include/alloca.h \
   /usr/include/asm-generic/errno-base.h \
   /usr/include/asm-generic/errno.h \
@@ -391,6 +391,8 @@ CMakeFiles/graph_ui.dir/graph_ui/src/ui_controller.cpp.o: /home/azathoth/Tux-TI8
 CMakeFiles/graph_ui.dir/graph_ui_autogen/mocs_compilation.cpp.o: graph_ui_autogen/mocs_compilation.cpp \
   /home/azathoth/Tux-TI83/graph_ui/include/ui_controller.hpp \
   graph_ui_autogen/DC2RB2FZEW/moc_ui_controller.cpp \
+  /home/azathoth/Tux-TI83/graph_ui/src/ui_controller.hpp \
+  graph_ui_autogen/DD62R3RSIU/moc_ui_controller.cpp \
   /home/azathoth/Tux-TI83/core_math/include/capsules/capsule_math.hpp \
   /usr/include/alloca.h \
   /usr/include/asm-generic/errno-base.h \
@@ -965,12 +967,6 @@ graph_ui_autogen/DC2RB2FZEW/moc_ui_controller.cpp:
 
 /usr/include/c++/11/bits/stringfwd.h:
 
-/usr/include/x86_64-linux-gnu/qt6/QtCore/qconfig.h:
-
-/usr/include/x86_64-linux-gnu/qt6/QtCore/qarraydatapointer.h:
-
-/usr/include/c++/11/bits/streambuf_iterator.h:
-
 /usr/include/c++/11/bits/uses_allocator.h:
 
 /usr/include/c++/11/bits/atomic_lockfree_defines.h:
@@ -992,6 +988,8 @@ graph_ui_autogen/DC2RB2FZEW/moc_ui_controller.cpp:
 /usr/include/x86_64-linux-gnu/qt6/QtCore/QStringList:
 
 /usr/include/c++/11/ext/atomicity.h:
+
+graph_ui_autogen/DD62R3RSIU/moc_ui_controller.cpp:
 
 /usr/include/c++/11/bits/memoryfwd.h:
 
@@ -1103,6 +1101,14 @@ graph_ui_autogen/DC2RB2FZEW/moc_ui_controller.cpp:
 
 /usr/include/c++/11/bits/nested_exception.h:
 
+/usr/include/c++/11/bits/allocated_ptr.h:
+
+/usr/include/x86_64-linux-gnu/bits/pthreadtypes.h:
+
+/usr/include/x86_64-linux-gnu/qt6/QtCore/qarraydata.h:
+
+/usr/include/c++/11/bits/hashtable_policy.h:
+
 /usr/include/x86_64-linux-gnu/qt6/QtCore/qsysinfo.h:
 
 /usr/include/c++/11/vector:
@@ -1143,6 +1149,12 @@ graph_ui_autogen/DC2RB2FZEW/moc_ui_controller.cpp:
 
 /usr/include/alloca.h:
 
+/usr/include/x86_64-linux-gnu/qt6/QtCore/qconfig.h:
+
+/usr/include/x86_64-linux-gnu/qt6/QtCore/qarraydatapointer.h:
+
+/usr/include/c++/11/bits/streambuf_iterator.h:
+
 /usr/include/c++/11/algorithm:
 
 /usr/include/c++/11/backward/binders.h:
@@ -1154,24 +1166,6 @@ graph_ui_autogen/DC2RB2FZEW/moc_ui_controller.cpp:
 /usr/include/c++/11/bits/char_traits.h:
 
 /usr/include/asm-generic/errno-base.h:
-
-/usr/include/c++/11/bits/allocated_ptr.h:
-
-/usr/include/x86_64-linux-gnu/bits/pthreadtypes.h:
-
-/usr/include/x86_64-linux-gnu/qt6/QtCore/qarraydata.h:
-
-/usr/include/c++/11/bits/hashtable_policy.h:
-
-/usr/include/c++/11/bits/shared_ptr.h:
-
-/usr/include/c++/11/bits/stl_construct.h:
-
-/usr/include/c++/11/tr1/exp_integral.tcc:
-
-/usr/include/c++/11/bits/align.h:
-
-/usr/include/c++/11/bits/max_size_type.h:
 
 /usr/include/syscall.h:
 
@@ -1197,15 +1191,25 @@ graph_ui_autogen/DC2RB2FZEW/moc_ui_controller.cpp:
 
 /usr/include/c++/11/ext/string_conversions.h:
 
-/usr/include/c++/11/bits/uses_allocator_args.h:
-
-/usr/include/c++/11/list:
-
 /usr/include/c++/11/tr1/special_function_util.h:
 
 /usr/include/c++/11/bits/atomic_base.h:
 
 /usr/include/c++/11/ext/numeric_traits.h:
+
+/usr/include/c++/11/list:
+
+/usr/include/c++/11/bits/uses_allocator_args.h:
+
+/usr/include/c++/11/bits/shared_ptr.h:
+
+/usr/include/c++/11/bits/stl_construct.h:
+
+/usr/include/c++/11/tr1/exp_integral.tcc:
+
+/usr/include/c++/11/bits/align.h:
+
+/usr/include/c++/11/bits/max_size_type.h:
 
 /usr/include/c++/11/bits/cxxabi_forced.h:
 
@@ -1268,6 +1272,8 @@ graph_ui_autogen/DC2RB2FZEW/moc_ui_controller.cpp:
 /usr/include/c++/11/bits/enable_special_members.h:
 
 /usr/include/c++/11/bits/basic_ios.tcc:
+
+/home/azathoth/Tux-TI83/graph_ui/src/ui_controller.hpp:
 
 /usr/include/c++/11/bits/ios_base.h:
 

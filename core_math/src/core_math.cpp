@@ -124,7 +124,6 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token>& tokens, d
             else if (t == Token::Mul) valStack.push(a * b);
             else if (t == Token::Div) valStack.push(b == 0 ? 0 : a / b);
             else if (t == Token::Pow) valStack.push(std::pow(a, b));
-            // Logical/Relational
             else if (t == Token::Equal) valStack.push(std::abs(a - b) < 1e-9 ? 1 : 0);
             else if (t == Token::NotEqual) valStack.push(std::abs(a - b) >= 1e-9 ? 1 : 0);
             else if (t == Token::Less) valStack.push(a < b ? 1 : 0);
@@ -137,6 +136,24 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token>& tokens, d
         }
     }
     return {true, valStack.empty() ? 0 : valStack.top(), ""};
+}
+
+std::string MathStateMachine::toFraction(double value, double tolerance) {
+    if (std::isinf(value) || std::isnan(value)) return "";
+    double x = value;
+    long long n1 = 1, d1 = 0;
+    long long n2 = 0, d2 = 1;
+    double b = x;
+    for (int i = 0; i < 10; ++i) {
+        long long a = std::floor(b);
+        long long aux_n = n1; n1 = a * n1 + n2; n2 = aux_n;
+        long long aux_d = d1; d1 = a * d1 + d2; d2 = aux_d;
+        if (std::abs(x - (double)n1 / d1) < tolerance) break;
+        if (std::abs(b - a) < 1.0e-12) break;
+        b = 1.0 / (b - a);
+    }
+    if (d1 == 1) return std::to_string(n1);
+    return std::to_string(n1) + "/" + std::to_string(d1);
 }
 
 } // namespace tux_ti83

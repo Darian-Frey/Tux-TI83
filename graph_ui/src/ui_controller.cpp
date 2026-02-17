@@ -1,6 +1,7 @@
 #include "ui_controller.hpp"
 #include <map>
 #include <cmath>
+#include <algorithm>
 
 namespace tux_ti83 {
 
@@ -15,16 +16,50 @@ void UIController::processInput(const QString& input) {
     auto& currentBuf = m_functionBuffers[m_activeIdx];
     auto& currentStr = m_displayStrings[m_activeIdx];
 
-    if (input == "C") { currentStr = ""; currentBuf.clear(); emit displayChanged(); return; }
+    if (input == "C") { 
+        currentStr = ""; 
+        currentBuf.clear(); 
+        emit displayChanged(); 
+        return; 
+    }
+
+    if (input == "DEL") {
+        if (!currentBuf.empty()) {
+            currentBuf.pop_back();
+            currentStr = "";
+            static std::map<Token, QString> revMap = {
+                {Token::Add, "+"}, {Token::Sub, "−"}, {Token::Mul, "×"}, {Token::Div, "÷"},
+                {Token::Sin, "sin("}, {Token::Cos, "cos("}, {Token::Tan, "tan("},
+                {Token::ASin, "asin("}, {Token::ACos, "acos("}, {Token::ATan, "atan("},
+                {Token::Log, "log("}, {Token::Ln, "ln("}, {Token::Sqrt, "√("},
+                {Token::Pow, "^"}, {Token::Pi, "π"}, {Token::VarX, "X"},
+                {Token::LeftParen, "("}, {Token::RightParen, ")"}, {Token::Decimal, "."}
+            };
+            for (auto t : currentBuf) {
+                int val = static_cast<int>(t);
+                if (val >= 0 && val <= 9) currentStr += QString::number(val);
+                else if (revMap.count(t)) currentStr += revMap[t];
+            }
+        }
+        emit displayChanged();
+        return;
+    }
     
-    if (input == "ENTER") {
+    if (input == "ENTER" || input == "▶Frac") {
         MathStateMachine msm;
         CalculationResult result = msm.evaluate(currentBuf);
         QString entry = "Y" + QString::number(m_activeIdx + 1) + ": " + currentStr + " = ";
-        currentStr = result.success ? QString::number(result.value) : "ERR";
+        if (result.success) {
+            std::string fracStr = MathStateMachine::toFraction(result.value);
+            QString frac = QString::fromStdString(fracStr);
+            currentStr = (frac.isEmpty()) ? QString::number(result.value) : frac;
+        } else {
+            currentStr = "ERR";
+        }
         entry += currentStr;
         m_history.prepend(entry);
-        emit historyChanged(); emit displayChanged();
+        emit historyChanged(); 
+        emit displayChanged();
         return;
     }
 
@@ -35,9 +70,9 @@ void UIController::processInput(const QString& input) {
         {"×", Token::Mul}, {"÷", Token::Div}, {"(", Token::LeftParen}, {")", Token::RightParen},
         {".", Token::Decimal}, {"π", Token::Pi}, {"X", Token::VarX}, {"^", Token::Pow},
         {"sin", Token::Sin}, {"cos", Token::Cos}, {"tan", Token::Tan}, {"√", Token::Sqrt},
-        {"log", Token::Log}, {"ln", Token::Ln}, {"asin", Token::ASin}, {"acos", Token::ACos}, {"atan", Token::ATan},
-        {"=", Token::Equal}, {"≠", Token::NotEqual}, {"<", Token::Less}, {">", Token::Greater},
-        {"and", Token::And}, {"or", Token::Or}, {"not", Token::Not}
+        {"log", Token::Log}, {"ln", Token::Ln}, {"asin", Token::ASin}, {"acos", Token::ACos}, 
+        {"atan", Token::ATan}, {"=", Token::Equal}, {"≠", Token::NotEqual}, {"<", Token::Less}, 
+        {">", Token::Greater}, {"and", Token::And}, {"or", Token::Or}, {"not", Token::Not}
     };
 
     if (tokenMap.count(input)) {
@@ -45,8 +80,34 @@ void UIController::processInput(const QString& input) {
         bool isFunc = (input == "sin" || input == "cos" || input == "tan" || 
                        input == "√" || input == "log" || input == "ln" ||
                        input == "asin" || input == "acos" || input == "atan" || input == "not");
-        currentStr += isFunc ? input + "(" : (tokenMap.at(input) >= Token::And ? " " + input + " " : input);
+        if (isFunc) currentStr += input + "(";
+        else if (tokenMap.at(input) >= Token::And && tokenMap.at(input) <= Token::Xor) currentStr += " " + input + " ";
+        else currentStr += input;
         emit displayChanged();
+    }
+}
+
+void UIController::zoomFit() {
+    double minVal = 1e308; double maxVal = -1e308;
+    bool found = false;
+    MathStateMachine msm;
+    for (const auto& buffer : m_functionBuffers) {
+        if (buffer.empty()) continue;
+        for (int i = 0; i <= 100; ++i) {
+            double x = m_xMin + (i * (m_xMax - m_xMin) / 100.0);
+            CalculationResult res = msm.evaluate(buffer, x);
+            if (res.success && std::isfinite(res.value)) {
+                minVal = std::min(minVal, res.value);
+                maxVal = std::max(maxVal, res.value);
+                found = true;
+            }
+        }
+    }
+    if (found) {
+        double margin = (maxVal - minVal) * 0.1;
+        if (std::abs(maxVal - minVal) < 1e-9) margin = 1.0;
+        m_yMin = minVal - margin; m_yMax = maxVal + margin;
+        emit viewportChanged();
     }
 }
 
@@ -84,7 +145,5 @@ void UIController::zoom(double f, double mx, double my, double vw, double vh) {
     m_yMin = wy + (m_yMin-wy)*f; m_yMax = wy + (m_yMax-wy)*f;
     emit viewportChanged();
 }
-
-void UIController::restoreFromHistory(int index) {}
 
 } // namespace tux_ti83
