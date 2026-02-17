@@ -28,60 +28,30 @@ ApplicationWindow {
                     spacing: 12
 
                     Rectangle {
-                        id: display
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 80
-                        color: "#3B4252"
-                        radius: 6
-
+                        Layout.fillWidth: true; Layout.preferredHeight: 80
+                        color: "#3B4252"; radius: 6
                         Text {
                             anchors.centerIn: parent
                             text: uiController.currentDisplay
-                            font.pixelSize: 28
-                            color: "#ECEFF4"
+                            font.pixelSize: 28; color: "#ECEFF4"
                         }
                     }
 
                     GridLayout {
-                        id: keypad
-                        columns: 4
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        rowSpacing: 10
-                        columnSpacing: 10
-
+                        columns: 4; Layout.fillWidth: true; Layout.fillHeight: true
+                        rowSpacing: 10; columnSpacing: 10
                         Repeater {
-                            model: [
-                                "7","8","9","÷",
-                                "4","5","6","×",
-                                "1","2","3","−",
-                                "0",".","π","+",
-                                "C", "(", ")", "ENTER"
-                            ]
-
+                            model: ["7","8","9","÷","4","5","6","×","1","2","3","−","0",".","π","+","C", "(", ")", "ENTER"]
                             delegate: Rectangle {
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                radius: 6
-                                // Style ENTER button differently (Nord Frost)
+                                Layout.fillWidth: true; Layout.fillHeight: true; radius: 6
                                 color: modelData === "ENTER" ? "#88C0D0" : "#4C566A"
-
                                 Text {
-                                    anchors.centerIn: parent
-                                    text: modelData
-                                    font.pixelSize: 22
-                                    color: modelData === "ENTER" ? "#2E3440" : "#ECEFF4"
-                                    font.bold: modelData === "ENTER"
+                                    anchors.centerIn: parent; text: modelData
+                                    font.pixelSize: 22; color: modelData === "ENTER" ? "#2E3440" : "#ECEFF4"
                                 }
-
                                 MouseArea {
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    onEntered: parent.color = modelData === "ENTER" ? "#8FBCBB" : "#81A1C1"
-                                    onExited: parent.color = modelData === "ENTER" ? "#88C0D0" : "#4C566A"
-                                    onClicked: {
-                                        uiController.processInput(index)
-                                    }
+                                    anchors.fill: parent; hoverEnabled: true
+                                    onClicked: uiController.processInput(index)
                                 }
                             }
                         }
@@ -91,17 +61,35 @@ ApplicationWindow {
         }
 
         Rectangle {
-            id: historyPane
-            Layout.fillHeight: true
-            Layout.preferredWidth: parent.width * 0.35
-            color: "#2E3440"
-            border.color: "#4C566A"
-            border.width: 1
+            Layout.fillHeight: true; Layout.preferredWidth: parent.width * 0.35
+            color: "#2E3440"; border.color: "#4C566A"; border.width: 1
 
-            Text {
-                anchors.centerIn: parent
-                text: "History"
-                color: "#4C566A"
+            ColumnLayout {
+                anchors.fill: parent; anchors.margins: 10
+                Text { text: "HISTORY"; color: "#81A1C1"; font.bold: true; Layout.alignment: Qt.AlignHCenter }
+                
+                ListView {
+                    Layout.fillWidth: true; Layout.fillHeight: true
+                    model: uiController.history
+                    spacing: 8
+                    clip: true
+                    delegate: Rectangle {
+                        width: parent.width; height: 40; color: "#3B4252"; radius: 4
+                        
+                        Text {
+                            anchors.centerIn: parent
+                            text: modelData; color: "#D8DEE9"; font.pixelSize: 16
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onEntered: parent.color = "#434C5E"
+                            onExited: parent.color = "#3B4252"
+                            onClicked: uiController.restoreFromHistory(index)
+                        }
+                    }
+                }
             }
         }
     }

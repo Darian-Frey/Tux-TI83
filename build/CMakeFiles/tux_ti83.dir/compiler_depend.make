@@ -305,6 +305,7 @@ CMakeFiles/tux_ti83.dir/app/main.cpp.o: /home/azathoth/Tux-TI83/app/main.cpp \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/QMetaType \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/QObject \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/QString \
+  /usr/include/x86_64-linux-gnu/qt6/QtCore/QStringList \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/QVariant \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/qalgorithms.h \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/qanystringview.h \
@@ -717,6 +718,8 @@ tux_ti83_autogen/mocs_compilation.cpp:
 /usr/include/c++/11/concepts:
 
 /usr/include/c++/11/bits/stl_pair.h:
+
+/usr/include/x86_64-linux-gnu/qt6/QtCore/QStringList:
 
 /usr/include/c++/11/ext/atomicity.h:
 

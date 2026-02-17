@@ -374,6 +374,8 @@ CMakeFiles/tux_ti83.dir/app/main.cpp.o: \
  /usr/include/x86_64-linux-gnu/qt6/QtCore/qobject.h \
  /usr/include/x86_64-linux-gnu/qt6/QtCore/QString \
  /usr/include/x86_64-linux-gnu/qt6/QtCore/qstring.h \
+ /usr/include/x86_64-linux-gnu/qt6/QtCore/QStringList \
+ /usr/include/x86_64-linux-gnu/qt6/QtCore/qstringlist.h \
  /usr/include/x86_64-linux-gnu/qt6/QtCore/QVariant \
  /usr/include/x86_64-linux-gnu/qt6/QtCore/qvariant.h \
  /home/azathoth/Tux-TI83/core_math/include/capsules/capsule_math.hpp

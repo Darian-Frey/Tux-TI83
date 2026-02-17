@@ -282,6 +282,7 @@
  mdp:/usr/include/x86_64-linux-gnu/gnu/stubs.h
  mdp:/usr/include/x86_64-linux-gnu/qt6/QtCore/QObject
  mdp:/usr/include/x86_64-linux-gnu/qt6/QtCore/QString
+ mdp:/usr/include/x86_64-linux-gnu/qt6/QtCore/QStringList
  mdp:/usr/include/x86_64-linux-gnu/qt6/QtCore/QVariant
  mdp:/usr/include/x86_64-linux-gnu/qt6/QtCore/qalgorithms.h
  mdp:/usr/include/x86_64-linux-gnu/qt6/QtCore/qanystringview.h
