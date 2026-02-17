@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/">
+    <file alias="graph_ui/qml/Main.qml">/home/azathoth/Tux-TI83/graph_ui/qml/Main.qml</file>
+  </qresource>
+</RCC>
+

@@ -1,0 +1,12 @@
+/home/azathoth/Tux-TI83/build/CMakeFiles/core_math.dir
+/home/azathoth/Tux-TI83/build/CMakeFiles/graph_ui.dir
+/home/azathoth/Tux-TI83/build/CMakeFiles/tux_ti83.dir
+/home/azathoth/Tux-TI83/build/CMakeFiles/tux_ti83_other_files.dir
+/home/azathoth/Tux-TI83/build/CMakeFiles/edit_cache.dir
+/home/azathoth/Tux-TI83/build/CMakeFiles/rebuild_cache.dir
+/home/azathoth/Tux-TI83/build/CMakeFiles/core_math_autogen_timestamp_deps.dir
+/home/azathoth/Tux-TI83/build/CMakeFiles/core_math_autogen.dir
+/home/azathoth/Tux-TI83/build/CMakeFiles/graph_ui_autogen_timestamp_deps.dir
+/home/azathoth/Tux-TI83/build/CMakeFiles/graph_ui_autogen.dir
+/home/azathoth/Tux-TI83/build/CMakeFiles/tux_ti83_autogen_timestamp_deps.dir
+/home/azathoth/Tux-TI83/build/CMakeFiles/tux_ti83_autogen.dir

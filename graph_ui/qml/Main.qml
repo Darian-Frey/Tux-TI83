@@ -1,6 +1,6 @@
-import QtQuick 6.5
-import QtQuick.Controls 6.5
-import QtQuick.Layouts 6.5
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 
 ApplicationWindow {
     visible: true
@@ -14,47 +14,95 @@ ApplicationWindow {
         spacing: 0
 
         Rectangle {
+            id: workspacePane
             Layout.fillHeight: true
             Layout.preferredWidth: parent.width * 0.65
             color: "#2E3440"
-            
-            ColumnLayout {
-                anchors.fill: parent
-                padding: 20
-                
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 60
-                    color: "#3B4252"
-                    Text {
-                        anchors.centerIn: parent
-                        text: uiController.currentDisplay
-                        color: "#ECEFF4"
-                        font.pixelSize: 24
-                    }
-                }
 
-                Canvas {
-                    id: graphCanvas
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    onPaint: {
-                        var ctx = getContext("2d");
-                        ctx.clearRect(0, 0, width, height);
-                        ctx.strokeStyle = "#88C0D0";
-                        ctx.beginPath();
-                        ctx.moveTo(0, height/2); ctx.lineTo(width, height/2);
-                        ctx.stroke();
+            Item {
+                anchors.fill: parent
+                anchors.margins: 16
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    spacing: 12
+
+                    Rectangle {
+                        id: display
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 80
+                        color: "#3B4252"
+                        radius: 6
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: uiController.currentDisplay
+                            font.pixelSize: 28
+                            color: "#ECEFF4"
+                        }
+                    }
+
+                    GridLayout {
+                        id: keypad
+                        columns: 4
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        rowSpacing: 10
+                        columnSpacing: 10
+
+                        Repeater {
+                            model: [
+                                "7","8","9","÷",
+                                "4","5","6","×",
+                                "1","2","3","−",
+                                "0",".","π","+",
+                                "C", "(", ")", "ENTER"
+                            ]
+
+                            delegate: Rectangle {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                radius: 6
+                                // Style ENTER button differently (Nord Frost)
+                                color: modelData === "ENTER" ? "#88C0D0" : "#4C566A"
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: modelData
+                                    font.pixelSize: 22
+                                    color: modelData === "ENTER" ? "#2E3440" : "#ECEFF4"
+                                    font.bold: modelData === "ENTER"
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onEntered: parent.color = modelData === "ENTER" ? "#8FBCBB" : "#81A1C1"
+                                    onExited: parent.color = modelData === "ENTER" ? "#88C0D0" : "#4C566A"
+                                    onClicked: {
+                                        uiController.processInput(index)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
-        
+
         Rectangle {
+            id: historyPane
             Layout.fillHeight: true
             Layout.preferredWidth: parent.width * 0.35
-            color: "#3B4252"
-            Text { text: "History"; color: "#81A1C1"; anchors.horizontalCenter: parent.horizontalCenter }
+            color: "#2E3440"
+            border.color: "#4C566A"
+            border.width: 1
+
+            Text {
+                anchors.centerIn: parent
+                text: "History"
+                color: "#4C566A"
+            }
         }
     }
 }

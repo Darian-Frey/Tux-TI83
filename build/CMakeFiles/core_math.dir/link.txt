@@ -1,0 +1,2 @@
+/usr/bin/ar qc libcore_math.a CMakeFiles/core_math.dir/core_math_autogen/mocs_compilation.cpp.o CMakeFiles/core_math.dir/core_math/src/core_math.cpp.o
+/usr/bin/ranlib libcore_math.a

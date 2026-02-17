@@ -1,0 +1,2 @@
+/usr/bin/ar qc libgraph_ui.a CMakeFiles/graph_ui.dir/graph_ui_autogen/mocs_compilation.cpp.o CMakeFiles/graph_ui.dir/graph_ui/src/ui_controller.cpp.o
+/usr/bin/ranlib libgraph_ui.a
