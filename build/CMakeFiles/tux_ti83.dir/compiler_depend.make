@@ -304,9 +304,8 @@ CMakeFiles/tux_ti83.dir/app/main.cpp.o: /home/azathoth/Tux-TI83/app/main.cpp \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/QDebug \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/QMetaType \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/QObject \
-  /usr/include/x86_64-linux-gnu/qt6/QtCore/QString \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/QStringList \
-  /usr/include/x86_64-linux-gnu/qt6/QtCore/QVariant \
+  /usr/include/x86_64-linux-gnu/qt6/QtCore/QVariantList \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/qalgorithms.h \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/qanystringview.h \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/qarraydata.h \
@@ -469,6 +468,8 @@ tux_ti83_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt6/QtQml/QQmlContext:
 
+/usr/include/x86_64-linux-gnu/qt6/QtNetwork/qtnetworkglobal.h:
+
 /usr/include/x86_64-linux-gnu/qt6/QtNetwork/qtnetwork-config.h:
 
 /usr/include/x86_64-linux-gnu/qt6/QtGui/qtguiglobal.h:
@@ -571,15 +572,9 @@ tux_ti83_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt6/QtCore/qatomic.h:
 
-/usr/include/x86_64-linux-gnu/qt6/QtNetwork/qtnetworkglobal.h:
-
-/usr/include/x86_64-linux-gnu/qt6/QtCore/QVariant:
-
 /usr/include/x86_64-linux-gnu/qt6/QtCore/qbytearraylist.h:
 
 /usr/include/x86_64-linux-gnu/qt6/QtCore/qanystringview.h:
-
-/usr/include/x86_64-linux-gnu/qt6/QtCore/QString:
 
 /usr/include/x86_64-linux-gnu/qt6/QtCore/QMetaType:
 
@@ -742,6 +737,8 @@ tux_ti83_autogen/mocs_compilation.cpp:
 /usr/include/c++/11/cstdlib:
 
 /usr/include/x86_64-linux-gnu/qt6/QtCore/qshareddata_impl.h:
+
+/usr/include/x86_64-linux-gnu/qt6/QtCore/QVariantList:
 
 /usr/include/c++/11/bit:
 

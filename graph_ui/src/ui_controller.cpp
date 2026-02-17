@@ -1,58 +1,61 @@
 #include "ui_controller.hpp"
 #include <map>
 #include <cmath>
-#include <algorithm>
 
 namespace tux_ti83 {
 
-UIController::UIController(QObject* parent) : QObject(parent) {}
+UIController::UIController(QObject* parent) : QObject(parent), m_activeIdx(0) {
+    // Initialize 3 functions: Y1, Y2, Y3
+    m_functionBuffers.resize(3);
+    m_displayStrings.resize(3, "");
+}
 
-QVariantList UIController::getGraphPoints(int resolution) {
-    QVariantList points;
-    if (m_expressionBuffer.empty()) return points;
+QString UIController::currentDisplay() const {
+    return m_displayStrings[m_activeIdx];
+}
 
+QVariantList UIController::getMultiGraphPoints(int resolution) {
+    QVariantList allFunctions;
     double step = (m_xMax - m_xMin) / resolution;
     MathStateMachine msm;
 
-    for (int i = 0; i <= resolution; ++i) {
-        double xVal = m_xMin + (i * step);
+    for (size_t f = 0; f < m_functionBuffers.size(); ++f) {
+        if (m_functionBuffers[f].empty()) continue;
         
-        // TOKEN SWAP: Create a temporary copy of the buffer
-        std::vector<Token> evalBuffer = m_expressionBuffer;
-        
-        // We'll use a special evaluation mode or just manually solve for X.
-        // For this architecture, we pass the xVal to the evaluator.
-        CalculationResult result = msm.evaluate(evalBuffer, xVal);
-        
-        if (result.success) {
-            QVariantMap pt;
-            pt["x"] = xVal;
-            pt["y"] = result.value;
-            points.append(pt);
+        QVariantList points;
+        for (int i = 0; i <= resolution; ++i) {
+            double x = m_xMin + (i * step);
+            CalculationResult res = msm.evaluate(m_functionBuffers[f], x);
+            if (res.success) {
+                QVariantMap pt; pt["x"] = x; pt["y"] = res.value;
+                points.append(pt);
+            }
         }
+        allFunctions.append(QVariant::fromValue(points));
     }
-    return points;
+    return allFunctions;
 }
 
 void UIController::processInput(int tokenId) {
-    if (tokenId == 16) { m_currentDisplay = ""; m_expressionBuffer.clear(); emit displayChanged(); return; }
+    auto& currentBuf = m_functionBuffers[m_activeIdx];
+    auto& currentStr = m_displayStrings[m_activeIdx];
+
+    if (tokenId == 16) { currentStr = ""; currentBuf.clear(); emit displayChanged(); return; }
     if (tokenId == 19) {
         MathStateMachine msm;
-        CalculationResult result = msm.evaluate(m_expressionBuffer);
-        QString entry = m_currentDisplay + " = ";
+        CalculationResult result = msm.evaluate(currentBuf);
+        QString entry = "Y" + QString::number(m_activeIdx + 1) + ": " + currentStr + " = ";
         if (result.success) {
-            QString resVal = QString::number(result.value);
-            entry += resVal; m_currentDisplay = resVal;
+            currentStr = QString::number(result.value);
+            entry += currentStr;
         } else {
-            entry += "ERR"; m_currentDisplay = "SYNTAX ERROR";
+            entry += "ERR";
         }
         m_history.prepend(entry);
-        m_expressionBuffer.clear();
         emit historyChanged(); emit displayChanged();
         return;
     }
 
-    // Updated Map including X (index 20)
     struct Key { Token t; QString s; };
     static const std::map<int, Key> keyMap = {
         {0, {Token::Num7, "7"}}, {1, {Token::Num8, "8"}}, {2, {Token::Num9, "9"}}, {3, {Token::Div, "/"}},
@@ -63,35 +66,27 @@ void UIController::processInput(int tokenId) {
     };
 
     if (keyMap.count(tokenId)) {
-        auto key = keyMap.at(tokenId);
-        m_expressionBuffer.push_back(key.t);
-        m_currentDisplay += key.s;
+        currentBuf.push_back(keyMap.at(tokenId).t);
+        currentStr += keyMap.at(tokenId).s;
         emit displayChanged();
     }
 }
 
-void UIController::restoreFromHistory(int index) {
-    if (index < 0 || index >= m_history.size()) return;
-    QStringList parts = m_history.at(index).split(" = ");
-    if (parts.size() > 1) { m_currentDisplay = parts.last(); m_expressionBuffer.clear(); emit displayChanged(); }
-}
-
 void UIController::pan(double dx, double dy, double viewWidth, double viewHeight) {
-    double rangeX = m_xMax - m_xMin; double rangeY = m_yMax - m_yMin;
-    double unitsPerPixelX = rangeX / viewWidth; double unitsPerPixelY = rangeY / viewHeight;
-    m_xMin -= dx * unitsPerPixelX; m_xMax -= dx * unitsPerPixelX;
-    m_yMin += dy * unitsPerPixelY; m_yMax += dy * unitsPerPixelY;
+    double rx = m_xMax - m_xMin; double ry = m_yMax - m_yMin;
+    m_xMin -= dx * (rx/viewWidth); m_xMax -= dx * (rx/viewWidth);
+    m_yMin += dy * (ry/viewHeight); m_yMax += dy * (ry/viewHeight);
     emit viewportChanged();
 }
 
-void UIController::zoom(double factor, double mouseX, double mouseY, double viewWidth, double viewHeight) {
-    double mouseWorldX = m_xMin + (mouseX / viewWidth) * (m_xMax - m_xMin);
-    double mouseWorldY = m_yMax - (mouseY / viewHeight) * (m_yMax - m_yMin);
-    m_xMin = mouseWorldX + (m_xMin - mouseWorldX) * factor;
-    m_xMax = mouseWorldX + (m_xMax - mouseWorldX) * factor;
-    m_yMin = mouseWorldY + (m_yMin - mouseWorldY) * factor;
-    m_yMax = mouseWorldY + (m_yMax - mouseWorldY) * factor;
+void UIController::zoom(double f, double mx, double my, double vw, double vh) {
+    double wx = m_xMin + (mx/vw)* (m_xMax-m_xMin);
+    double wy = m_yMax - (my/vh)* (m_yMax-m_yMin);
+    m_xMin = wx + (m_xMin-wx)*f; m_xMax = wx + (m_xMax-wx)*f;
+    m_yMin = wy + (m_yMin-wy)*f; m_yMax = wy + (m_yMax-wy)*f;
     emit viewportChanged();
 }
+
+void UIController::restoreFromHistory(int index) {}
 
 } // namespace tux_ti83

@@ -302,9 +302,8 @@ CMakeFiles/graph_ui.dir/graph_ui/src/ui_controller.cpp.o: /home/azathoth/Tux-TI8
   /usr/include/x86_64-linux-gnu/gnu/stubs-64.h \
   /usr/include/x86_64-linux-gnu/gnu/stubs.h \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/QObject \
-  /usr/include/x86_64-linux-gnu/qt6/QtCore/QString \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/QStringList \
-  /usr/include/x86_64-linux-gnu/qt6/QtCore/QVariant \
+  /usr/include/x86_64-linux-gnu/qt6/QtCore/QVariantList \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/qalgorithms.h \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/qanystringview.h \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/qarraydata.h \
@@ -691,9 +690,8 @@ CMakeFiles/graph_ui.dir/graph_ui_autogen/mocs_compilation.cpp.o: graph_ui_autoge
   /usr/include/x86_64-linux-gnu/gnu/stubs-64.h \
   /usr/include/x86_64-linux-gnu/gnu/stubs.h \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/QObject \
-  /usr/include/x86_64-linux-gnu/qt6/QtCore/QString \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/QStringList \
-  /usr/include/x86_64-linux-gnu/qt6/QtCore/QVariant \
+  /usr/include/x86_64-linux-gnu/qt6/QtCore/QVariantList \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/qalgorithms.h \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/qanystringview.h \
   /usr/include/x86_64-linux-gnu/qt6/QtCore/qarraydata.h \
@@ -865,13 +863,9 @@ graph_ui_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/qt6/QtCore/qatomic.h:
 
-/usr/include/x86_64-linux-gnu/qt6/QtCore/QVariant:
-
 /usr/include/x86_64-linux-gnu/qt6/QtCore/qbytearraylist.h:
 
 /usr/include/x86_64-linux-gnu/qt6/QtCore/qanystringview.h:
-
-/usr/include/x86_64-linux-gnu/qt6/QtCore/QString:
 
 /usr/include/x86_64-linux-gnu/gnu/stubs.h:
 
@@ -1016,6 +1010,8 @@ graph_ui_autogen/DC2RB2FZEW/moc_ui_controller.cpp:
 /usr/include/c++/11/cstdlib:
 
 /usr/include/x86_64-linux-gnu/qt6/QtCore/qshareddata_impl.h:
+
+/usr/include/x86_64-linux-gnu/qt6/QtCore/QVariantList:
 
 /usr/include/c++/11/bit:
 
