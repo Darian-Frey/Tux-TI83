@@ -10,7 +10,7 @@ namespace tux_ti83 {
         Num0, Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8, Num9,
         Decimal, Pi, E, Add, Sub, Mul, Div, Pow, ImplicitMul,
         Sin, Cos, Tan, Log, Ln, Sqrt, Negate, Inverse, Square, Factorial,
-        LeftParen, RightParen, Comma
+        LeftParen, RightParen, Comma, VarX
     };
 
     struct CalculationResult {
@@ -28,7 +28,8 @@ namespace tux_ti83 {
 
     class MathStateMachine {
     public:
-        CalculationResult evaluate(const std::vector<Token>& graph);
+        // Updated signature to handle variable injection
+        CalculationResult evaluate(const std::vector<Token>& graph, double xValue = 0.0);
         std::optional<std::vector<Token>> infix_to_postfix(const std::vector<Token>& tokens) const;
     };
 }
