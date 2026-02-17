@@ -19,15 +19,15 @@ class UIController : public QObject {
 
 public:
     explicit UIController(QObject* parent = nullptr);
-    Q_INVOKABLE void processInput(int tokenId);
+    Q_INVOKABLE void processInput(const QString& input); // Changed to QString
     Q_INVOKABLE void restoreFromHistory(int index);
     Q_INVOKABLE QVariantList getMultiGraphPoints(int resolution);
     Q_INVOKABLE void toggleGraphMode() { m_isGraphMode = !m_isGraphMode; emit graphModeChanged(); }
     Q_INVOKABLE void resetViewport() { m_xMin = -10; m_xMax = 10; m_yMin = -10; m_yMax = 10; emit viewportChanged(); }
     Q_INVOKABLE void setActiveFunction(int index) { m_activeIdx = index; emit activeFunctionChanged(); emit displayChanged(); }
     
-    Q_INVOKABLE void pan(double dx, double dy, double viewWidth, double viewHeight);
-    Q_INVOKABLE void zoom(double factor, double mouseX, double mouseY, double viewWidth, double viewHeight);
+    Q_INVOKABLE void pan(double dx, double dy, double vw, double vh);
+    Q_INVOKABLE void zoom(double f, double mx, double my, double vw, double vh);
 
     QString currentDisplay() const;
     QStringList history() const { return m_history; }
@@ -50,13 +50,10 @@ signals:
     void activeFunctionChanged();
 
 private:
-    QString m_historyHeader = "";
     QStringList m_history;
     bool m_isGraphMode = false;
     int m_activeIdx = 0;
     double m_xMin = -10.0, m_xMax = 10.0, m_yMin = -10.0, m_yMax = 10.0;
-    
-    // Multiple buffers for Y1, Y2, Y3
     std::vector<std::vector<Token>> m_functionBuffers;
     std::vector<QString> m_displayStrings;
 };

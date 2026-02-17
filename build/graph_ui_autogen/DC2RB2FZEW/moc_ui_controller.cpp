@@ -23,7 +23,7 @@ QT_WARNING_PUSH
 QT_WARNING_DISABLE_DEPRECATED
 struct qt_meta_stringdata_tux_ti83__UIController_t {
     const uint offsetsAndSize[66];
-    char stringdata0[366];
+    char stringdata0[336];
 };
 #define QT_MOC_LITERAL(ofs, len) \
     uint(offsetof(qt_meta_stringdata_tux_ti83__UIController_t, stringdata0) + ofs), len 
@@ -37,44 +37,43 @@ QT_MOC_LITERAL(54, 16), // "graphModeChanged"
 QT_MOC_LITERAL(71, 15), // "viewportChanged"
 QT_MOC_LITERAL(87, 21), // "activeFunctionChanged"
 QT_MOC_LITERAL(109, 12), // "processInput"
-QT_MOC_LITERAL(122, 7), // "tokenId"
-QT_MOC_LITERAL(130, 18), // "restoreFromHistory"
-QT_MOC_LITERAL(149, 5), // "index"
-QT_MOC_LITERAL(155, 19), // "getMultiGraphPoints"
-QT_MOC_LITERAL(175, 10), // "resolution"
-QT_MOC_LITERAL(186, 15), // "toggleGraphMode"
-QT_MOC_LITERAL(202, 13), // "resetViewport"
-QT_MOC_LITERAL(216, 17), // "setActiveFunction"
-QT_MOC_LITERAL(234, 3), // "pan"
-QT_MOC_LITERAL(238, 2), // "dx"
-QT_MOC_LITERAL(241, 2), // "dy"
-QT_MOC_LITERAL(244, 9), // "viewWidth"
-QT_MOC_LITERAL(254, 10), // "viewHeight"
-QT_MOC_LITERAL(265, 4), // "zoom"
-QT_MOC_LITERAL(270, 6), // "factor"
-QT_MOC_LITERAL(277, 6), // "mouseX"
-QT_MOC_LITERAL(284, 6), // "mouseY"
-QT_MOC_LITERAL(291, 14), // "currentDisplay"
-QT_MOC_LITERAL(306, 7), // "history"
-QT_MOC_LITERAL(314, 11), // "isGraphMode"
-QT_MOC_LITERAL(326, 19), // "activeFunctionIndex"
-QT_MOC_LITERAL(346, 4), // "xMin"
-QT_MOC_LITERAL(351, 4), // "xMax"
-QT_MOC_LITERAL(356, 4), // "yMin"
-QT_MOC_LITERAL(361, 4) // "yMax"
+QT_MOC_LITERAL(122, 5), // "input"
+QT_MOC_LITERAL(128, 18), // "restoreFromHistory"
+QT_MOC_LITERAL(147, 5), // "index"
+QT_MOC_LITERAL(153, 19), // "getMultiGraphPoints"
+QT_MOC_LITERAL(173, 10), // "resolution"
+QT_MOC_LITERAL(184, 15), // "toggleGraphMode"
+QT_MOC_LITERAL(200, 13), // "resetViewport"
+QT_MOC_LITERAL(214, 17), // "setActiveFunction"
+QT_MOC_LITERAL(232, 3), // "pan"
+QT_MOC_LITERAL(236, 2), // "dx"
+QT_MOC_LITERAL(239, 2), // "dy"
+QT_MOC_LITERAL(242, 2), // "vw"
+QT_MOC_LITERAL(245, 2), // "vh"
+QT_MOC_LITERAL(248, 4), // "zoom"
+QT_MOC_LITERAL(253, 1), // "f"
+QT_MOC_LITERAL(255, 2), // "mx"
+QT_MOC_LITERAL(258, 2), // "my"
+QT_MOC_LITERAL(261, 14), // "currentDisplay"
+QT_MOC_LITERAL(276, 7), // "history"
+QT_MOC_LITERAL(284, 11), // "isGraphMode"
+QT_MOC_LITERAL(296, 19), // "activeFunctionIndex"
+QT_MOC_LITERAL(316, 4), // "xMin"
+QT_MOC_LITERAL(321, 4), // "xMax"
+QT_MOC_LITERAL(326, 4), // "yMin"
+QT_MOC_LITERAL(331, 4) // "yMax"
 
     },
     "tux_ti83::UIController\0displayChanged\0"
     "\0historyChanged\0graphModeChanged\0"
     "viewportChanged\0activeFunctionChanged\0"
-    "processInput\0tokenId\0restoreFromHistory\0"
+    "processInput\0input\0restoreFromHistory\0"
     "index\0getMultiGraphPoints\0resolution\0"
     "toggleGraphMode\0resetViewport\0"
-    "setActiveFunction\0pan\0dx\0dy\0viewWidth\0"
-    "viewHeight\0zoom\0factor\0mouseX\0mouseY\0"
-    "currentDisplay\0history\0isGraphMode\0"
-    "activeFunctionIndex\0xMin\0xMax\0yMin\0"
-    "yMax"
+    "setActiveFunction\0pan\0dx\0dy\0vw\0vh\0"
+    "zoom\0f\0mx\0my\0currentDisplay\0history\0"
+    "isGraphMode\0activeFunctionIndex\0xMin\0"
+    "xMax\0yMin\0yMax"
 };
 #undef QT_MOC_LITERAL
 
@@ -116,7 +115,7 @@ static const uint qt_meta_data_tux_ti83__UIController[] = {
     QMetaType::Void,
 
  // methods: parameters
-    QMetaType::Void, QMetaType::Int,    8,
+    QMetaType::Void, QMetaType::QString,    8,
     QMetaType::Void, QMetaType::Int,   10,
     QMetaType::QVariantList, QMetaType::Int,   12,
     QMetaType::Void,
@@ -149,7 +148,7 @@ void tux_ti83::UIController::qt_static_metacall(QObject *_o, QMetaObject::Call _
         case 2: _t->graphModeChanged(); break;
         case 3: _t->viewportChanged(); break;
         case 4: _t->activeFunctionChanged(); break;
-        case 5: _t->processInput((*reinterpret_cast< std::add_pointer_t<int>>(_a[1]))); break;
+        case 5: _t->processInput((*reinterpret_cast< std::add_pointer_t<QString>>(_a[1]))); break;
         case 6: _t->restoreFromHistory((*reinterpret_cast< std::add_pointer_t<int>>(_a[1]))); break;
         case 7: { QVariantList _r = _t->getMultiGraphPoints((*reinterpret_cast< std::add_pointer_t<int>>(_a[1])));
             if (_a[0]) *reinterpret_cast< QVariantList*>(_a[0]) = std::move(_r); }  break;
@@ -240,7 +239,7 @@ const QMetaObject tux_ti83::UIController::staticMetaObject = { {
 qt_incomplete_metaTypeArray<qt_meta_stringdata_tux_ti83__UIController_t
 , QtPrivate::TypeAndForceComplete<QString, std::true_type>, QtPrivate::TypeAndForceComplete<QStringList, std::true_type>, QtPrivate::TypeAndForceComplete<bool, std::true_type>, QtPrivate::TypeAndForceComplete<int, std::true_type>, QtPrivate::TypeAndForceComplete<double, std::true_type>, QtPrivate::TypeAndForceComplete<double, std::true_type>, QtPrivate::TypeAndForceComplete<double, std::true_type>, QtPrivate::TypeAndForceComplete<double, std::true_type>, QtPrivate::TypeAndForceComplete<UIController, std::true_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>
 
-, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<int, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<int, std::false_type>, QtPrivate::TypeAndForceComplete<QVariantList, std::false_type>, QtPrivate::TypeAndForceComplete<int, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<int, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>
+, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<const QString &, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<int, std::false_type>, QtPrivate::TypeAndForceComplete<QVariantList, std::false_type>, QtPrivate::TypeAndForceComplete<int, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<int, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>
 
 >,
     nullptr

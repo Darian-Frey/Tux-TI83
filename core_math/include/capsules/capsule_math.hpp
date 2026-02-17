@@ -24,12 +24,11 @@ namespace tux_ti83 {
         static int precedence(Token t);
         static bool is_left_associative(Token t);
         static bool is_operator(Token t);
+        static bool is_function(Token t);
     };
 
     class MathStateMachine {
     public:
-        // Updated signature to handle variable injection
         CalculationResult evaluate(const std::vector<Token>& graph, double xValue = 0.0);
-        std::optional<std::vector<Token>> infix_to_postfix(const std::vector<Token>& tokens) const;
     };
 }

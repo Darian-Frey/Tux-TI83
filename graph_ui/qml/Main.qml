@@ -13,34 +13,26 @@ ApplicationWindow {
                 ColumnLayout {
                     anchors.fill: parent; spacing: 12
                     
-                    // High Contrast Function Selectors
                     RowLayout {
                         spacing: 10
                         Repeater {
                             model: ["Y1", "Y2", "Y3"]
                             delegate: Button {
                                 contentItem: Text {
-                                    text: modelData
-                                    font.pixelSize: 14; font.bold: true
+                                    text: modelData; font.bold: true
                                     color: uiController.activeFunctionIndex === index ? "#2E3440" : "#ECEFF4"
-                                    horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
                                 }
                                 background: Rectangle {
                                     implicitWidth: 60; implicitHeight: 35
-                                    color: uiController.activeFunctionIndex === index ? "#88C0D0" : "#434C5E"
-                                    radius: 4
+                                    color: uiController.activeFunctionIndex === index ? "#88C0D0" : "#434C5E"; radius: 4
                                 }
                                 onClicked: uiController.setActiveFunction(index)
                             }
                         }
                         Item { Layout.fillWidth: true }
                         Button {
-                            contentItem: Text {
-                                text: uiController.isGraphMode ? "KEYS" : "GRAPH"
-                                font.pixelSize: 14; font.bold: true; color: "#2E3440"
-                                horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
-                            }
                             background: Rectangle { implicitWidth: 80; implicitHeight: 35; color: "#EBCB8B"; radius: 4 }
+                            contentItem: Text { text: uiController.isGraphMode ? "KEYS" : "GRAPH"; font.bold: true; color: "#2E3440"; horizontalAlignment: Text.AlignHCenter }
                             onClicked: uiController.toggleGraphMode()
                         }
                     }
@@ -55,17 +47,28 @@ ApplicationWindow {
                         Layout.fillWidth: true; Layout.fillHeight: true
                         
                         GridLayout {
-                            columns: 4; rowSpacing: 10; columnSpacing: 10
+                            columns: 5; rowSpacing: 8; columnSpacing: 8
                             Repeater {
-                                model: ["7","8","9","÷","4","5","6","×","1","2","3","−","0",".","π","+","C", "(", ")", "ENTER", "X"]
+                                model: [
+                                    "7","8","9","÷","sin",
+                                    "4","5","6","×","cos",
+                                    "1","2","3","−","tan",
+                                    "0",".","π","+","√",
+                                    "C", "(", ")", "ENTER", "X"
+                                ]
                                 delegate: Rectangle {
                                     Layout.fillWidth: true; Layout.fillHeight: true; radius: 6
-                                    color: modelData === "ENTER" ? "#88C0D0" : (modelData === "X" ? "#A3BE8C" : "#4C566A")
+                                    color: (modelData === "ENTER") ? "#88C0D0" : 
+                                           (modelData === "X") ? "#A3BE8C" : 
+                                           (["sin","cos","tan","√"].indexOf(modelData) !== -1) ? "#B48EAD" : "#4C566A"
                                     Text { 
                                         anchors.centerIn: parent; text: modelData; font.bold: true
                                         color: (modelData === "ENTER" || modelData === "X") ? "#2E3440" : "#ECEFF4" 
                                     }
-                                    MouseArea { anchors.fill: parent; onClicked: (mouse) => uiController.processInput(index) }
+                                    MouseArea { 
+                                        anchors.fill: parent
+                                        onClicked: (mouse) => uiController.processInput(modelData) 
+                                    }
                                 }
                             }
                         }
@@ -83,21 +86,17 @@ ApplicationWindow {
                                         };
                                     }
 
-                                    // RESTORED: Grid Logic
                                     var rangeX = uiController.xMax - uiController.xMin;
                                     var step = 1;
                                     if (rangeX > 50) step = 10; else if (rangeX < 5) step = 0.5;
 
                                     ctx.lineWidth = 1; ctx.font = "10px sans-serif";
-                                    
-                                    // Vertical Grid & Labels
                                     for (var x = Math.floor(uiController.xMin / step) * step; x <= uiController.xMax; x += step) {
                                         var p = toPx(x, 0);
                                         ctx.strokeStyle = (Math.abs(x) < 0.0001) ? "#D8DEE9" : "#2E3440";
                                         ctx.beginPath(); ctx.moveTo(p.x, 0); ctx.lineTo(p.x, height); ctx.stroke();
                                         if (Math.abs(x) > 0.0001) { ctx.fillStyle = "#4C566A"; ctx.fillText(x.toFixed(1), p.x + 2, height - 5); }
                                     }
-                                    // Horizontal Grid & Labels
                                     for (var y = Math.floor(uiController.yMin / step) * step; y <= uiController.yMax; y += step) {
                                         var p = toPx(0, y);
                                         ctx.strokeStyle = (Math.abs(y) < 0.0001) ? "#D8DEE9" : "#2E3440";
@@ -105,9 +104,8 @@ ApplicationWindow {
                                         if (Math.abs(y) > 0.0001) { ctx.fillStyle = "#4C566A"; ctx.fillText(y.toFixed(1), 5, p.y - 2); }
                                     }
 
-                                    // Multi-Function Plotting
                                     var colors = ["#88C0D0", "#BF616A", "#A3BE8C"];
-                                    var multiPts = uiController.getMultiGraphPoints(400);
+                                    var multiPts = uiController.getMultiGraphPoints(600);
                                     for (var f=0; f < multiPts.length; f++) {
                                         var pts = multiPts[f];
                                         ctx.strokeStyle = colors[f % colors.length]; ctx.lineWidth = 2.5; ctx.beginPath();
@@ -130,7 +128,6 @@ ApplicationWindow {
                                     function onGraphModeChanged() { graphCanvas.requestPaint(); }
                                 }
                             }
-                            // Reset Viewport Target
                             Rectangle {
                                 anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 15
                                 width: 40; height: 40; radius: 20; color: "#EBCB8B"
@@ -146,7 +143,7 @@ ApplicationWindow {
             Layout.fillHeight: true; Layout.preferredWidth: parent.width * 0.35; color: "#2E3440"; border.color: "#4C566A"; border.width: 1
             ListView {
                 anchors.fill: parent; anchors.margins: 10
-                header: Text { text: "HISTORY"; color: "#81A1C1"; horizontalAlignment: Text.AlignHCenter; width: parent.width; font.bold: true; bottomPadding: 10 }
+                header: Text { text: "HISTORY"; color: "#81A1C1"; font.bold: true; bottomPadding: 10; horizontalAlignment: Text.AlignHCenter; width: parent.width }
                 model: uiController.history; spacing: 4
                 delegate: Rectangle {
                     width: parent.width; height: 35; color: "#3B4252"; radius: 4
