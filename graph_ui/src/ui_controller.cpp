@@ -17,10 +17,7 @@ void UIController::processInput(const QString& input) {
     auto& currentStr = m_displayStrings[m_activeIdx];
 
     if (input == "C") { 
-        currentStr = ""; 
-        currentBuf.clear(); 
-        emit displayChanged(); 
-        return; 
+        currentStr = ""; currentBuf.clear(); emit displayChanged(); return; 
     }
 
     if (input == "DEL") {
@@ -33,7 +30,8 @@ void UIController::processInput(const QString& input) {
                 {Token::ASin, "asin("}, {Token::ACos, "acos("}, {Token::ATan, "atan("},
                 {Token::Log, "log("}, {Token::Ln, "ln("}, {Token::Sqrt, "√("},
                 {Token::Pow, "^"}, {Token::Pi, "π"}, {Token::VarX, "X"},
-                {Token::LeftParen, "("}, {Token::RightParen, ")"}, {Token::Decimal, "."}
+                {Token::LeftParen, "("}, {Token::RightParen, ")"}, {Token::Decimal, "."},
+                {Token::MatA, "[A]"}, {Token::MatB, "[B]"}, {Token::MatC, "[C]"}
             };
             for (auto t : currentBuf) {
                 int val = static_cast<int>(t);
@@ -50,16 +48,25 @@ void UIController::processInput(const QString& input) {
         CalculationResult result = msm.evaluate(currentBuf);
         QString entry = "Y" + QString::number(m_activeIdx + 1) + ": " + currentStr + " = ";
         if (result.success) {
-            std::string fracStr = MathStateMachine::toFraction(result.value);
-            QString frac = QString::fromStdString(fracStr);
-            currentStr = (frac.isEmpty()) ? QString::number(result.value) : frac;
+            if (result.isMatrix) {
+                QString matStr = "[[";
+                for (int i = 0; i < result.matrixValue.rows; ++i) {
+                    for (int j = 0; j < result.matrixValue.cols; ++j) {
+                        matStr += QString::number(result.matrixValue.at(i, j));
+                        if (j < result.matrixValue.cols - 1) matStr += ",";
+                    }
+                    if (i < result.matrixValue.rows - 1) matStr += "][";
+                }
+                currentStr = matStr + "]]";
+            } else {
+                std::string fracStr = MathStateMachine::toFraction(result.value);
+                currentStr = (fracStr.empty()) ? QString::number(result.value) : QString::fromStdString(fracStr);
+            }
         } else {
             currentStr = "ERR";
         }
-        entry += currentStr;
-        m_history.prepend(entry);
-        emit historyChanged(); 
-        emit displayChanged();
+        entry += currentStr; m_history.prepend(entry);
+        emit historyChanged(); emit displayChanged();
         return;
     }
 
@@ -72,24 +79,28 @@ void UIController::processInput(const QString& input) {
         {"sin", Token::Sin}, {"cos", Token::Cos}, {"tan", Token::Tan}, {"√", Token::Sqrt},
         {"log", Token::Log}, {"ln", Token::Ln}, {"asin", Token::ASin}, {"acos", Token::ACos}, 
         {"atan", Token::ATan}, {"=", Token::Equal}, {"≠", Token::NotEqual}, {"<", Token::Less}, 
-        {">", Token::Greater}, {"and", Token::And}, {"or", Token::Or}, {"not", Token::Not}
+        {">", Token::Greater}, {"and", Token::And}, {"or", Token::Or}, {"not", Token::Not},
+        {"[A]", Token::MatA}, {"[B]", Token::MatB}, {"[C]", Token::MatC}
     };
 
     if (tokenMap.count(input)) {
         currentBuf.push_back(tokenMap.at(input));
-        bool isFunc = (input == "sin" || input == "cos" || input == "tan" || 
-                       input == "√" || input == "log" || input == "ln" ||
-                       input == "asin" || input == "acos" || input == "atan" || input == "not");
-        if (isFunc) currentStr += input + "(";
-        else if (tokenMap.at(input) >= Token::And && tokenMap.at(input) <= Token::Xor) currentStr += " " + input + " ";
+        if (input.length() > 1 && input != "[A]" && input != "[B]" && input != "[C]") currentStr += input + "(";
         else currentStr += input;
         emit displayChanged();
     }
 }
 
+void UIController::updateMatrix(const QString& name, int rows, int cols, const QVariantList& values) {
+    Matrix mat; mat.rows = rows; mat.cols = cols;
+    for (const auto& v : values) mat.data.push_back(v.toDouble());
+    if (name == "[A]") MathStateMachine::matrixRegistry[Token::MatA] = mat;
+    else if (name == "[B]") MathStateMachine::matrixRegistry[Token::MatB] = mat;
+    else if (name == "[C]") MathStateMachine::matrixRegistry[Token::MatC] = mat;
+}
+
 void UIController::zoomFit() {
-    double minVal = 1e308; double maxVal = -1e308;
-    bool found = false;
+    double minVal = 1e308, maxVal = -1e308; bool found = false;
     MathStateMachine msm;
     for (const auto& buffer : m_functionBuffers) {
         if (buffer.empty()) continue;
@@ -97,23 +108,19 @@ void UIController::zoomFit() {
             double x = m_xMin + (i * (m_xMax - m_xMin) / 100.0);
             CalculationResult res = msm.evaluate(buffer, x);
             if (res.success && std::isfinite(res.value)) {
-                minVal = std::min(minVal, res.value);
-                maxVal = std::max(maxVal, res.value);
-                found = true;
+                minVal = std::min(minVal, res.value); maxVal = std::max(maxVal, res.value); found = true;
             }
         }
     }
     if (found) {
         double margin = (maxVal - minVal) * 0.1;
         if (std::abs(maxVal - minVal) < 1e-9) margin = 1.0;
-        m_yMin = minVal - margin; m_yMax = maxVal + margin;
-        emit viewportChanged();
+        m_yMin = minVal - margin; m_yMax = maxVal + margin; emit viewportChanged();
     }
 }
 
 QVariantList UIController::getMultiGraphPoints(int resolution) {
-    QVariantList allFunctions;
-    double step = (m_xMax - m_xMin) / resolution;
+    QVariantList allFunctions; double step = (m_xMax - m_xMin) / resolution;
     MathStateMachine msm;
     for (size_t f = 0; f < m_functionBuffers.size(); ++f) {
         if (m_functionBuffers[f].empty()) continue;
@@ -121,9 +128,8 @@ QVariantList UIController::getMultiGraphPoints(int resolution) {
         for (int i = 0; i <= resolution; ++i) {
             double x = m_xMin + (i * step);
             CalculationResult res = msm.evaluate(m_functionBuffers[f], x);
-            if (res.success) {
-                QVariantMap pt; pt["x"] = x; pt["y"] = res.value;
-                points.append(pt);
+            if (res.success && !res.isMatrix) {
+                QVariantMap pt; pt["x"] = x; pt["y"] = res.value; points.append(pt);
             }
         }
         allFunctions.append(QVariant::fromValue(points));
@@ -132,18 +138,15 @@ QVariantList UIController::getMultiGraphPoints(int resolution) {
 }
 
 void UIController::pan(double dx, double dy, double vw, double vh) {
-    double rx = m_xMax - m_xMin; double ry = m_yMax - m_yMin;
+    double rx = m_xMax - m_xMin, ry = m_yMax - m_yMin;
     m_xMin -= dx * (rx/vw); m_xMax -= dx * (rx/vw);
-    m_yMin += dy * (ry/vh); m_yMax += dy * (ry/vh);
-    emit viewportChanged();
+    m_yMin += dy * (ry/vh); m_yMax += dy * (ry/vh); emit viewportChanged();
 }
 
 void UIController::zoom(double f, double mx, double my, double vw, double vh) {
-    double wx = m_xMin + (mx/vw)* (m_xMax-m_xMin);
-    double wy = m_yMax - (my/vh)* (m_yMax-m_yMin);
+    double wx = m_xMin + (mx/vw)* (m_xMax-m_xMin), wy = m_yMax - (my/vh)* (m_yMax-m_yMin);
     m_xMin = wx + (m_xMin-wx)*f; m_xMax = wx + (m_xMax-wx)*f;
-    m_yMin = wy + (m_yMin-wy)*f; m_yMax = wy + (m_yMax-wy)*f;
-    emit viewportChanged();
+    m_yMin = wy + (m_yMin-wy)*f; m_yMax = wy + (m_yMax-wy)*f; emit viewportChanged();
 }
 
 } // namespace tux_ti83

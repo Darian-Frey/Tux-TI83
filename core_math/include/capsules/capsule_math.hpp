@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 #include <string>
-#include <utility>
+#include <map>
 
 namespace tux_ti83 {
 
@@ -11,14 +11,27 @@ namespace tux_ti83 {
         Sin, Cos, Tan, Log, Ln, Sqrt, ASin, ACos, ATan,
         Equal, NotEqual, Less, LessEq, Greater, GreaterEq,
         And, Or, Xor, Not,
-        LeftParen, RightParen, VarX
+        LeftParen, RightParen, VarX,
+        // Matrix Specific Tokens
+        OpenBracket, CloseBracket, Comma,
+        MatA, MatB, MatC, MatD, MatE, MatF, MatG, MatH, MatI, MatJ
+    };
+
+    struct Matrix {
+        int rows = 0;
+        int cols = 0;
+        std::vector<double> data;
+        
+        double at(int r, int c) const { return data[r * cols + c]; }
+        void set(int r, int c, double val) { data[r * cols + c] = val; }
     };
 
     struct CalculationResult {
         bool success;
         double value;
+        Matrix matrixValue; // Supports matrix-to-matrix results
+        bool isMatrix = false;
         std::string error_message;
-        std::string fraction_view; // New field for ▶Frac
     };
 
     class EOSPrecedence {
@@ -33,5 +46,8 @@ namespace tux_ti83 {
     public:
         CalculationResult evaluate(const std::vector<Token>& graph, double xValue = 0.0);
         static std::string toFraction(double value, double tolerance = 1.0e-9);
+        
+        // Matrix Storage
+        static std::map<Token, Matrix> matrixRegistry;
     };
 }

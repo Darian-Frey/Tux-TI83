@@ -66,10 +66,13 @@ CMakeFiles/core_math.dir/core_math/src/core_math.cpp.o: /home/azathoth/Tux-TI83/
   /usr/include/c++/11/bits/stl_iterator.h \
   /usr/include/c++/11/bits/stl_iterator_base_funcs.h \
   /usr/include/c++/11/bits/stl_iterator_base_types.h \
+  /usr/include/c++/11/bits/stl_map.h \
+  /usr/include/c++/11/bits/stl_multimap.h \
   /usr/include/c++/11/bits/stl_pair.h \
   /usr/include/c++/11/bits/stl_relops.h \
   /usr/include/c++/11/bits/stl_stack.h \
   /usr/include/c++/11/bits/stl_tempbuf.h \
+  /usr/include/c++/11/bits/stl_tree.h \
   /usr/include/c++/11/bits/stl_uninitialized.h \
   /usr/include/c++/11/bits/stl_vector.h \
   /usr/include/c++/11/bits/stream_iterator.h \
@@ -107,6 +110,7 @@ CMakeFiles/core_math.dir/core_math/src/core_math.cpp.o: /home/azathoth/Tux-TI83/
   /usr/include/c++/11/iosfwd \
   /usr/include/c++/11/iterator \
   /usr/include/c++/11/limits \
+  /usr/include/c++/11/map \
   /usr/include/c++/11/new \
   /usr/include/c++/11/numbers \
   /usr/include/c++/11/pstl/execution_defs.h \
@@ -336,8 +340,6 @@ core_math_autogen/mocs_compilation.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h:
 
-/usr/include/x86_64-linux-gnu/bits/iscanonical.h:
-
 /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h:
@@ -380,8 +382,6 @@ core_math_autogen/mocs_compilation.cpp:
 
 /usr/include/linux/errno.h:
 
-/usr/include/features.h:
-
 /usr/include/features-time64.h:
 
 /usr/include/c++/11/vector:
@@ -392,11 +392,15 @@ core_math_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/typeinfo:
 
-/usr/include/c++/11/type_traits:
-
-/usr/include/c++/11/tuple:
-
 /usr/include/c++/11/tr1/riemann_zeta.tcc:
+
+/usr/include/c++/11/tr1/poly_hermite.tcc:
+
+/usr/include/x86_64-linux-gnu/bits/endianness.h:
+
+/usr/include/c++/11/tr1/modified_bessel_func.tcc:
+
+/usr/include/c++/11/tr1/legendre_function.tcc:
 
 /usr/include/c++/11/bits/max_size_type.h:
 
@@ -470,11 +474,13 @@ core_math_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/initializer_list:
 
-/usr/include/x86_64-linux-gnu/bits/endianness.h:
-
-/usr/include/c++/11/tr1/modified_bessel_func.tcc:
-
 /usr/include/c++/11/bits/alloc_traits.h:
+
+/usr/include/c++/11/type_traits:
+
+/usr/include/c++/11/tuple:
+
+/usr/include/c++/11/bits/stl_tree.h:
 
 /usr/include/c++/11/bits/ranges_cmp.h:
 
@@ -556,6 +562,10 @@ core_math_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/bits/cpp_type_traits.h:
 
+/usr/include/x86_64-linux-gnu/bits/iscanonical.h:
+
+/usr/include/c++/11/bits/stl_map.h:
+
 /usr/include/c++/11/bits/ranges_algobase.h:
 
 /usr/include/c++/11/bits/iterator_concepts.h:
@@ -568,6 +578,10 @@ core_math_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/bits/hashtable.h:
 
+/usr/include/features.h:
+
+/usr/include/c++/11/bits/stl_multimap.h:
+
 /usr/include/c++/11/bits/stl_bvector.h:
 
 /usr/include/c++/11/bits/refwrap.h:
@@ -575,10 +589,6 @@ core_math_autogen/mocs_compilation.cpp:
 /usr/include/c++/11/bits/ostream_insert.h:
 
 /usr/include/c++/11/bits/enable_special_members.h:
-
-/usr/include/c++/11/bits/range_access.h:
-
-/usr/include/c++/11/bits/ranges_base.h:
 
 /usr/include/c++/11/bits/exception_defines.h:
 
@@ -656,8 +666,6 @@ core_math_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/cerrno:
 
-/usr/include/c++/11/tr1/poly_hermite.tcc:
-
 /usr/include/c++/11/concepts:
 
 /usr/include/c++/11/bits/cxxabi_forced.h:
@@ -667,6 +675,12 @@ core_math_autogen/mocs_compilation.cpp:
 /usr/include/c++/11/cstdint:
 
 /usr/include/c++/11/cstdio:
+
+/usr/include/c++/11/tr1/poly_laguerre.tcc:
+
+/usr/include/c++/11/bits/stl_iterator_base_types.h:
+
+/usr/include/c++/11/cstdlib:
 
 /usr/include/c++/11/debug/assertions.h:
 
@@ -687,6 +701,12 @@ core_math_autogen/mocs_compilation.cpp:
 /usr/include/c++/11/ext/type_traits.h:
 
 /usr/include/c++/11/iterator:
+
+/usr/include/c++/11/bits/range_access.h:
+
+/usr/include/c++/11/bits/ranges_base.h:
+
+/usr/include/c++/11/map:
 
 /usr/include/x86_64-linux-gnu/bits/wordsize.h:
 
@@ -710,14 +730,6 @@ core_math_autogen/mocs_compilation.cpp:
 
 /usr/include/c++/11/tr1/beta_function.tcc:
 
-/usr/include/c++/11/bits/stl_iterator_base_types.h:
-
-/usr/include/c++/11/cstdlib:
-
-/usr/include/c++/11/tr1/poly_laguerre.tcc:
-
 /usr/include/c++/11/bits/localefwd.h:
 
 /usr/include/c++/11/tr1/hypergeometric.tcc:
-
-/usr/include/c++/11/tr1/legendre_function.tcc:

@@ -4,7 +4,7 @@
 CMakeFiles/graph_ui.dir/graph_ui/src/ui_controller.cpp.o
  /home/azathoth/Tux-TI83/graph_ui/src/ui_controller.cpp
  /home/azathoth/Tux-TI83/core_math/include/capsules/capsule_math.hpp
- /home/azathoth/Tux-TI83/graph_ui/src/ui_controller.hpp
+ /home/azathoth/Tux-TI83/graph_ui/include/ui_controller.hpp
  /usr/include/alloca.h
  /usr/include/asm-generic/errno-base.h
  /usr/include/asm-generic/errno.h
@@ -393,8 +393,6 @@ CMakeFiles/graph_ui.dir/graph_ui_autogen/mocs_compilation.cpp.o
  /home/azathoth/Tux-TI83/build/graph_ui_autogen/mocs_compilation.cpp
  /home/azathoth/Tux-TI83/graph_ui/include/ui_controller.hpp
  /home/azathoth/Tux-TI83/build/graph_ui_autogen/DC2RB2FZEW/moc_ui_controller.cpp
- /home/azathoth/Tux-TI83/graph_ui/src/ui_controller.hpp
- /home/azathoth/Tux-TI83/build/graph_ui_autogen/DD62R3RSIU/moc_ui_controller.cpp
  /home/azathoth/Tux-TI83/core_math/include/capsules/capsule_math.hpp
  /usr/include/alloca.h
  /usr/include/asm-generic/errno-base.h
