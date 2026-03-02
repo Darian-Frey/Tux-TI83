@@ -1,5 +1,4 @@
 #include "capsules/capsule_math.hpp"
-#include <algorithm>
 #include <cmath>
 #include <map>
 #include <stack>
