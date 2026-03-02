@@ -1,152 +1,207 @@
 #include "ui_controller.hpp"
-#include <map>
-#include <cmath>
 #include <algorithm>
+#include <cmath>
+#include <map>
 
 namespace tux_ti83 {
 
-UIController::UIController(QObject* parent) : QObject(parent), m_activeIdx(0) {
-    m_functionBuffers.resize(3);
-    m_displayStrings.resize(3, "");
+UIController::UIController(QObject *parent) : QObject(parent), m_activeIdx(0) {
+  m_functionBuffers.resize(3);
+  m_displayStrings.resize(3, "");
 }
 
-QString UIController::currentDisplay() const { return m_displayStrings[m_activeIdx]; }
-
-void UIController::processInput(const QString& input) {
-    auto& currentBuf = m_functionBuffers[m_activeIdx];
-    auto& currentStr = m_displayStrings[m_activeIdx];
-
-    if (input == "C") { 
-        currentStr = ""; currentBuf.clear(); emit displayChanged(); return; 
-    }
-
-    if (input == "DEL") {
-        if (!currentBuf.empty()) {
-            currentBuf.pop_back();
-            currentStr = "";
-            static std::map<Token, QString> revMap = {
-                {Token::Add, "+"}, {Token::Sub, "−"}, {Token::Mul, "×"}, {Token::Div, "÷"},
-                {Token::Sin, "sin("}, {Token::Cos, "cos("}, {Token::Tan, "tan("},
-                {Token::ASin, "asin("}, {Token::ACos, "acos("}, {Token::ATan, "atan("},
-                {Token::Log, "log("}, {Token::Ln, "ln("}, {Token::Sqrt, "√("},
-                {Token::Pow, "^"}, {Token::Pi, "π"}, {Token::VarX, "X"},
-                {Token::LeftParen, "("}, {Token::RightParen, ")"}, {Token::Decimal, "."},
-                {Token::MatA, "[A]"}, {Token::MatB, "[B]"}, {Token::MatC, "[C]"}
-            };
-            for (auto t : currentBuf) {
-                int val = static_cast<int>(t);
-                if (val >= 0 && val <= 9) currentStr += QString::number(val);
-                else if (revMap.count(t)) currentStr += revMap[t];
-            }
-        }
-        emit displayChanged();
-        return;
-    }
-    
-    if (input == "ENTER" || input == "▶Frac") {
-        MathStateMachine msm;
-        CalculationResult result = msm.evaluate(currentBuf);
-        QString entry = "Y" + QString::number(m_activeIdx + 1) + ": " + currentStr + " = ";
-        if (result.success) {
-            if (result.isMatrix) {
-                QString matStr = "[[";
-                for (int i = 0; i < result.matrixValue.rows; ++i) {
-                    for (int j = 0; j < result.matrixValue.cols; ++j) {
-                        matStr += QString::number(result.matrixValue.at(i, j));
-                        if (j < result.matrixValue.cols - 1) matStr += ",";
-                    }
-                    if (i < result.matrixValue.rows - 1) matStr += "][";
-                }
-                currentStr = matStr + "]]";
-            } else {
-                std::string fracStr = MathStateMachine::toFraction(result.value);
-                currentStr = (fracStr.empty()) ? QString::number(result.value) : QString::fromStdString(fracStr);
-            }
-        } else {
-            currentStr = "ERR";
-        }
-        entry += currentStr; m_history.prepend(entry);
-        emit historyChanged(); emit displayChanged();
-        return;
-    }
-
-    static const std::map<QString, Token> tokenMap = {
-        {"0", Token::Num0}, {"1", Token::Num1}, {"2", Token::Num2}, {"3", Token::Num3},
-        {"4", Token::Num4}, {"5", Token::Num5}, {"6", Token::Num6}, {"7", Token::Num7},
-        {"8", Token::Num8}, {"9", Token::Num9}, {"+", Token::Add}, {"−", Token::Sub},
-        {"×", Token::Mul}, {"÷", Token::Div}, {"(", Token::LeftParen}, {")", Token::RightParen},
-        {".", Token::Decimal}, {"π", Token::Pi}, {"X", Token::VarX}, {"^", Token::Pow},
-        {"sin", Token::Sin}, {"cos", Token::Cos}, {"tan", Token::Tan}, {"√", Token::Sqrt},
-        {"log", Token::Log}, {"ln", Token::Ln}, {"asin", Token::ASin}, {"acos", Token::ACos}, 
-        {"atan", Token::ATan}, {"=", Token::Equal}, {"≠", Token::NotEqual}, {"<", Token::Less}, 
-        {">", Token::Greater}, {"and", Token::And}, {"or", Token::Or}, {"not", Token::Not},
-        {"[A]", Token::MatA}, {"[B]", Token::MatB}, {"[C]", Token::MatC}
-    };
-
-    if (tokenMap.count(input)) {
-        currentBuf.push_back(tokenMap.at(input));
-        if (input.length() > 1 && input != "[A]" && input != "[B]" && input != "[C]") currentStr += input + "(";
-        else currentStr += input;
-        emit displayChanged();
-    }
+QString UIController::currentDisplay() const {
+  return m_displayStrings[m_activeIdx];
 }
 
-void UIController::updateMatrix(const QString& name, int rows, int cols, const QVariantList& values) {
-    Matrix mat; mat.rows = rows; mat.cols = cols;
-    for (const auto& v : values) mat.data.push_back(v.toDouble());
-    if (name == "[A]") MathStateMachine::matrixRegistry[Token::MatA] = mat;
-    else if (name == "[B]") MathStateMachine::matrixRegistry[Token::MatB] = mat;
-    else if (name == "[C]") MathStateMachine::matrixRegistry[Token::MatC] = mat;
+void UIController::processInput(const QString &input) {
+  auto &currentBuf = m_functionBuffers[m_activeIdx];
+  auto &currentStr = m_displayStrings[m_activeIdx];
+
+  if (input == "C") {
+    currentStr = "";
+    currentBuf.clear();
+    emit displayChanged();
+    return;
+  }
+
+  if (input == "DEL") {
+    if (!currentBuf.empty()) {
+      currentBuf.pop_back();
+      currentStr = "";
+      static std::map<Token, QString> revMap = {
+          {Token::Add, "+"},       {Token::Sub, "−"},
+          {Token::Mul, "×"},       {Token::Div, "÷"},
+          {Token::Sin, "sin("},    {Token::Cos, "cos("},
+          {Token::Tan, "tan("},    {Token::ASin, "asin("},
+          {Token::ACos, "acos("},  {Token::ATan, "atan("},
+          {Token::Log, "log("},    {Token::Ln, "ln("},
+          {Token::Sqrt, "√("},     {Token::Pow, "^"},
+          {Token::Pi, "π"},        {Token::VarX, "X"},
+          {Token::LeftParen, "("}, {Token::RightParen, ")"},
+          {Token::Decimal, "."},   {Token::MatA, "[A]"},
+          {Token::MatB, "[B]"},    {Token::MatC, "[C]"},
+          {Token::Det, "det("}};
+      for (auto t : currentBuf) {
+        int val = static_cast<int>(t);
+        if (val >= 0 && val <= 9)
+          currentStr += QString::number(val);
+        else if (revMap.count(t))
+          currentStr += revMap[t];
+      }
+    }
+    emit displayChanged();
+    return;
+  }
+
+  if (input == "ENTER" || input == "▶Frac") {
+    MathStateMachine msm;
+    CalculationResult result = msm.evaluate(currentBuf);
+    QString entry =
+        "Y" + QString::number(m_activeIdx + 1) + ": " + currentStr + " = ";
+    if (result.success) {
+      if (result.isMatrix) {
+        QString matStr = "[[";
+        for (int i = 0; i < result.matrixValue.rows; ++i) {
+          for (int j = 0; j < result.matrixValue.cols; ++j) {
+            matStr += QString::number(result.matrixValue.at(i, j));
+            if (j < result.matrixValue.cols - 1)
+              matStr += ",";
+          }
+          if (i < result.matrixValue.rows - 1)
+            matStr += "][";
+        }
+        currentStr = matStr + "]]";
+      } else {
+        std::string fracStr = MathStateMachine::toFraction(result.value);
+        currentStr = (fracStr.empty()) ? QString::number(result.value)
+                                       : QString::fromStdString(fracStr);
+      }
+    } else {
+      currentStr = "ERR";
+    }
+    entry += currentStr;
+    m_history.prepend(entry);
+    emit historyChanged();
+    emit displayChanged();
+    return;
+  }
+
+  // Updated tokenMap to include "det(" to match QML input
+  static const std::map<QString, Token> tokenMap = {
+      {"0", Token::Num0},       {"1", Token::Num1},    {"2", Token::Num2},
+      {"3", Token::Num3},       {"4", Token::Num4},    {"5", Token::Num5},
+      {"6", Token::Num6},       {"7", Token::Num7},    {"8", Token::Num8},
+      {"9", Token::Num9},       {"+", Token::Add},     {"−", Token::Sub},
+      {"×", Token::Mul},        {"÷", Token::Div},     {"(", Token::LeftParen},
+      {")", Token::RightParen}, {".", Token::Decimal}, {"π", Token::Pi},
+      {"X", Token::VarX},       {"^", Token::Pow},     {"sin", Token::Sin},
+      {"cos", Token::Cos},      {"tan", Token::Tan},   {"√", Token::Sqrt},
+      {"log", Token::Log},      {"ln", Token::Ln},     {"asin", Token::ASin},
+      {"acos", Token::ACos},    {"atan", Token::ATan}, {"=", Token::Equal},
+      {"≠", Token::NotEqual},   {"<", Token::Less},    {">", Token::Greater},
+      {"and", Token::And},      {"or", Token::Or},     {"not", Token::Not},
+      {"det(", Token::Det},     {"[A]", Token::MatA},  {"[B]", Token::MatB},
+      {"[C]", Token::MatC}};
+
+  if (tokenMap.count(input)) {
+    currentBuf.push_back(tokenMap.at(input));
+
+    // Logic to prevent double-parenthesis for functions that already include it
+    if (input.endsWith("(")) {
+      currentStr += input;
+    } else if (input.length() > 1 && input != "[A]" && input != "[B]" &&
+               input != "[C]") {
+      currentStr += input + "(";
+    } else {
+      currentStr += input;
+    }
+    emit displayChanged();
+  }
+}
+
+void UIController::updateMatrix(const QString &name, int rows, int cols,
+                                const QVariantList &values) {
+  Matrix mat;
+  mat.rows = rows;
+  mat.cols = cols;
+  for (const auto &v : values)
+    mat.data.push_back(v.toDouble());
+  if (name == "[A]")
+    MathStateMachine::matrixRegistry[Token::MatA] = mat;
+  else if (name == "[B]")
+    MathStateMachine::matrixRegistry[Token::MatB] = mat;
+  else if (name == "[C]")
+    MathStateMachine::matrixRegistry[Token::MatC] = mat;
 }
 
 void UIController::zoomFit() {
-    double minVal = 1e308, maxVal = -1e308; bool found = false;
-    MathStateMachine msm;
-    for (const auto& buffer : m_functionBuffers) {
-        if (buffer.empty()) continue;
-        for (int i = 0; i <= 100; ++i) {
-            double x = m_xMin + (i * (m_xMax - m_xMin) / 100.0);
-            CalculationResult res = msm.evaluate(buffer, x);
-            if (res.success && std::isfinite(res.value)) {
-                minVal = std::min(minVal, res.value); maxVal = std::max(maxVal, res.value); found = true;
-            }
-        }
+  double minVal = 1e308, maxVal = -1e308;
+  bool found = false;
+  MathStateMachine msm;
+  for (const auto &buffer : m_functionBuffers) {
+    if (buffer.empty())
+      continue;
+    for (int i = 0; i <= 100; ++i) {
+      double x = m_xMin + (i * (m_xMax - m_xMin) / 100.0);
+      CalculationResult res = msm.evaluate(buffer, x);
+      if (res.success && std::isfinite(res.value)) {
+        minVal = std::min(minVal, res.value);
+        maxVal = std::max(maxVal, res.value);
+        found = true;
+      }
     }
-    if (found) {
-        double margin = (maxVal - minVal) * 0.1;
-        if (std::abs(maxVal - minVal) < 1e-9) margin = 1.0;
-        m_yMin = minVal - margin; m_yMax = maxVal + margin; emit viewportChanged();
-    }
+  }
+  if (found) {
+    double margin = (maxVal - minVal) * 0.1;
+    if (std::abs(maxVal - minVal) < 1e-9)
+      margin = 1.0;
+    m_yMin = minVal - margin;
+    m_yMax = maxVal + margin;
+    emit viewportChanged();
+  }
 }
 
 QVariantList UIController::getMultiGraphPoints(int resolution) {
-    QVariantList allFunctions; double step = (m_xMax - m_xMin) / resolution;
-    MathStateMachine msm;
-    for (size_t f = 0; f < m_functionBuffers.size(); ++f) {
-        if (m_functionBuffers[f].empty()) continue;
-        QVariantList points;
-        for (int i = 0; i <= resolution; ++i) {
-            double x = m_xMin + (i * step);
-            CalculationResult res = msm.evaluate(m_functionBuffers[f], x);
-            if (res.success && !res.isMatrix) {
-                QVariantMap pt; pt["x"] = x; pt["y"] = res.value; points.append(pt);
-            }
-        }
-        allFunctions.append(QVariant::fromValue(points));
+  QVariantList allFunctions;
+  double step = (m_xMax - m_xMin) / resolution;
+  MathStateMachine msm;
+  for (size_t f = 0; f < m_functionBuffers.size(); ++f) {
+    if (m_functionBuffers[f].empty())
+      continue;
+    QVariantList points;
+    for (int i = 0; i <= resolution; ++i) {
+      double x = m_xMin + (i * step);
+      CalculationResult res = msm.evaluate(m_functionBuffers[f], x);
+      if (res.success && !res.isMatrix) {
+        QVariantMap pt;
+        pt["x"] = x;
+        pt["y"] = res.value;
+        points.append(pt);
+      }
     }
-    return allFunctions;
+    allFunctions.append(QVariant::fromValue(points));
+  }
+  return allFunctions;
 }
 
 void UIController::pan(double dx, double dy, double vw, double vh) {
-    double rx = m_xMax - m_xMin, ry = m_yMax - m_yMin;
-    m_xMin -= dx * (rx/vw); m_xMax -= dx * (rx/vw);
-    m_yMin += dy * (ry/vh); m_yMax += dy * (ry/vh); emit viewportChanged();
+  double rx = m_xMax - m_xMin, ry = m_yMax - m_yMin;
+  m_xMin -= dx * (rx / vw);
+  m_xMax -= dx * (rx / vw);
+  m_yMin += dy * (ry / vh);
+  m_yMax += dy * (ry / vh);
+  emit viewportChanged();
 }
 
 void UIController::zoom(double f, double mx, double my, double vw, double vh) {
-    double wx = m_xMin + (mx/vw)* (m_xMax-m_xMin), wy = m_yMax - (my/vh)* (m_yMax-m_yMin);
-    m_xMin = wx + (m_xMin-wx)*f; m_xMax = wx + (m_xMax-wx)*f;
-    m_yMin = wy + (m_yMin-wy)*f; m_yMax = wy + (m_yMax-wy)*f; emit viewportChanged();
+  double wx = m_xMin + (mx / vw) * (m_xMax - m_xMin),
+         wy = m_yMax - (my / vh) * (m_yMax - m_yMin);
+  m_xMin = wx + (m_xMin - wx) * f;
+  m_xMax = wx + (m_xMax - wx) * f;
+  m_yMin = wy + (m_yMin - wy) * f;
+  m_yMax = wy + (m_yMax - wy) * f;
+  emit viewportChanged();
 }
 
 } // namespace tux_ti83

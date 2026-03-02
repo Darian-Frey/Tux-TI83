@@ -1,4 +1,5 @@
 #include "capsules/capsule_math.hpp"
+#include <algorithm>
 #include <cmath>
 #include <map>
 #include <stack>
@@ -20,6 +21,7 @@ int EOSPrecedence::precedence(Token t) {
   case Token::Ln:
   case Token::Sqrt:
   case Token::Not:
+  case Token::Det:
     return 4;
   case Token::Pow:
     return 3;
@@ -54,7 +56,35 @@ bool EOSPrecedence::is_function(Token t) {
   return (t == Token::Sin || t == Token::Cos || t == Token::Tan ||
           t == Token::ASin || t == Token::ACos || t == Token::ATan ||
           t == Token::Log || t == Token::Ln || t == Token::Sqrt ||
-          t == Token::Not);
+          t == Token::Not || t == Token::Det);
+}
+
+// --- MATRIX MATH HELPERS ---
+
+double getDeterminant(const Matrix &m) {
+  if (m.rows != m.cols || m.rows == 0)
+    return 0.0;
+  if (m.rows == 1)
+    return m.data[0];
+  if (m.rows == 2)
+    return m.at(0, 0) * m.at(1, 1) - m.at(0, 1) * m.at(1, 0);
+
+  double det = 0.0;
+  for (int j = 0; j < m.cols; j++) {
+    Matrix sub;
+    sub.rows = m.rows - 1;
+    sub.cols = m.cols - 1;
+    sub.data.reserve(sub.rows * sub.cols);
+    for (int row = 1; row < m.rows; row++) {
+      for (int col = 0; col < m.cols; col++) {
+        if (col == j)
+          continue;
+        sub.data.push_back(m.at(row, col));
+      }
+    }
+    det += (j % 2 == 0 ? 1 : -1) * m.at(0, j) * getDeterminant(sub);
+  }
+  return det;
 }
 
 Matrix matrixAdd(const Matrix &a, const Matrix &b) {
@@ -79,6 +109,8 @@ Matrix matrixMul(const Matrix &a, const Matrix &b) {
         res.data[i * b.cols + j] += a.at(i, k) * b.at(k, j);
   return res;
 }
+
+// --- CORE EVALUATOR ---
 
 CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
                                              double xValue) {
@@ -174,24 +206,34 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
         return {false, 0.0, {}, false, "Error"};
       Operand a = stack.top();
       stack.pop();
-      if (a.isMat)
-        return {false, 0.0, {}, false, "Type Error"};
-      double v = a.val;
-      if (t == Token::Sin)
-        v = std::sin(v);
-      else if (t == Token::Cos)
-        v = std::cos(v);
-      else if (t == Token::Tan)
-        v = std::tan(v);
-      else if (t == Token::Sqrt)
-        v = (v >= 0) ? std::sqrt(v) : 0.0;
-      else if (t == Token::Log)
-        v = (v > 0) ? std::log10(v) : -HUGE_VAL;
-      else if (t == Token::Ln)
-        v = (v > 0) ? std::log(v) : -HUGE_VAL;
-      else if (t == Token::Not)
-        v = toB(v) ? 0.0 : 1.0;
-      stack.push({false, v, {}});
+
+      // Handle functions based on type
+      if (t == Token::Det) {
+        if (!a.isMat)
+          return {false, 0.0, {}, false, "Type Error"};
+        if (a.mat.rows != a.mat.cols)
+          return {false, 0.0, {}, false, "Dim Mismatch"};
+        stack.push({false, getDeterminant(a.mat), {}});
+      } else {
+        if (a.isMat)
+          return {false, 0.0, {}, false, "Type Error"};
+        double v = a.val;
+        if (t == Token::Sin)
+          v = std::sin(v);
+        else if (t == Token::Cos)
+          v = std::cos(v);
+        else if (t == Token::Tan)
+          v = std::tan(v);
+        else if (t == Token::Sqrt)
+          v = (v >= 0) ? std::sqrt(v) : 0.0;
+        else if (t == Token::Log)
+          v = (v > 0) ? std::log10(v) : -HUGE_VAL;
+        else if (t == Token::Ln)
+          v = (v > 0) ? std::log(v) : -HUGE_VAL;
+        else if (t == Token::Not)
+          v = toB(v) ? 0.0 : 1.0;
+        stack.push({false, v, {}});
+      }
     } else {
       if (stack.size() < 2)
         return {false, 0.0, {}, false, "Error"};

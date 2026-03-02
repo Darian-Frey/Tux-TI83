@@ -12,7 +12,7 @@ ApplicationWindow {
     // MATRIX POPUP
     Popup {
         id: matrixPopup
-        width: 380
+        width: 400
         height: 480
         modal: true
         focus: true
@@ -28,41 +28,60 @@ ApplicationWindow {
         ColumnLayout {
             anchors.fill: parent
             spacing: 0
+            
             TabBar {
                 id: matrixTabs
                 Layout.fillWidth: true
+                currentIndex: matrixStack.currentIndex
+                onCurrentIndexChanged: matrixStack.currentIndex = currentIndex
+                background: Rectangle { color: "#2E3440" }
+
                 TabButton { 
-                    id: namesTab
+                    id: namesBtn
                     text: "NAMES"
                     contentItem: Text { 
-                        text: namesTab.text
-                        color: namesTab.checked ? "#2E3440" : "#D8DEE9"
+                        text: namesBtn.text
+                        color: namesBtn.checked ? "#2E3440" : "#D8DEE9"
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         font.bold: true 
                     }
-                    background: Rectangle { color: namesTab.checked ? "#88C0D0" : "#2E3440" }
+                    background: Rectangle { color: namesBtn.checked ? "#88C0D0" : "#2E3440" }
                 }
                 TabButton { 
-                    id: editTab
-                    text: "EDIT"
+                    id: mathBtn
+                    text: "MATH"
                     contentItem: Text { 
-                        text: editTab.text
-                        color: editTab.checked ? "#2E3440" : "#D8DEE9"
+                        text: mathBtn.text
+                        color: mathBtn.checked ? "#2E3440" : "#D8DEE9"
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                         font.bold: true 
                     }
-                    background: Rectangle { color: editTab.checked ? "#88C0D0" : "#2E3440" }
+                    background: Rectangle { color: mathBtn.checked ? "#88C0D0" : "#2E3440" }
+                }
+                TabButton { 
+                    id: editBtn
+                    text: "EDIT"
+                    contentItem: Text { 
+                        text: editBtn.text
+                        color: editBtn.checked ? "#2E3440" : "#D8DEE9"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        font.bold: true 
+                    }
+                    background: Rectangle { color: editBtn.checked ? "#88C0D0" : "#2E3440" }
                 }
             }
 
             StackLayout {
+                id: matrixStack
                 currentIndex: matrixTabs.currentIndex
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.margins: 15
                 
+                // Index 0: NAMES
                 ColumnLayout {
                     ListView {
                         Layout.fillWidth: true
@@ -87,7 +106,34 @@ ApplicationWindow {
                         }
                     }
                 }
+
+                // Index 1: MATH
+                ColumnLayout {
+                    ListView {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        model: ["det("]
+                        delegate: ItemDelegate { 
+                            id: mathDelegate
+                            width: parent.width
+                            height: 45
+                            background: Rectangle { color: mathDelegate.hovered ? "#4C566A" : "transparent"; radius: 4 }
+                            contentItem: Text { 
+                                text: "1: " + modelData
+                                color: "#EBCB8B"
+                                font.pixelSize: 20
+                                font.bold: true
+                                verticalAlignment: Text.AlignVCenter 
+                            }
+                            onClicked: {
+                                uiController.processInput(modelData)
+                                matrixPopup.close()
+                            }
+                        }
+                    }
+                }
                 
+                // Index 2: EDIT
                 ColumnLayout {
                     spacing: 10
                     Text { text: "Edit Matrix [A] (3x3)"; color: "#88C0D0"; font.bold: true; font.pixelSize: 16 }
@@ -158,19 +204,9 @@ ApplicationWindow {
             anchors.fill: parent
             anchors.margins: 15
             spacing: 10
-            Text { 
-                text: "WINDOW SETTINGS"
-                color: "#88C0D0"
-                font.bold: true
-                Layout.alignment: Qt.AlignHCenter 
-            }
+            Text { text: "WINDOW SETTINGS"; color: "#88C0D0"; font.bold: true; Layout.alignment: Qt.AlignHCenter }
             Repeater {
-                model: [
-                    {l: "Xmin:", p: "xMin"}, 
-                    {l: "Xmax:", p: "xMax"}, 
-                    {l: "Ymin:", p: "yMin"}, 
-                    {l: "Ymax:", p: "yMax"}
-                ]
+                model: [{l: "Xmin:", p: "xMin"}, {l: "Xmax:", p: "xMax"}, {l: "Ymin:", p: "yMin"}, {l: "Ymax:", p: "yMax"}]
                 delegate: RowLayout {
                     Text { text: modelData.l; color: "#ECEFF4"; Layout.preferredWidth: 60 }
                     TextField {
@@ -178,9 +214,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         color: "white"
                         background: Rectangle { color: "#2E3440"; radius: 4 }
-                        onEditingFinished: {
-                            uiController[modelData.p] = parseFloat(text)
-                        }
+                        onEditingFinished: { uiController[modelData.p] = parseFloat(text) }
                     }
                 }
             }
@@ -217,12 +251,7 @@ ApplicationWindow {
         focus: true
         x: (workspacePane.width - width) / 2
         y: (workspacePane.height - height) / 2
-        background: Rectangle { 
-            color: "#88C0D0"
-            radius: 8
-            border.color: "#ECEFF4"
-            border.width: 3 
-        }
+        background: Rectangle { color: "#88C0D0"; radius: 8; border.color: "#ECEFF4"; border.width: 3 }
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 10
@@ -233,26 +262,15 @@ ApplicationWindow {
                     id: logicBtn
                     Layout.fillWidth: true
                     text: modelData
-                    background: Rectangle { 
-                        color: logicBtn.pressed ? "#2E3440" : (logicBtn.hovered ? "#4C566A" : "#3B4252")
-                        radius: 4 
-                    }
-                    contentItem: Text { 
-                        text: modelData
-                        color: "#ECEFF4"
-                        font.bold: true
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter 
-                    }
-                    onClicked: {
-                        uiController.processInput(text)
-                        logicPopup.close()
-                    }
+                    background: Rectangle { color: logicBtn.pressed ? "#2E3440" : (logicBtn.hovered ? "#4C566A" : "#3B4252"); radius: 4 }
+                    contentItem: Text { text: modelData; color: "#ECEFF4"; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    onClicked: { uiController.processInput(text); logicPopup.close() }
                 }
             }
         }
     }
 
+    // MAIN LAYOUT
     RowLayout {
         anchors.fill: parent
         spacing: 0
@@ -272,17 +290,8 @@ ApplicationWindow {
                     Repeater {
                         model: ["Y1", "Y2", "Y3"]
                         delegate: Button {
-                            contentItem: Text { 
-                                text: modelData
-                                font.bold: true
-                                color: uiController.activeFunctionIndex === index ? "#2E3440" : "#ECEFF4" 
-                            }
-                            background: Rectangle { 
-                                implicitWidth: 60
-                                implicitHeight: 35
-                                color: uiController.activeFunctionIndex === index ? "#88C0D0" : "#434C5E"
-                                radius: 4 
-                            }
+                            contentItem: Text { text: modelData; font.bold: true; color: uiController.activeFunctionIndex === index ? "#2E3440" : "#ECEFF4" }
+                            background: Rectangle { implicitWidth: 60; implicitHeight: 35; color: uiController.activeFunctionIndex === index ? "#88C0D0" : "#434C5E"; radius: 4 }
                             onClicked: { uiController.setActiveFunction(index) }
                         }
                     }
@@ -326,12 +335,7 @@ ApplicationWindow {
                                 radius: 6
                                 Layout.columnSpan: modelData === "ENTER" ? 4 : 1
                                 color: (modelData === "ENTER") ? "#88C0D0" : (modelData === "DEL" || modelData === "C") ? "#BF616A" : (modelData === "X") ? "#A3BE8C" : (modelData === "LOGIC" || modelData === "MATRX") ? "#EBCB8B" : (["sin","cos","tan","asin","acos","atan","√","log","ln","^"].indexOf(modelData) !== -1) ? "#B48EAD" : "#4C566A"
-                                Text { 
-                                    anchors.centerIn: parent
-                                    text: modelData
-                                    font.bold: true
-                                    color: (["ENTER","X","LOGIC","MATRX","sin","cos","tan","asin","acos","atan","√","log","ln","^"].indexOf(modelData) !== -1) ? "#2E3440" : "#ECEFF4" 
-                                }
+                                Text { anchors.centerIn: parent; text: modelData; font.bold: true; color: (["ENTER","X","LOGIC","MATRX","sin","cos","tan","asin","acos","atan","√","log","ln","^"].indexOf(modelData) !== -1) ? "#2E3440" : "#ECEFF4" }
                                 MouseArea { 
                                     anchors.fill: parent
                                     onClicked: { 
@@ -353,7 +357,7 @@ ApplicationWindow {
                             anchors.fill: parent
                             onPaint: {
                                 var ctx = getContext("2d")
-                                ctx.clearRect(0, 0, width, height)
+                                ctx.clearRect(0,0,width,height)
                                 function toPx(x, y) { return { x: (x - uiController.xMin) * (width / (uiController.xMax - uiController.xMin)), y: height - (y - uiController.yMin) * (height / (uiController.yMax - uiController.yMin)) }; }
                                 
                                 var rangeX = uiController.xMax - uiController.xMin
@@ -365,19 +369,13 @@ ApplicationWindow {
                                 for (var x = Math.floor(uiController.xMin / step) * step; x <= uiController.xMax; x += step) {
                                     var px = toPx(x, 0)
                                     ctx.strokeStyle = (Math.abs(x) < 0.0001) ? "#D8DEE9" : "#2E3440"
-                                    ctx.beginPath()
-                                    ctx.moveTo(px.x, 0)
-                                    ctx.lineTo(px.x, height)
-                                    ctx.stroke()
+                                    ctx.beginPath(); ctx.moveTo(px.x, 0); ctx.lineTo(px.x, height); ctx.stroke()
                                     if (Math.abs(x) > 0.0001) ctx.fillText(x.toFixed(1), px.x + 2, height - 5)
                                 }
                                 for (var y = Math.floor(uiController.yMin / step) * step; y <= uiController.yMax; y += step) {
                                     var py = toPx(0, y)
                                     ctx.strokeStyle = (Math.abs(y) < 0.0001) ? "#D8DEE9" : "#2E3440"
-                                    ctx.beginPath()
-                                    ctx.moveTo(0, py.y)
-                                    ctx.lineTo(width, py.y)
-                                    ctx.stroke()
+                                    ctx.beginPath(); ctx.moveTo(0, py.y); ctx.lineTo(width, py.y); ctx.stroke()
                                     if (Math.abs(y) > 0.0001) ctx.fillText(y.toFixed(1), 5, py.y - 2)
                                 }
 
@@ -386,9 +384,7 @@ ApplicationWindow {
                                 var multiPts = uiController.getMultiGraphPoints(600)
                                 for (var f=0; f < multiPts.length; f++) {
                                     var pts = multiPts[f]
-                                    ctx.beginPath()
-                                    ctx.strokeStyle = colors[f % colors.length]
-                                    ctx.lineWidth = 2.5
+                                    ctx.beginPath(); ctx.strokeStyle = colors[f % colors.length]; ctx.lineWidth = 2.5
                                     for (var i=0; i < pts.length; i++) { 
                                         var pt = toPx(pts[i].x, pts[i].y)
                                         if (i === 0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y)
@@ -399,28 +395,13 @@ ApplicationWindow {
                             
                             MouseArea {
                                 anchors.fill: parent
-                                property real lastX
-                                property real lastY
-                                onPressed: (mouse) => { 
-                                    lastX = mouse.x
-                                    lastY = mouse.y 
-                                }
-                                onPositionChanged: (mouse) => { 
-                                    if (pressed) { 
-                                        uiController.pan(mouse.x - lastX, mouse.y - lastY, width, height)
-                                        lastX = mouse.x
-                                        lastY = mouse.y 
-                                    } 
-                                }
-                                onWheel: (wheel) => { 
-                                    uiController.zoom(wheel.angleDelta.y > 0 ? 0.9 : 1.1, wheel.x, wheel.y, width, height) 
-                                }
+                                property real lastX; property real lastY
+                                onPressed: (mouse) => { lastX = mouse.x; lastY = mouse.y }
+                                onPositionChanged: (mouse) => { if (pressed) { uiController.pan(mouse.x - lastX, mouse.y - lastY, width, height); lastX = mouse.x; lastY = mouse.y } }
+                                onWheel: (wheel) => { uiController.zoom(wheel.angleDelta.y > 0 ? 0.9 : 1.1, wheel.x, wheel.y, width, height) }
                             }
 
-                            Connections { 
-                                target: uiController
-                                function onViewportChanged() { graphCanvas.requestPaint() } 
-                            }
+                            Connections { target: uiController; function onViewportChanged() { graphCanvas.requestPaint() } }
                         }
                     }
                 }
@@ -429,39 +410,15 @@ ApplicationWindow {
 
         Rectangle {
             id: historyPane
-            Layout.fillHeight: true
-            Layout.preferredWidth: 300
-            color: "#2E3440"
-            border.color: "#4C566A"
-            border.width: 1
+            Layout.fillHeight: true; Layout.preferredWidth: 300; color: "#2E3440"; border.color: "#4C566A"; border.width: 1
             ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 10
-                Text { 
-                    text: "HISTORY"
-                    color: "#81A1C1"
-                    font.bold: true
-                    Layout.alignment: Qt.AlignHCenter
-                    bottomPadding: 5 
-                }
+                anchors.fill: parent; anchors.margins: 10
+                Text { text: "HISTORY"; color: "#81A1C1"; font.bold: true; Layout.alignment: Qt.AlignHCenter; bottomPadding: 5 }
                 ListView {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    model: uiController.history
-                    spacing: 5
-                    clip: true
+                    Layout.fillWidth: true; Layout.fillHeight: true; model: uiController.history; spacing: 5; clip: true
                     delegate: Rectangle { 
-                        width: parent.width
-                        height: 40
-                        color: "#3B4252"
-                        radius: 4
-                        Text { 
-                            anchors.centerIn: parent
-                            text: modelData
-                            color: "#D8DEE9"
-                            font.bold: true
-                            font.pixelSize: 12 
-                        } 
+                        width: parent.width; height: 40; color: "#3B4252"; radius: 4
+                        Text { anchors.centerIn: parent; text: modelData; color: "#D8DEE9"; font.bold: true; font.pixelSize: 12 } 
                     }
                 }
             }
