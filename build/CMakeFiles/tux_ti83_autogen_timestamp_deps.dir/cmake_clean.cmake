@@ -1,3 +1,6 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/tux_ti83_autogen_timestamp_deps"
+)
 
 # Per-language clean rules from dependency scanning.
 foreach(lang )

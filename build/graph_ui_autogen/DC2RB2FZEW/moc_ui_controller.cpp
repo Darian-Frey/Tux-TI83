@@ -1,88 +1,157 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'ui_controller.hpp'
 **
-** Created by: The Qt Meta Object Compiler version 68 (Qt 6.2.4)
+** Created by: The Qt Meta Object Compiler version 68 (Qt 6.4.2)
 **
 ** WARNING! All changes made in this file will be lost!
 *****************************************************************************/
 
 #include <memory>
 #include "../../../graph_ui/include/ui_controller.hpp"
-#include <QtCore/qbytearray.h>
 #include <QtCore/qmetatype.h>
 #if !defined(Q_MOC_OUTPUT_REVISION)
 #error "The header file 'ui_controller.hpp' doesn't include <QObject>."
 #elif Q_MOC_OUTPUT_REVISION != 68
-#error "This file was generated using the moc from 6.2.4. It"
+#error "This file was generated using the moc from 6.4.2. It"
 #error "cannot be used with the include files from this version of Qt."
 #error "(The moc has changed too much.)"
+#endif
+
+#ifndef Q_CONSTINIT
+#define Q_CONSTINIT
 #endif
 
 QT_BEGIN_MOC_NAMESPACE
 QT_WARNING_PUSH
 QT_WARNING_DISABLE_DEPRECATED
+namespace {
 struct qt_meta_stringdata_tux_ti83__UIController_t {
-    const uint offsetsAndSize[76];
-    char stringdata0[365];
+    uint offsetsAndSizes[76];
+    char stringdata0[23];
+    char stringdata1[15];
+    char stringdata2[1];
+    char stringdata3[15];
+    char stringdata4[27];
+    char stringdata5[16];
+    char stringdata6[17];
+    char stringdata7[13];
+    char stringdata8[6];
+    char stringdata9[18];
+    char stringdata10[6];
+    char stringdata11[16];
+    char stringdata12[14];
+    char stringdata13[8];
+    char stringdata14[13];
+    char stringdata15[5];
+    char stringdata16[5];
+    char stringdata17[5];
+    char stringdata18[7];
+    char stringdata19[20];
+    char stringdata20[11];
+    char stringdata21[4];
+    char stringdata22[3];
+    char stringdata23[3];
+    char stringdata24[3];
+    char stringdata25[3];
+    char stringdata26[5];
+    char stringdata27[2];
+    char stringdata28[3];
+    char stringdata29[3];
+    char stringdata30[5];
+    char stringdata31[5];
+    char stringdata32[5];
+    char stringdata33[5];
+    char stringdata34[15];
+    char stringdata35[8];
+    char stringdata36[20];
+    char stringdata37[12];
 };
 #define QT_MOC_LITERAL(ofs, len) \
-    uint(offsetof(qt_meta_stringdata_tux_ti83__UIController_t, stringdata0) + ofs), len 
-static const qt_meta_stringdata_tux_ti83__UIController_t qt_meta_stringdata_tux_ti83__UIController = {
+    uint(sizeof(qt_meta_stringdata_tux_ti83__UIController_t::offsetsAndSizes) + ofs), len 
+Q_CONSTINIT static const qt_meta_stringdata_tux_ti83__UIController_t qt_meta_stringdata_tux_ti83__UIController = {
     {
-QT_MOC_LITERAL(0, 22), // "tux_ti83::UIController"
-QT_MOC_LITERAL(23, 14), // "displayChanged"
-QT_MOC_LITERAL(38, 0), // ""
-QT_MOC_LITERAL(39, 14), // "historyChanged"
-QT_MOC_LITERAL(54, 26), // "activeFunctionIndexChanged"
-QT_MOC_LITERAL(81, 15), // "viewportChanged"
-QT_MOC_LITERAL(97, 16), // "graphModeChanged"
-QT_MOC_LITERAL(114, 12), // "processInput"
-QT_MOC_LITERAL(127, 5), // "input"
-QT_MOC_LITERAL(133, 17), // "setActiveFunction"
-QT_MOC_LITERAL(151, 5), // "index"
-QT_MOC_LITERAL(157, 15), // "toggleGraphMode"
-QT_MOC_LITERAL(173, 13), // "resetViewport"
-QT_MOC_LITERAL(187, 7), // "zoomFit"
-QT_MOC_LITERAL(195, 12), // "updateMatrix"
-QT_MOC_LITERAL(208, 4), // "name"
-QT_MOC_LITERAL(213, 4), // "rows"
-QT_MOC_LITERAL(218, 4), // "cols"
-QT_MOC_LITERAL(223, 6), // "values"
-QT_MOC_LITERAL(230, 19), // "getMultiGraphPoints"
-QT_MOC_LITERAL(250, 10), // "resolution"
-QT_MOC_LITERAL(261, 3), // "pan"
-QT_MOC_LITERAL(265, 2), // "dx"
-QT_MOC_LITERAL(268, 2), // "dy"
-QT_MOC_LITERAL(271, 2), // "vw"
-QT_MOC_LITERAL(274, 2), // "vh"
-QT_MOC_LITERAL(277, 4), // "zoom"
-QT_MOC_LITERAL(282, 1), // "f"
-QT_MOC_LITERAL(284, 2), // "mx"
-QT_MOC_LITERAL(287, 2), // "my"
-QT_MOC_LITERAL(290, 4), // "xMin"
-QT_MOC_LITERAL(295, 4), // "xMax"
-QT_MOC_LITERAL(300, 4), // "yMin"
-QT_MOC_LITERAL(305, 4), // "yMax"
-QT_MOC_LITERAL(310, 14), // "currentDisplay"
-QT_MOC_LITERAL(325, 7), // "history"
-QT_MOC_LITERAL(333, 19), // "activeFunctionIndex"
-QT_MOC_LITERAL(353, 11) // "isGraphMode"
-
+        QT_MOC_LITERAL(0, 22),  // "tux_ti83::UIController"
+        QT_MOC_LITERAL(23, 14),  // "displayChanged"
+        QT_MOC_LITERAL(38, 0),  // ""
+        QT_MOC_LITERAL(39, 14),  // "historyChanged"
+        QT_MOC_LITERAL(54, 26),  // "activeFunctionIndexChanged"
+        QT_MOC_LITERAL(81, 15),  // "viewportChanged"
+        QT_MOC_LITERAL(97, 16),  // "graphModeChanged"
+        QT_MOC_LITERAL(114, 12),  // "processInput"
+        QT_MOC_LITERAL(127, 5),  // "input"
+        QT_MOC_LITERAL(133, 17),  // "setActiveFunction"
+        QT_MOC_LITERAL(151, 5),  // "index"
+        QT_MOC_LITERAL(157, 15),  // "toggleGraphMode"
+        QT_MOC_LITERAL(173, 13),  // "resetViewport"
+        QT_MOC_LITERAL(187, 7),  // "zoomFit"
+        QT_MOC_LITERAL(195, 12),  // "updateMatrix"
+        QT_MOC_LITERAL(208, 4),  // "name"
+        QT_MOC_LITERAL(213, 4),  // "rows"
+        QT_MOC_LITERAL(218, 4),  // "cols"
+        QT_MOC_LITERAL(223, 6),  // "values"
+        QT_MOC_LITERAL(230, 19),  // "getMultiGraphPoints"
+        QT_MOC_LITERAL(250, 10),  // "resolution"
+        QT_MOC_LITERAL(261, 3),  // "pan"
+        QT_MOC_LITERAL(265, 2),  // "dx"
+        QT_MOC_LITERAL(268, 2),  // "dy"
+        QT_MOC_LITERAL(271, 2),  // "vw"
+        QT_MOC_LITERAL(274, 2),  // "vh"
+        QT_MOC_LITERAL(277, 4),  // "zoom"
+        QT_MOC_LITERAL(282, 1),  // "f"
+        QT_MOC_LITERAL(284, 2),  // "mx"
+        QT_MOC_LITERAL(287, 2),  // "my"
+        QT_MOC_LITERAL(290, 4),  // "xMin"
+        QT_MOC_LITERAL(295, 4),  // "xMax"
+        QT_MOC_LITERAL(300, 4),  // "yMin"
+        QT_MOC_LITERAL(305, 4),  // "yMax"
+        QT_MOC_LITERAL(310, 14),  // "currentDisplay"
+        QT_MOC_LITERAL(325, 7),  // "history"
+        QT_MOC_LITERAL(333, 19),  // "activeFunctionIndex"
+        QT_MOC_LITERAL(353, 11)   // "isGraphMode"
     },
-    "tux_ti83::UIController\0displayChanged\0"
-    "\0historyChanged\0activeFunctionIndexChanged\0"
-    "viewportChanged\0graphModeChanged\0"
-    "processInput\0input\0setActiveFunction\0"
-    "index\0toggleGraphMode\0resetViewport\0"
-    "zoomFit\0updateMatrix\0name\0rows\0cols\0"
-    "values\0getMultiGraphPoints\0resolution\0"
-    "pan\0dx\0dy\0vw\0vh\0zoom\0f\0mx\0my\0xMin\0"
-    "xMax\0yMin\0yMax\0currentDisplay\0history\0"
-    "activeFunctionIndex\0isGraphMode"
+    "tux_ti83::UIController",
+    "displayChanged",
+    "",
+    "historyChanged",
+    "activeFunctionIndexChanged",
+    "viewportChanged",
+    "graphModeChanged",
+    "processInput",
+    "input",
+    "setActiveFunction",
+    "index",
+    "toggleGraphMode",
+    "resetViewport",
+    "zoomFit",
+    "updateMatrix",
+    "name",
+    "rows",
+    "cols",
+    "values",
+    "getMultiGraphPoints",
+    "resolution",
+    "pan",
+    "dx",
+    "dy",
+    "vw",
+    "vh",
+    "zoom",
+    "f",
+    "mx",
+    "my",
+    "xMin",
+    "xMax",
+    "yMin",
+    "yMax",
+    "currentDisplay",
+    "history",
+    "activeFunctionIndex",
+    "isGraphMode"
 };
 #undef QT_MOC_LITERAL
+} // unnamed namespace
 
-static const uint qt_meta_data_tux_ti83__UIController[] = {
+Q_CONSTINIT static const uint qt_meta_data_tux_ti83__UIController[] = {
 
  // content:
       10,       // revision
@@ -144,6 +213,79 @@ static const uint qt_meta_data_tux_ti83__UIController[] = {
        0        // eod
 };
 
+Q_CONSTINIT const QMetaObject tux_ti83::UIController::staticMetaObject = { {
+    QMetaObject::SuperData::link<QObject::staticMetaObject>(),
+    qt_meta_stringdata_tux_ti83__UIController.offsetsAndSizes,
+    qt_meta_data_tux_ti83__UIController,
+    qt_static_metacall,
+    nullptr,
+    qt_incomplete_metaTypeArray<qt_meta_stringdata_tux_ti83__UIController_t,
+        // property 'xMin'
+        QtPrivate::TypeAndForceComplete<double, std::true_type>,
+        // property 'xMax'
+        QtPrivate::TypeAndForceComplete<double, std::true_type>,
+        // property 'yMin'
+        QtPrivate::TypeAndForceComplete<double, std::true_type>,
+        // property 'yMax'
+        QtPrivate::TypeAndForceComplete<double, std::true_type>,
+        // property 'currentDisplay'
+        QtPrivate::TypeAndForceComplete<QString, std::true_type>,
+        // property 'history'
+        QtPrivate::TypeAndForceComplete<QStringList, std::true_type>,
+        // property 'activeFunctionIndex'
+        QtPrivate::TypeAndForceComplete<int, std::true_type>,
+        // property 'isGraphMode'
+        QtPrivate::TypeAndForceComplete<bool, std::true_type>,
+        // Q_OBJECT / Q_GADGET
+        QtPrivate::TypeAndForceComplete<UIController, std::true_type>,
+        // method 'displayChanged'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        // method 'historyChanged'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        // method 'activeFunctionIndexChanged'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        // method 'viewportChanged'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        // method 'graphModeChanged'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        // method 'processInput'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        QtPrivate::TypeAndForceComplete<const QString &, std::false_type>,
+        // method 'setActiveFunction'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        QtPrivate::TypeAndForceComplete<int, std::false_type>,
+        // method 'toggleGraphMode'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        // method 'resetViewport'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        // method 'zoomFit'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        // method 'updateMatrix'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        QtPrivate::TypeAndForceComplete<const QString &, std::false_type>,
+        QtPrivate::TypeAndForceComplete<int, std::false_type>,
+        QtPrivate::TypeAndForceComplete<int, std::false_type>,
+        QtPrivate::TypeAndForceComplete<const QVariantList &, std::false_type>,
+        // method 'getMultiGraphPoints'
+        QtPrivate::TypeAndForceComplete<QVariantList, std::false_type>,
+        QtPrivate::TypeAndForceComplete<int, std::false_type>,
+        // method 'pan'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        QtPrivate::TypeAndForceComplete<double, std::false_type>,
+        QtPrivate::TypeAndForceComplete<double, std::false_type>,
+        QtPrivate::TypeAndForceComplete<double, std::false_type>,
+        QtPrivate::TypeAndForceComplete<double, std::false_type>,
+        // method 'zoom'
+        QtPrivate::TypeAndForceComplete<void, std::false_type>,
+        QtPrivate::TypeAndForceComplete<double, std::false_type>,
+        QtPrivate::TypeAndForceComplete<double, std::false_type>,
+        QtPrivate::TypeAndForceComplete<double, std::false_type>,
+        QtPrivate::TypeAndForceComplete<double, std::false_type>,
+        QtPrivate::TypeAndForceComplete<double, std::false_type>
+    >,
+    nullptr
+} };
+
 void tux_ti83::UIController::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void **_a)
 {
     if (_c == QMetaObject::InvokeMetaMethod) {
@@ -171,42 +313,40 @@ void tux_ti83::UIController::qt_static_metacall(QObject *_o, QMetaObject::Call _
         int *result = reinterpret_cast<int *>(_a[0]);
         {
             using _t = void (UIController::*)();
-            if (*reinterpret_cast<_t *>(_a[1]) == static_cast<_t>(&UIController::displayChanged)) {
+            if (_t _q_method = &UIController::displayChanged; *reinterpret_cast<_t *>(_a[1]) == _q_method) {
                 *result = 0;
                 return;
             }
         }
         {
             using _t = void (UIController::*)();
-            if (*reinterpret_cast<_t *>(_a[1]) == static_cast<_t>(&UIController::historyChanged)) {
+            if (_t _q_method = &UIController::historyChanged; *reinterpret_cast<_t *>(_a[1]) == _q_method) {
                 *result = 1;
                 return;
             }
         }
         {
             using _t = void (UIController::*)();
-            if (*reinterpret_cast<_t *>(_a[1]) == static_cast<_t>(&UIController::activeFunctionIndexChanged)) {
+            if (_t _q_method = &UIController::activeFunctionIndexChanged; *reinterpret_cast<_t *>(_a[1]) == _q_method) {
                 *result = 2;
                 return;
             }
         }
         {
             using _t = void (UIController::*)();
-            if (*reinterpret_cast<_t *>(_a[1]) == static_cast<_t>(&UIController::viewportChanged)) {
+            if (_t _q_method = &UIController::viewportChanged; *reinterpret_cast<_t *>(_a[1]) == _q_method) {
                 *result = 3;
                 return;
             }
         }
         {
             using _t = void (UIController::*)();
-            if (*reinterpret_cast<_t *>(_a[1]) == static_cast<_t>(&UIController::graphModeChanged)) {
+            if (_t _q_method = &UIController::graphModeChanged; *reinterpret_cast<_t *>(_a[1]) == _q_method) {
                 *result = 4;
                 return;
             }
         }
-    }
-#ifndef QT_NO_PROPERTIES
-    else if (_c == QMetaObject::ReadProperty) {
+    }else if (_c == QMetaObject::ReadProperty) {
         auto *_t = static_cast<UIController *>(_o);
         (void)_t;
         void *_v = _a[0];
@@ -261,24 +401,7 @@ void tux_ti83::UIController::qt_static_metacall(QObject *_o, QMetaObject::Call _
     } else if (_c == QMetaObject::ResetProperty) {
     } else if (_c == QMetaObject::BindableProperty) {
     }
-#endif // QT_NO_PROPERTIES
 }
-
-const QMetaObject tux_ti83::UIController::staticMetaObject = { {
-    QMetaObject::SuperData::link<QObject::staticMetaObject>(),
-    qt_meta_stringdata_tux_ti83__UIController.offsetsAndSize,
-    qt_meta_data_tux_ti83__UIController,
-    qt_static_metacall,
-    nullptr,
-qt_incomplete_metaTypeArray<qt_meta_stringdata_tux_ti83__UIController_t
-, QtPrivate::TypeAndForceComplete<double, std::true_type>, QtPrivate::TypeAndForceComplete<double, std::true_type>, QtPrivate::TypeAndForceComplete<double, std::true_type>, QtPrivate::TypeAndForceComplete<double, std::true_type>, QtPrivate::TypeAndForceComplete<QString, std::true_type>, QtPrivate::TypeAndForceComplete<QStringList, std::true_type>, QtPrivate::TypeAndForceComplete<int, std::true_type>, QtPrivate::TypeAndForceComplete<bool, std::true_type>, QtPrivate::TypeAndForceComplete<UIController, std::true_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>
-
-, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<const QString &, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<int, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<const QString &, std::false_type>, QtPrivate::TypeAndForceComplete<int, std::false_type>, QtPrivate::TypeAndForceComplete<int, std::false_type>, QtPrivate::TypeAndForceComplete<const QVariantList &, std::false_type>, QtPrivate::TypeAndForceComplete<QVariantList, std::false_type>, QtPrivate::TypeAndForceComplete<int, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<void, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>, QtPrivate::TypeAndForceComplete<double, std::false_type>
-
->,
-    nullptr
-} };
-
 
 const QMetaObject *tux_ti83::UIController::metaObject() const
 {
@@ -306,15 +429,12 @@ int tux_ti83::UIController::qt_metacall(QMetaObject::Call _c, int _id, void **_a
         if (_id < 14)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
         _id -= 14;
-    }
-#ifndef QT_NO_PROPERTIES
-    else if (_c == QMetaObject::ReadProperty || _c == QMetaObject::WriteProperty
+    }else if (_c == QMetaObject::ReadProperty || _c == QMetaObject::WriteProperty
             || _c == QMetaObject::ResetProperty || _c == QMetaObject::BindableProperty
             || _c == QMetaObject::RegisterPropertyMetaType) {
         qt_static_metacall(this, _c, _id, _a);
         _id -= 8;
     }
-#endif // QT_NO_PROPERTIES
     return _id;
 }
 

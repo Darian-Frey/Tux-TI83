@@ -1,7 +1,7 @@
 core_math_autogen/timestamp: \
 	/home/azathoth/Tux-TI83/CMakeLists.txt \
-	/home/azathoth/Tux-TI83/build/CMakeFiles/3.31.2/CMakeCXXCompiler.cmake \
-	/home/azathoth/Tux-TI83/build/CMakeFiles/3.31.2/CMakeSystem.cmake \
+	/home/azathoth/Tux-TI83/build/CMakeFiles/3.28.3/CMakeCXXCompiler.cmake \
+	/home/azathoth/Tux-TI83/build/CMakeFiles/3.28.3/CMakeSystem.cmake \
 	/home/azathoth/Tux-TI83/core_math/src/core_math.cpp \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6/3rdparty/kwin/FindXKB.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6/FindWrapAtomic.cmake \
@@ -16,6 +16,7 @@ core_math_autogen/timestamp: \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6/Qt6VersionlessTargets.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6/QtFeature.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6/QtFeatureCommon.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6/QtPublicAppleHelpers.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6/QtPublicCMakeHelpers.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6/QtPublicCMakeVersionHelpers.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6/QtPublicDependencyHelpers.cmake \
@@ -23,6 +24,8 @@ core_math_autogen/timestamp: \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6/QtPublicFindPackageHelpers.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6/QtPublicPluginHelpers.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6/QtPublicTargetHelpers.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6/QtPublicTestHelpers.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6/QtPublicToolHelpers.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6/QtPublicWalkLibsHelpers.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6Core/Qt6CoreAdditionalTargetInfo.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6Core/Qt6CoreConfig.cmake \
@@ -92,6 +95,50 @@ core_math_autogen/timestamp: \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6OpenGL/Qt6OpenGLTargets-none.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6OpenGL/Qt6OpenGLTargets.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6OpenGL/Qt6OpenGLVersionlessTargets.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QDebugMessageServiceFactoryPluginAdditionalTargetInfo.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QDebugMessageServiceFactoryPluginConfig.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QDebugMessageServiceFactoryPluginTargets-none.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QDebugMessageServiceFactoryPluginTargets.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QLocalClientConnectionFactoryPluginAdditionalTargetInfo.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QLocalClientConnectionFactoryPluginConfig.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QLocalClientConnectionFactoryPluginTargets-none.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QLocalClientConnectionFactoryPluginTargets.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlDebugServerFactoryPluginAdditionalTargetInfo.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlDebugServerFactoryPluginConfig.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlDebugServerFactoryPluginTargets-none.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlDebugServerFactoryPluginTargets.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlDebuggerServiceFactoryPluginAdditionalTargetInfo.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlDebuggerServiceFactoryPluginConfig.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlDebuggerServiceFactoryPluginTargets-none.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlDebuggerServiceFactoryPluginTargets.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlInspectorServiceFactoryPluginAdditionalTargetInfo.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlInspectorServiceFactoryPluginConfig.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlInspectorServiceFactoryPluginTargets-none.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlInspectorServiceFactoryPluginTargets.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlNativeDebugConnectorFactoryPluginAdditionalTargetInfo.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlNativeDebugConnectorFactoryPluginConfig.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlNativeDebugConnectorFactoryPluginTargets-none.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlNativeDebugConnectorFactoryPluginTargets.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlNativeDebugServiceFactoryPluginAdditionalTargetInfo.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlNativeDebugServiceFactoryPluginConfig.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlNativeDebugServiceFactoryPluginTargets-none.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlNativeDebugServiceFactoryPluginTargets.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlPreviewServiceFactoryPluginAdditionalTargetInfo.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlPreviewServiceFactoryPluginConfig.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlPreviewServiceFactoryPluginTargets-none.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlPreviewServiceFactoryPluginTargets.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlProfilerServiceFactoryPluginAdditionalTargetInfo.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlProfilerServiceFactoryPluginConfig.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlProfilerServiceFactoryPluginTargets-none.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQmlProfilerServiceFactoryPluginTargets.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQuickProfilerAdapterFactoryPluginAdditionalTargetInfo.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQuickProfilerAdapterFactoryPluginConfig.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQuickProfilerAdapterFactoryPluginTargets-none.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QQuickProfilerAdapterFactoryPluginTargets.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QTcpServerConnectionFactoryPluginAdditionalTargetInfo.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QTcpServerConnectionFactoryPluginConfig.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QTcpServerConnectionFactoryPluginTargets-none.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QTcpServerConnectionFactoryPluginTargets.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QmlAdditionalTargetInfo.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QmlConfig.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QmlConfigExtras.cmake \
@@ -100,9 +147,16 @@ core_math_autogen/timestamp: \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QmlDependencies.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QmlFindQmlscInternal.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QmlMacros.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QmlPlugins.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QmlTargets-none.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QmlTargets.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6Qml/Qt6QmlVersionlessTargets.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6QmlIntegration/Qt6QmlIntegrationAdditionalTargetInfo.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6QmlIntegration/Qt6QmlIntegrationConfig.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6QmlIntegration/Qt6QmlIntegrationConfigVersion.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6QmlIntegration/Qt6QmlIntegrationConfigVersionImpl.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6QmlIntegration/Qt6QmlIntegrationTargets.cmake \
+	/usr/lib/x86_64-linux-gnu/cmake/Qt6QmlIntegration/Qt6QmlIntegrationVersionlessTargets.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6QmlModels/Qt6QmlModelsAdditionalTargetInfo.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6QmlModels/Qt6QmlModelsConfig.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6QmlModels/Qt6QmlModelsConfigVersion.cmake \
@@ -127,44 +181,37 @@ core_math_autogen/timestamp: \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6Quick/Qt6QuickTargets-none.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6Quick/Qt6QuickTargets.cmake \
 	/usr/lib/x86_64-linux-gnu/cmake/Qt6Quick/Qt6QuickVersionlessTargets.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/CMakeCXXInformation.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/CMakeCheckCompilerFlagCommonPatterns.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/CMakeCommonLanguageInclude.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/CMakeFindDependencyMacro.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/CMakeGenericSystem.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/CMakeInitializeConfigs.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/CMakeLanguageInformation.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/CMakeParseArguments.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/CMakeSystemSpecificInformation.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/CMakeSystemSpecificInitialize.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/CheckCXXCompilerFlag.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/CheckCXXSourceCompiles.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/CheckIncludeFileCXX.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/CheckLibraryExists.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/Compiler/CMakeCommonCompilerMacros.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/Compiler/GNU-CXX.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/Compiler/GNU.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/FeatureSummary.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/FindOpenGL.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/FindPackageHandleStandardArgs.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/FindPackageMessage.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/FindPkgConfig.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/FindThreads.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/FindVulkan.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/Internal/CMakeCXXLinkerInformation.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/Internal/CMakeCommonLinkerInformation.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/Internal/CheckCompilerFlag.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/Internal/CheckFlagCommonConfig.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/Internal/CheckSourceCompiles.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/Linker/GNU-CXX.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/Linker/GNU.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/MacroAddFileDependencies.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/Platform/Linker/GNU.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/Platform/Linker/Linux-GNU-CXX.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/Platform/Linker/Linux-GNU.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/Platform/Linux-GNU-CXX.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/Platform/Linux-GNU.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/Platform/Linux-Initialize.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/Platform/Linux.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/share/cmake-3.31/Modules/Platform/UnixPaths.cmake \
-	/usr/local/lib/python3.10/dist-packages/cmake/data/bin/cmake
+	/usr/share/cmake-3.28/Modules/CMakeCXXInformation.cmake \
+	/usr/share/cmake-3.28/Modules/CMakeCheckCompilerFlagCommonPatterns.cmake \
+	/usr/share/cmake-3.28/Modules/CMakeCommonLanguageInclude.cmake \
+	/usr/share/cmake-3.28/Modules/CMakeFindDependencyMacro.cmake \
+	/usr/share/cmake-3.28/Modules/CMakeGenericSystem.cmake \
+	/usr/share/cmake-3.28/Modules/CMakeInitializeConfigs.cmake \
+	/usr/share/cmake-3.28/Modules/CMakeLanguageInformation.cmake \
+	/usr/share/cmake-3.28/Modules/CMakeSystemSpecificInformation.cmake \
+	/usr/share/cmake-3.28/Modules/CMakeSystemSpecificInitialize.cmake \
+	/usr/share/cmake-3.28/Modules/CheckCXXCompilerFlag.cmake \
+	/usr/share/cmake-3.28/Modules/CheckCXXSourceCompiles.cmake \
+	/usr/share/cmake-3.28/Modules/CheckIncludeFileCXX.cmake \
+	/usr/share/cmake-3.28/Modules/CheckLibraryExists.cmake \
+	/usr/share/cmake-3.28/Modules/Compiler/CMakeCommonCompilerMacros.cmake \
+	/usr/share/cmake-3.28/Modules/Compiler/GNU-CXX.cmake \
+	/usr/share/cmake-3.28/Modules/Compiler/GNU.cmake \
+	/usr/share/cmake-3.28/Modules/FeatureSummary.cmake \
+	/usr/share/cmake-3.28/Modules/FindOpenGL.cmake \
+	/usr/share/cmake-3.28/Modules/FindPackageHandleStandardArgs.cmake \
+	/usr/share/cmake-3.28/Modules/FindPackageMessage.cmake \
+	/usr/share/cmake-3.28/Modules/FindPkgConfig.cmake \
+	/usr/share/cmake-3.28/Modules/FindThreads.cmake \
+	/usr/share/cmake-3.28/Modules/FindVulkan.cmake \
+	/usr/share/cmake-3.28/Modules/GNUInstallDirs.cmake \
+	/usr/share/cmake-3.28/Modules/Internal/CheckCompilerFlag.cmake \
+	/usr/share/cmake-3.28/Modules/Internal/CheckFlagCommonConfig.cmake \
+	/usr/share/cmake-3.28/Modules/Internal/CheckSourceCompiles.cmake \
+	/usr/share/cmake-3.28/Modules/MacroAddFileDependencies.cmake \
+	/usr/share/cmake-3.28/Modules/Platform/Linux-GNU-CXX.cmake \
+	/usr/share/cmake-3.28/Modules/Platform/Linux-GNU.cmake \
+	/usr/share/cmake-3.28/Modules/Platform/Linux-Initialize.cmake \
+	/usr/share/cmake-3.28/Modules/Platform/Linux.cmake \
+	/usr/share/cmake-3.28/Modules/Platform/UnixPaths.cmake \
+	/usr/bin/cmake
