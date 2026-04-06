@@ -78,12 +78,7 @@ The project uses the **Nord Palette** for reduced eye strain and high readabilit
 
 ## 📅 Roadmap
 
-* [x] Matrix Engine Integration
-* [x] Interactive Graphing Viewport
-* [ ] **Next:** Modular Component Refactoring
-* [ ] Determinant & Transpose Logic
-* [ ] List Processing (L1 - L6)
-* [ ] Program Scripting Mode
+See [ROADMAP.md](ROADMAP.md) for the full feature ledger, organized by area with status markers. Known bugs are tracked in [BUGS.md](BUGS.md); proposed code-quality improvements in [IMPROVEMENTS.md](IMPROVEMENTS.md).
 
 ---
 

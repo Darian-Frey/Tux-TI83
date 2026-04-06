@@ -224,3 +224,41 @@ roadmap work easier — apply the same rule:
 3. This is the dual of the bug workflow: bugs are things that are *broken*,
    improvements are things that *work but could be better*. Both deserve
    transparency before action.
+
+## Project Ledger Maintenance
+
+Tux-TI83 has three living catalogue files that together form the project's
+complete ledger:
+
+| File | Tracks |
+|---|---|
+| [ROADMAP.md](ROADMAP.md) | Features and capabilities — what to build, organised by area |
+| [BUGS.md](BUGS.md) | Things that are broken |
+| [IMPROVEMENTS.md](IMPROVEMENTS.md) | Things that work but could be better |
+
+These files **must** be kept in sync with the actual state of the code as
+work progresses. Drift between code and ledger makes the project lose
+track of itself. Specifically:
+
+1. **When you start work on a feature**, move its [ROADMAP.md](ROADMAP.md)
+   entry from 📅/🔜 to 🚧.
+2. **When you finish a feature**, move it from 🚧 to ✅. Note any caveats
+   inline (e.g. "engine done, UI exposure pending"). If a whole phase is
+   complete, note the date in the phase header.
+3. **When the user adds a feature request**, add it to
+   [ROADMAP.md](ROADMAP.md) as 📅 (or 🔜 if it's the immediate next step).
+4. **When you find a bug**, log it in [BUGS.md](BUGS.md) per the Bug
+   Discovery Workflow above.
+5. **When you fix a bug**, move it to the Fixed section of
+   [BUGS.md](BUGS.md) with the date and a brief note about the fix.
+6. **When you notice an improvement opportunity**, log it in
+   [IMPROVEMENTS.md](IMPROVEMENTS.md) per the Improvement Workflow above.
+7. **When you apply an improvement**, move it to the Applied section.
+8. **Cross-reference between files when relevant.** A ROADMAP item that's
+   blocked by a bug should link to the bug entry. An improvement that
+   would close a bug should mention it. The goal is one coherent ledger,
+   not three disconnected files.
+
+These updates are not optional housekeeping — they're part of any change.
+If you mark a step done in a chat response without updating the
+corresponding entries in these files, the ledger is already drifting.

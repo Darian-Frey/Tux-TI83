@@ -42,6 +42,59 @@ ApplicationWindow {
         anchors.fill: parent
         anchors.margins: 14
         spacing: 10
+        focus: true
+
+        // ── Keyboard shortcuts (CLAUDE.md key map, literal spec) ──
+        // Routes physical keystrokes through the same `processInput`
+        // entry point the on-screen keys use, so the controller's state
+        // machine handles them identically.
+        //
+        // Modified events (Ctrl/Alt/Meta) are passed through unchanged
+        // so future copy/paste / shortcut handling stays available.
+        // Bare-letter shortcuts (s/c/t/l/n/r/p) are unconditional — see
+        // IMP-003 for the eventual ALPHA-modifier gate.
+        Keys.onPressed: function(event) {
+            if (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))
+                return
+
+            // Special keys (handled by Qt key code, not by text)
+            switch (event.key) {
+            case Qt.Key_Return:
+            case Qt.Key_Enter:
+            case Qt.Key_Equal:
+                uiController.processInput("ENTER")
+                event.accepted = true
+                return
+            case Qt.Key_Backspace:
+                uiController.processInput("DEL")
+                event.accepted = true
+                return
+            case Qt.Key_Escape:
+                uiController.processInput("C")
+                event.accepted = true
+                return
+            }
+
+            // Printable characters routed by event.text. Using text
+            // (not key code) keeps the mapping layout-agnostic — Shift,
+            // numpad, and non-US layouts all just work.
+            if (event.text.length === 0)
+                return
+            const ch = event.text.charAt(0)
+            const map = {
+                "0": "0", "1": "1", "2": "2", "3": "3", "4": "4",
+                "5": "5", "6": "6", "7": "7", "8": "8", "9": "9",
+                ".": ".",
+                "+": "+", "-": "−", "*": "×", "/": "÷",
+                "^": "^", "(": "(", ")": ")",
+                "s": "sin", "c": "cos", "t": "tan",
+                "l": "log", "n": "ln", "r": "√", "p": "π"
+            }
+            if (map.hasOwnProperty(ch)) {
+                uiController.processInput(map[ch])
+                event.accepted = true
+            }
+        }
 
         // ── 1. Header strip ─────────────────────────────
         RowLayout {
