@@ -4,7 +4,6 @@ A high-performance, graph-addressable TI-83 emulator/calculator hybrid built wit
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Build](https://img.shields.io/badge/build-passing-brightgreen.svg)
-![Protocol](https://img.shields.io/badge/protocol-SCHEMA__V5-blueviolet)
 
 ## 🚀 Overview
 
