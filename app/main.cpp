@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
     // EXPLICIT LINK: Register the controller BEFORE loading the file
     engine.rootContext()->setContextProperty("uiController", &uiController);
     
-    const QUrl url("qrc:/graph_ui/qml/Main.qml");
+    const QUrl url("qrc:/App/Main.qml");
     
     QObject::connect(&engine, &QQmlApplicationEngine::warnings, [](const QList<QQmlError> &warnings) {
         for (const auto &error : warnings) {

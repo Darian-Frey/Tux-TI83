@@ -31,3 +31,16 @@ qt_add_resources(tux_ti83 "qml"
     FILES
         "graph_ui/qml/Main.qml"
 )
+
+# App-layer QML (Style singleton lives here; UI redesign components will be added)
+qt_add_resources(tux_ti83 "app_qml"
+    PREFIX "/App"
+    BASE "app/qml"
+    FILES
+        "app/qml/qmldir"
+        "app/qml/Style.qml"
+        "app/qml/Main.qml"
+        "app/qml/components/CalcKey.qml"
+        "app/qml/components/Display.qml"
+        "app/qml/components/SoftKeyRow.qml"
+)

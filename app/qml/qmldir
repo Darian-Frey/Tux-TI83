@@ -1,0 +1,5 @@
+module App
+singleton Style 1.0 Style.qml
+CalcKey 1.0 components/CalcKey.qml
+Display 1.0 components/Display.qml
+SoftKeyRow 1.0 components/SoftKeyRow.qml

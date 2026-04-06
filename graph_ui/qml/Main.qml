@@ -214,7 +214,17 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         color: "white"
                         background: Rectangle { color: "#2E3440"; radius: 4 }
-                        onEditingFinished: { uiController[modelData.p] = parseFloat(text) }
+                        onEditingFinished: {
+                            // BUG-001 fix: reject non-finite parses rather than
+                            // silently writing NaN into the viewport bounds (which
+                            // would break downstream graph rendering and zoom math).
+                            var v = parseFloat(text)
+                            if (Number.isFinite(v)) {
+                                uiController[modelData.p] = v
+                            } else {
+                                text = uiController[modelData.p].toFixed(2)
+                            }
+                        }
                     }
                 }
             }

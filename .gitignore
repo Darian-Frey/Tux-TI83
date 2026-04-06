@@ -30,5 +30,14 @@ ui_*.h
 *~
 .DS_Store
 
+# clangd / language-server caches
+.cache/
+.clangd/
+compile_commands.json
+
+# Qt compile caches (sometimes leak outside build/)
+*.qmlc
+*.jsc
+
 # Logs
 *.log
