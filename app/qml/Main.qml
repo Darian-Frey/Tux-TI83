@@ -6,7 +6,7 @@ import "."
 ApplicationWindow {
     id: root
     visible: true
-    width: 420
+    width: 720
     height: 760
     title: "Tux-TI83"
     color: Style.bgShell
@@ -36,12 +36,11 @@ ApplicationWindow {
     }
 
     // ─────────────────────────────────────────────────────
-    // Layout
+    // Layout — calculator column on the left, history on the right.
     // ─────────────────────────────────────────────────────
-    ColumnLayout {
+    RowLayout {
         anchors.fill: parent
-        anchors.margins: 14
-        spacing: 10
+        spacing: 0
         focus: true
 
         // ── Keyboard shortcuts (CLAUDE.md key map, literal spec) ──
@@ -96,6 +95,16 @@ ApplicationWindow {
             }
         }
 
+        // ── Calculator column ───────────────────────────
+        Item {
+            Layout.preferredWidth: 420
+            Layout.fillHeight: true
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 14
+                spacing: 10
+
         // ── 1. Header strip ─────────────────────────────
         RowLayout {
             Layout.fillWidth: true
@@ -117,6 +126,11 @@ ApplicationWindow {
             }
         }
 
+        // ── Active-function selector (Y1 / Y2 / Y3) ─────
+        FunctionSelector {
+            Layout.fillWidth: true
+        }
+
         // ── 2. LCD display panel ────────────────────────
         Display {
             Layout.fillWidth: true
@@ -131,11 +145,32 @@ ApplicationWindow {
         // ── 3. Soft-key row ─────────────────────────────
         SoftKeyRow {
             onPressed: function(label) {
-                // TODO: wire Y= / WINDOW / ZOOM / TRACE / GRAPH when graph
-                // mode is reintroduced. The controller has no soft-key
-                // vocabulary yet, so all labels are no-op for now.
+                if (label === "WINDOW") {
+                    windowPopup.open()
+                } else if (label === "GRAPH") {
+                    if (!uiController.isGraphMode)
+                        uiController.toggleGraphMode()
+                } else if (label === "Y=") {
+                    if (uiController.isGraphMode)
+                        uiController.toggleGraphMode()
+                }
+                // TODO: ZOOM and TRACE remain no-op until those features
+                // land (zoom menu, trace cursor, etc.)
             }
         }
+
+        // ── Mode switcher: keypad ↔ graph ────────────────
+        // The bottom half of the calculator column swaps between the
+        // keypad sections (page 0) and the graph canvas (page 1).
+        // Toggled by the GRAPH / Y= soft keys above.
+        StackLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            currentIndex: uiController.isGraphMode ? 1 : 0
+
+            // ── Page 0: keypad (CONTROL / SCIENTIFIC / NUMERIC) ──
+            ColumnLayout {
+                spacing: 10
 
         // ── 4. CONTROL section ──────────────────────────
         SectionHeader { label: "CONTROL" }
@@ -170,7 +205,7 @@ ApplicationWindow {
             CalcKey { label: "ln(";   keyType: "function"; onPressed: uiController.processInput("ln")   }
             CalcKey { label: "log(";  keyType: "function"; onPressed: uiController.processInput("log")  }
             CalcKey { label: "π";     keyType: "function"; onPressed: uiController.processInput("π")    }
-            Item { Layout.fillWidth: true; Layout.preferredHeight: Style.keyHeight }  // filler
+            CalcKey { label: "MATRX"; keyType: "function"; onPressed: matrixPopup.open() }
         }
 
         // ── 6. NUMERIC section ──────────────────────────
@@ -199,7 +234,7 @@ ApplicationWindow {
             CalcKey { label: "4";  keyType: "numeric"; onPressed: uiController.processInput("4") }
             CalcKey { label: "5";  keyType: "numeric"; onPressed: uiController.processInput("5") }
             CalcKey { label: "6";  keyType: "numeric"; onPressed: uiController.processInput("6") }
-            CalcKey { label: "x²"; keyType: "function"; onPressed: { /* TODO: x² insertion */ } }
+            CalcKey { label: "x²"; keyType: "function"; onPressed: { uiController.processInput("^"); uiController.processInput("2") } }
             CalcKey { label: "−";  keyType: "operator"; onPressed: uiController.processInput("−") }
 
             // Row 4
@@ -222,5 +257,27 @@ ApplicationWindow {
         }
 
         Item { Layout.fillHeight: true }
+            }
+
+            // ── Page 1: graph canvas ─────────────────────
+            GraphCanvas { }
+        }
+            }
+        }
+
+        // ── History side panel ──────────────────────────
+        HistoryPane {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+        }
+    }
+
+    // ── Modal popups (overlay layer) ────────────────────
+    WindowPopup {
+        id: windowPopup
+    }
+
+    MatrixPopup {
+        id: matrixPopup
     }
 }

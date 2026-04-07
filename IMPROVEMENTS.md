@@ -29,6 +29,53 @@ Each entry uses this template:
 
 ## Suggested
 
+### IMP-007: MatrixPopup EDIT tab doesn't read existing values back
+- **Status:** suggested
+- **Found:** 2026-04-07 (Phase A — matrix editor reintegration)
+- **Location:** [app/qml/components/MatrixPopup.qml](app/qml/components/MatrixPopup.qml) (EDIT tab GridLayout)
+- **Effort:** medium
+- **Description:** When the user opens the matrix editor and switches to
+  the EDIT tab, the nine TextFields are always empty (placeholder `0`).
+  If `[A]` already has values stored in the registry, they're not shown.
+  Users editing an existing matrix have to retype every value, and any
+  field they leave blank gets saved as `0` — silently overwriting
+  previous data. This matches the legacy popup behaviour but it's a
+  pretty rough UX.
+- **Proposal:** Two-step:
+  1. Add a `Q_INVOKABLE QVariantList getMatrix(QString name)` getter on
+     `UIController` that returns the current matrix data for the named
+     registry entry (or empty if undefined).
+  2. In `MatrixPopup`, populate the TextFields from that getter when the
+     EDIT tab becomes visible (or when the popup opens).
+- **Trade-offs:** Requires a small controller addition. No risk to the
+  math engine — the registry is already exposed, just needs a typed
+  getter.
+- **Notes:** Pairs naturally with [IMP-008](IMPROVEMENTS.md) (matrix
+  selector) and the planned variable-dimensions work for the matrix
+  editor.
+
+### IMP-008: MatrixPopup EDIT tab is hardcoded to `[A]` and 3×3
+- **Status:** suggested
+- **Found:** 2026-04-07 (Phase A — matrix editor reintegration)
+- **Location:** [app/qml/components/MatrixPopup.qml](app/qml/components/MatrixPopup.qml) (EDIT tab; the SAVE button hardcodes `"[A]"` and `3, 3`)
+- **Effort:** medium
+- **Description:** The EDIT tab can only edit `[A]`, and only at 3×3.
+  This was true of the legacy popup too. Real TI-83 lets you edit any of
+  the matrices `[A]`–`[J]` at any dimensions up to 99×99 (memory
+  permitting). The current UI offers no way to edit `[B]`, `[C]`, or
+  larger matrices.
+- **Proposal:** Add two new controls to the top of the EDIT tab:
+  1. A matrix selector (dropdown or row of small CalcKeys: `[A] [B] [C]`)
+  2. Two SpinBox / numeric fields for rows and columns
+  When the selector or dimensions change, regenerate the GridLayout's
+  Repeater model. The SAVE button uses the currently selected matrix
+  name and dimensions instead of hardcoded values.
+- **Trade-offs:** Adds a chunk of UI logic. Worth doing once the new
+  matrix vocabulary (transpose, inverse, rref) starts landing on
+  ROADMAP, since users will want to manipulate more than just `[A]`.
+- **Notes:** Strongly pairs with [IMP-007](IMPROVEMENTS.md). Both should
+  ship together as a single "matrix editor v2" pass.
+
 ### IMP-004: `Token::Num0` doubles as the "numeric literal" sentinel
 - **Status:** suggested
 - **Found:** 2026-04-06 (post-Step 6 spot-check of `core_math/`)
@@ -77,27 +124,6 @@ Each entry uses this template:
   [ROADMAP.md](ROADMAP.md) as a numeric-core item. If we don't, delete
   the enum value.
 
-### IMP-006: `CalculationResult.error_message` is never propagated to the display
-- **Status:** suggested
-- **Found:** 2026-04-06 (post-Step 6 spot-check)
-- **Location:** [core_math/src/core_math.cpp](core_math/src/core_math.cpp) sets specific error messages ("Empty", "Type Error", "Dim Mismatch", "Undefined Matrix"); [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp) `evaluate()` ignores `result.error_message` and unconditionally sets `currentStr = "ERR:SYNTAX"` on failure.
-- **Effort:** small
-- **Description:** The math engine already classifies several failure
-  modes by string, but the UI flattens every failure to `ERR:SYNTAX`.
-  Real TI-83 shows specific errors: `ERR:SYNTAX`, `ERR:DOMAIN`,
-  `ERR:DIVIDE BY 0`, `ERR:INVALID DIM`, `ERR:UNDEFINED`,
-  `ERR:DATA TYPE`, etc.
-- **Proposal:** In `UIController::evaluate()`, switch on
-  `result.error_message` and pick a display string accordingly:
-  `"Type Error"` → `"ERR:DATA TYPE"`, `"Dim Mismatch"` →
-  `"ERR:INVALID DIM"`, `"Undefined Matrix"` → `"ERR:UNDEFINED"`,
-  empty/`"Empty"`/`"Error"` → `"ERR:SYNTAX"` (fallback).
-- **Trade-offs:** None worth noting. Adds ~10 lines.
-- **Notes:** Pairs naturally with [BUG-005, BUG-006, BUG-007](BUGS.md),
-  since those need to set `error_message` in the first place. Doing
-  this IMP alone isn't useful until at least one of those bugs sets
-  the field.
-
 ### IMP-003: Add an ALPHA-modifier gate to single-letter keyboard shortcuts
 - **Status:** suggested
 - **Found:** 2026-04-06 (UI redesign session, before Step 6)
@@ -133,6 +159,41 @@ Each entry uses this template:
 ---
 
 ## Applied
+
+### IMP-009: Remove unused `<algorithm>` include from core_math.cpp
+- **Status:** applied (2026-04-07)
+- **Location:** [core_math/src/core_math.cpp:2](core_math/src/core_math.cpp#L2)
+- **Effort:** trivial
+- **Description:** clangd flagged `#include <algorithm>` as unused. A
+  grep for any `std::` algorithm function (min, max, sort, find, copy,
+  fill, count, any_of, all_of, none_of, reverse, swap, transform,
+  accumulate, for_each) confirmed nothing in the file uses it.
+- **Change:** Removed the line. Build still passes — the include was
+  pure dead weight, possibly left over from an earlier version.
+- **Notes:** Found by an IDE diagnostic during the BUG-010/011 fix
+  pass. Pre-existing dead code, not introduced by any recent edit.
+
+### IMP-006: Propagate `CalculationResult.error_message` to the display
+- **Status:** applied (2026-04-07, Group A engine cleanup)
+- **Location:** [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp) (`evaluate()` error branch)
+- **Effort:** small
+- **Description:** Before this change the UI flattened every failure to
+  `ERR:SYNTAX`, even though the engine already classified failures by
+  string in `CalculationResult.error_message`. Users couldn't tell
+  whether their input was syntactically wrong or semantically out of
+  domain.
+- **Change:** Added a switch in `UIController::evaluate()` mapping the
+  engine's classification strings to TI-83-style display labels:
+  - `"DIVIDE BY 0"` → `ERR:DIVIDE BY 0`
+  - `"NONREAL ANS"` → `ERR:NONREAL ANS`
+  - `"DOMAIN"` → `ERR:DOMAIN`
+  - `"Type Error"` → `ERR:DATA TYPE`
+  - `"Dim Mismatch"` → `ERR:INVALID DIM`
+  - `"Undefined Matrix"` → `ERR:UNDEFINED`
+  - anything else → `ERR:SYNTAX` (fallback)
+- **Notes:** Landed alongside the BUG-004/5/6/7/8/9 fixes in the same
+  Group A engine cleanup pass. The bug fixes set the new error strings
+  on the engine side; this improvement plumbs them through to the UI.
 
 ### IMP-001: Unify the forward and reverse token maps in UIController
 - **Status:** applied (2026-04-06, post-Step 4)

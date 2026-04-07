@@ -1,5 +1,4 @@
 #include "capsules/capsule_math.hpp"
-#include <algorithm>
 #include <cmath>
 #include <map>
 #include <stack>
@@ -110,6 +109,16 @@ Matrix matrixMul(const Matrix &a, const Matrix &b) {
   return res;
 }
 
+// BUG-008 fix: matrix-matrix subtraction helper. Mirrors matrixAdd shape.
+// Caller is responsible for the dimension check (the Sub branch in the
+// evaluator does this and returns a Dim Mismatch error before invoking).
+Matrix matrixSub(const Matrix &a, const Matrix &b) {
+  Matrix res = a;
+  for (size_t i = 0; i < a.data.size(); ++i)
+    res.data[i] -= b.data[i];
+  return res;
+}
+
 // --- CORE EVALUATOR ---
 
 CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
@@ -164,10 +173,21 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
         opStack.pop();
       }
     } else {
-      while (!opStack.empty() && opStack.top() != Token::LeftParen &&
-             EOSPrecedence::precedence(opStack.top()) >=
-                 EOSPrecedence::precedence(t)) {
-        rpn.push_back({opStack.top(), 0.0});
+      // BUG-009 fix: respect right-associativity in the precedence loop.
+      // Left-associative operators pop the stack on `>=`; right-associative
+      // operators (currently just Pow) pop on strict `>`. Before this fix
+      // `is_left_associative` was declared but never called, and `2^3^2`
+      // evaluated as `(2^3)^2 = 64` instead of `2^(3^2) = 512`.
+      while (!opStack.empty() && opStack.top() != Token::LeftParen) {
+        Token top = opStack.top();
+        int topPrec = EOSPrecedence::precedence(top);
+        int tPrec = EOSPrecedence::precedence(t);
+        bool shouldPop = EOSPrecedence::is_left_associative(top)
+                             ? (topPrec >= tPrec)
+                             : (topPrec > tPrec);
+        if (!shouldPop)
+          break;
+        rpn.push_back({top, 0.0});
         opStack.pop();
       }
       opStack.push(t);
@@ -224,13 +244,34 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
           v = std::cos(v);
         else if (t == Token::Tan)
           v = std::tan(v);
-        else if (t == Token::Sqrt)
-          v = (v >= 0) ? std::sqrt(v) : 0.0;
-        else if (t == Token::Log)
-          v = (v > 0) ? std::log10(v) : -HUGE_VAL;
-        else if (t == Token::Ln)
-          v = (v > 0) ? std::log(v) : -HUGE_VAL;
-        else if (t == Token::Not)
+        else if (t == Token::ASin) {
+          // BUG-004 fix: ASin/ACos/ATan were declared as functions and
+          // accepted by the parser, but the dispatch chain had no
+          // branches — they silently returned the input unchanged.
+          if (v < -1.0 || v > 1.0)
+            return {false, 0.0, {}, false, "DOMAIN"};
+          v = std::asin(v);
+        } else if (t == Token::ACos) {
+          if (v < -1.0 || v > 1.0)
+            return {false, 0.0, {}, false, "DOMAIN"};
+          v = std::acos(v);
+        } else if (t == Token::ATan) {
+          v = std::atan(v); // domain is all reals
+        } else if (t == Token::Sqrt) {
+          // BUG-006 fix: was silently returning 0 for negative input.
+          if (v < 0.0)
+            return {false, 0.0, {}, false, "NONREAL ANS"};
+          v = std::sqrt(v);
+        } else if (t == Token::Log) {
+          // BUG-007 fix: was silently returning -HUGE_VAL for non-positive.
+          if (v <= 0.0)
+            return {false, 0.0, {}, false, "NONREAL ANS"};
+          v = std::log10(v);
+        } else if (t == Token::Ln) {
+          if (v <= 0.0)
+            return {false, 0.0, {}, false, "NONREAL ANS"};
+          v = std::log(v);
+        } else if (t == Token::Not)
           v = toB(v) ? 0.0 : 1.0;
         stack.push({false, v, {}});
       }
@@ -243,21 +284,36 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
       stack.pop();
 
       if (t == Token::Add) {
-        if (a.isMat && b.isMat)
+        if (a.isMat && b.isMat) {
+          // BUG-010 fix: matrixAdd silently returned an empty Matrix on
+          // dimension mismatch, which then got pushed as a "result" with
+          // rows = cols = 0. Now we check dims here and propagate.
+          if (a.mat.rows != b.mat.rows || a.mat.cols != b.mat.cols)
+            return {false, 0.0, {}, false, "Dim Mismatch"};
           stack.push({true, 0.0, matrixAdd(a.mat, b.mat)});
-        else if (!a.isMat && !b.isMat)
+        } else if (!a.isMat && !b.isMat)
           stack.push({false, a.val + b.val, {}});
         else
           return {false, 0.0, {}, false, "Type Error"};
       } else if (t == Token::Sub) {
-        if (!a.isMat && !b.isMat)
+        // BUG-008 fix: matrix-matrix subtraction was missing entirely.
+        if (a.isMat && b.isMat) {
+          if (a.mat.rows != b.mat.rows || a.mat.cols != b.mat.cols)
+            return {false, 0.0, {}, false, "Dim Mismatch"};
+          stack.push({true, 0.0, matrixSub(a.mat, b.mat)});
+        } else if (!a.isMat && !b.isMat)
           stack.push({false, a.val - b.val, {}});
         else
           return {false, 0.0, {}, false, "Type Error"};
       } else if (t == Token::Mul) {
-        if (a.isMat && b.isMat)
+        if (a.isMat && b.isMat) {
+          // BUG-011 fix: matrixMul silently returned an empty Matrix when
+          // a.cols != b.rows. Now we check the conformability rule here
+          // and return ERR:INVALID DIM via IMP-006's propagation.
+          if (a.mat.cols != b.mat.rows)
+            return {false, 0.0, {}, false, "Dim Mismatch"};
           stack.push({true, 0.0, matrixMul(a.mat, b.mat)});
-        else if (a.isMat && !b.isMat) {
+        } else if (a.isMat && !b.isMat) {
           Matrix m = a.mat;
           for (auto &v : m.data)
             v *= b.val;
@@ -270,9 +326,12 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
         } else
           stack.push({false, a.val * b.val, {}});
       } else if (t == Token::Div) {
-        if (!a.isMat && !b.isMat)
-          stack.push({false, b.val == 0 ? 0.0 : a.val / b.val, {}});
-        else
+        if (!a.isMat && !b.isMat) {
+          // BUG-005 fix: division by zero was silently returning 0.
+          if (b.val == 0.0)
+            return {false, 0.0, {}, false, "DIVIDE BY 0"};
+          stack.push({false, a.val / b.val, {}});
+        } else
           return {false, 0.0, {}, false, "Type Error"};
       } else if (t == Token::Pow) {
         if (!a.isMat && !b.isMat)

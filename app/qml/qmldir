@@ -3,3 +3,8 @@ singleton Style 1.0 Style.qml
 CalcKey 1.0 components/CalcKey.qml
 Display 1.0 components/Display.qml
 SoftKeyRow 1.0 components/SoftKeyRow.qml
+HistoryPane 1.0 components/HistoryPane.qml
+WindowPopup 1.0 components/WindowPopup.qml
+MatrixPopup 1.0 components/MatrixPopup.qml
+FunctionSelector 1.0 components/FunctionSelector.qml
+GraphCanvas 1.0 components/GraphCanvas.qml

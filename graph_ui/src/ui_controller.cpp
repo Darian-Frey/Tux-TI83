@@ -208,7 +208,26 @@ void UIController::evaluate() {
     }
     m_displayState = Evaluated;
   } else {
-    currentStr = "ERR:SYNTAX";
+    // IMP-006: Map the engine's `error_message` classification to a
+    // TI-83-style display string. The engine already categorises
+    // failures by string in CalculationResult.error_message; we just
+    // pick the conventional ERR:* label here. Anything unrecognised
+    // falls through to ERR:SYNTAX as the safe default.
+    QString msg = QString::fromStdString(result.error_message);
+    if (msg == "DIVIDE BY 0")
+      currentStr = "ERR:DIVIDE BY 0";
+    else if (msg == "NONREAL ANS")
+      currentStr = "ERR:NONREAL ANS";
+    else if (msg == "DOMAIN")
+      currentStr = "ERR:DOMAIN";
+    else if (msg == "Type Error")
+      currentStr = "ERR:DATA TYPE";
+    else if (msg == "Dim Mismatch")
+      currentStr = "ERR:INVALID DIM";
+    else if (msg == "Undefined Matrix")
+      currentStr = "ERR:UNDEFINED";
+    else
+      currentStr = "ERR:SYNTAX";
     m_displayState = Error;
   }
   entry += currentStr;

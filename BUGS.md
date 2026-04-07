@@ -23,101 +23,28 @@ Each entry uses this template:
 
 ## Open
 
-### BUG-004: `asin` / `acos` / `atan` are no-ops in the evaluator
+### BUG-012: Graph curve colours can shift when some Y slots are empty
 - **Status:** open
-- **Found:** 2026-04-06 (post-Step 6 spot-check of `core_math/`)
-- **Location:** [core_math/src/core_math.cpp:217-235](core_math/src/core_math.cpp#L217-L235) (the unary-function eval chain in `MathStateMachine::evaluate`)
-- **Severity:** medium
-- **Description:** `EOSPrecedence::is_function` recognises `Token::ASin`,
-  `Token::ACos`, `Token::ATan` as functions, and the controller's token
-  map already accepts the input strings `"asin"`, `"acos"`, `"atan"`. But
-  the unary-function evaluation chain only branches on Sin, Cos, Tan,
-  Sqrt, Log, Ln, Not (and Det for the matrix path). For ASin/ACos/ATan,
-  the function fires (popping its argument from the operand stack), no
-  transformation matches, and the unmodified value is pushed back.
-- **Reproduction:** `asin(0.5)` returns `0.5` instead of `≈0.524`. Hard
-  to trigger from the new UI directly because there are no inverse-trig
-  CalcKeys yet, but reachable via the controller's existing token map.
-- **Notes:** Trivial fix: add three else-if branches mirroring sin/cos/tan
-  with `std::asin`, `std::acos`, `std::atan`. Domain checks (asin/acos
-  require [-1, 1]) need to set `error_message` so the UI can show a
-  meaningful error — see [IMP-006](IMPROVEMENTS.md) for the related
-  error-propagation work.
-
-### BUG-005: Division by zero silently returns 0
-- **Status:** open
-- **Found:** 2026-04-06 (post-Step 6 spot-check)
-- **Location:** [core_math/src/core_math.cpp:272-274](core_math/src/core_math.cpp#L272-L274)
-- **Severity:** medium
-- **Description:** The `Token::Div` branch evaluates
-  `b.val == 0 ? 0.0 : a.val / b.val`. When the divisor is zero the
-  expression silently produces `0` with `success = true`. A real TI-83
-  shows `ERR:DIVIDE BY 0`; ours shows nothing — the user can't
-  distinguish `5÷0` from `0÷5`.
-- **Reproduction:** `5÷0` ENTER → display shows `0` with no error.
-- **Notes:** Should return `CalculationResult{success=false,
-  error_message="DIVIDE BY 0"}`. Pairs with [IMP-006](IMPROVEMENTS.md)
-  to actually surface the message in the UI.
-
-### BUG-006: `√` of a negative silently returns 0
-- **Status:** open
-- **Found:** 2026-04-06 (post-Step 6 spot-check)
-- **Location:** [core_math/src/core_math.cpp:227-228](core_math/src/core_math.cpp#L227-L228)
-- **Severity:** low
-- **Description:** `(v >= 0) ? std::sqrt(v) : 0.0`. For negative inputs,
-  returns 0 with `success = true` instead of an error. Real TI-83 shows
-  `ERR:NONREAL ANS` (without complex mode enabled).
-- **Reproduction:** `√(-4)` ENTER → display shows `0`.
-- **Notes:** Same fix shape as BUG-005: return `success=false` with a
-  domain error. Pairs with [IMP-006](IMPROVEMENTS.md).
-
-### BUG-007: `log` and `ln` of non-positive silently return `-HUGE_VAL`
-- **Status:** open
-- **Found:** 2026-04-06 (post-Step 6 spot-check)
-- **Location:** [core_math/src/core_math.cpp:229-232](core_math/src/core_math.cpp#L229-L232)
-- **Severity:** low
-- **Description:** `(v > 0) ? std::log10(v) : -HUGE_VAL` (and similarly
-  for `Ln`). For inputs ≤ 0, returns the C macro `-HUGE_VAL` with
-  `success = true`. The huge negative number then formats as scientific
-  notation, totally confusing the user.
-- **Reproduction:** `log(-5)` ENTER → display shows a giant negative
-  number.
-- **Notes:** Same fix shape as BUG-005/006. Pairs with
-  [IMP-006](IMPROVEMENTS.md).
-
-### BUG-008: Matrix subtraction not supported
-- **Status:** open
-- **Found:** 2026-04-06 (post-Step 6 spot-check)
-- **Location:** [core_math/src/core_math.cpp:252-256](core_math/src/core_math.cpp#L252-L256)
-- **Severity:** low (feature gap, not a regression)
-- **Description:** The `Token::Sub` branch only handles scalar-scalar
-  subtraction. For two matrices, it falls through to `Type Error`.
-  Real TI-83 supports element-wise matrix subtraction.
-- **Reproduction:** Define `[A]` and `[B]` as same-dimension matrices,
-  evaluate `[A]−[B]` ENTER → ERR.
-- **Notes:** Trivial — mirror the existing `matrixAdd` helper into a
-  `matrixSub`, then add an `a.isMat && b.isMat` branch in the Sub case.
-  Belongs in the same matrix-vocabulary work as transpose/inverse
-  exposure.
-
-### BUG-009: Chained `^` evaluates left-associatively (`2^3^2 = 64`, should be `512`)
-- **Status:** open
-- **Found:** 2026-04-06 (post-Step 6 spot-check)
-- **Location:** [core_math/src/core_math.cpp:51](core_math/src/core_math.cpp#L51) (`is_left_associative`) and [core_math/src/core_math.cpp:166-174](core_math/src/core_math.cpp#L166-L174) (the shunting-yard precedence loop)
-- **Severity:** medium
-- **Description:** `EOSPrecedence::is_left_associative` is declared and
-  defined to return `false` for `Pow` and `true` for everything else,
-  but it's **never called anywhere in the codebase**. The shunting-yard
-  precedence loop uses `precedence(opStack.top()) >= precedence(t)`
-  unconditionally, which is correct for left-associative operators but
-  wrong for `Pow` (which is right-associative). Result: `2^3^2`
-  evaluates as `(2^3)^2 = 64` instead of `2^(3^2) = 512`.
-- **Reproduction:** `2^3^2` ENTER → returns `64`. Real TI-83 returns `512`.
-- **Notes:** Wire `is_left_associative` into the precedence loop: use
-  `>` instead of `>=` when the top-of-stack operator is right-
-  associative. This was originally going to be logged as a dead-code
-  improvement (since `is_left_associative` is unused), but the
-  underlying issue is a real evaluation bug, so it's logged here.
+- **Found:** 2026-04-07 (Phase A — graph mode reintegration)
+- **Location:** [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp) `getMultiGraphPoints()` (the `continue` on empty buffers) and [app/qml/components/GraphCanvas.qml](app/qml/components/GraphCanvas.qml) (the `fnColors[f % length]` indexing)
+- **Severity:** low (cosmetic / confusing, not incorrect math)
+- **Description:** `getMultiGraphPoints()` skips empty function buffers
+  with a `continue`, so the returned list is compacted. The QML canvas
+  iterates the result and uses the result index for colour selection.
+  As a result, if Y1 is empty and Y3 is defined, Y3's curve renders in
+  Y1's colour (blue), making it impossible to tell which function is
+  which when slots are non-contiguous.
+- **Reproduction:** Set Y1 empty, set Y3 to `X^2`, switch to graph mode.
+  The parabola renders in Y1's blue colour even though it's stored in
+  Y3.
+- **Notes:** Fix has two reasonable shapes:
+  1. Make `getMultiGraphPoints()` return a fixed-length list with empty
+     entries for empty buffers, preserving function index. (Small
+     controller change.)
+  2. Have `getMultiGraphPoints()` return tagged points
+     (`{index, points}` pairs) so QML knows which Y is which.
+  Option 1 is the smaller change. Pre-existing in the legacy UI; not a
+  regression introduced by the reintegration.
 
 ---
 
@@ -176,6 +103,111 @@ Each entry uses this template:
   Reintroducing the operator-appends behaviour would require encoding the
   result back into the token buffer (fragile for fractions, matrices), so
   it's deferred until we have a need or a clean approach.
+
+### BUG-004: `asin` / `acos` / `atan` are no-ops in the evaluator
+- **Status:** fixed (2026-04-07, Group A engine cleanup)
+- **Location:** [core_math/src/core_math.cpp](core_math/src/core_math.cpp) (function-dispatch chain in `MathStateMachine::evaluate`)
+- **Severity:** medium
+- **Description:** `is_function` recognised ASin/ACos/ATan but the
+  unary-function dispatch chain had no else-if branches for them. The
+  function fired, popped its argument, and pushed it back unchanged.
+  `asin(0.5)` returned `0.5` instead of `≈0.524`.
+- **Fix:** Added explicit branches for `Token::ASin`, `Token::ACos`,
+  `Token::ATan` calling `std::asin`, `std::acos`, `std::atan`. ASin
+  and ACos return `DOMAIN` error for inputs outside `[-1, 1]`. ATan
+  accepts all reals. The error string is propagated to the UI as
+  `ERR:DOMAIN` via [IMP-006](IMPROVEMENTS.md).
+
+### BUG-005: Division by zero silently returns 0
+- **Status:** fixed (2026-04-07, Group A engine cleanup)
+- **Location:** [core_math/src/core_math.cpp](core_math/src/core_math.cpp) (`Token::Div` branch in `MathStateMachine::evaluate`)
+- **Severity:** medium
+- **Description:** The Div branch had `b.val == 0 ? 0.0 : a.val / b.val`,
+  silently masking division-by-zero with a zero result.
+- **Fix:** Now returns `CalculationResult{success=false,
+  error_message="DIVIDE BY 0"}` when the divisor is zero. Surfaced in
+  the UI as `ERR:DIVIDE BY 0` via [IMP-006](IMPROVEMENTS.md).
+
+### BUG-006: `√` of a negative silently returns 0
+- **Status:** fixed (2026-04-07, Group A engine cleanup)
+- **Location:** [core_math/src/core_math.cpp](core_math/src/core_math.cpp) (`Token::Sqrt` branch in the function-dispatch chain)
+- **Severity:** low
+- **Description:** `(v >= 0) ? std::sqrt(v) : 0.0` silently returned 0
+  for negative inputs.
+- **Fix:** Now returns `error_message="NONREAL ANS"` when `v < 0`.
+  Surfaced as `ERR:NONREAL ANS` via [IMP-006](IMPROVEMENTS.md).
+
+### BUG-007: `log` and `ln` of non-positive silently return `-HUGE_VAL`
+- **Status:** fixed (2026-04-07, Group A engine cleanup)
+- **Location:** [core_math/src/core_math.cpp](core_math/src/core_math.cpp) (`Token::Log` and `Token::Ln` branches)
+- **Severity:** low
+- **Description:** `(v > 0) ? std::log10(v) : -HUGE_VAL` (and the same
+  for Ln) silently returned a giant negative number for non-positive
+  inputs, which then formatted as scientific notation in the display.
+- **Fix:** Both branches now return `error_message="NONREAL ANS"` when
+  `v <= 0`. Surfaced as `ERR:NONREAL ANS` via [IMP-006](IMPROVEMENTS.md).
+
+### BUG-008: Matrix subtraction not supported
+- **Status:** fixed (2026-04-07, Group A engine cleanup)
+- **Location:** [core_math/src/core_math.cpp](core_math/src/core_math.cpp) (`Token::Sub` branch + new `matrixSub` helper)
+- **Severity:** low (feature gap)
+- **Description:** The `Sub` branch only handled scalar-scalar
+  subtraction. For two matrices, it fell through to `Type Error`.
+- **Fix:** Added a `matrixSub` helper mirroring `matrixAdd`, plus an
+  `a.isMat && b.isMat` branch in the Sub case that checks dimensions
+  (returning `ERR:INVALID DIM` on mismatch via
+  [IMP-006](IMPROVEMENTS.md)) and pushes the result.
+
+### BUG-010: Matrix addition with mismatched dimensions silently returns an empty matrix
+- **Status:** fixed (2026-04-07, immediately after Group A engine cleanup)
+- **Location:** [core_math/src/core_math.cpp](core_math/src/core_math.cpp) (`Token::Add` branch in `MathStateMachine::evaluate`; `matrixAdd` helper)
+- **Severity:** medium
+- **Description:** When two matrices with mismatched dimensions were
+  added, `matrixAdd` returned an empty `Matrix{}` (rows = cols = 0)
+  rather than signalling an error. The empty matrix was then pushed to
+  the operand stack as a successful "matrix result" and the user saw
+  `[[]]` displayed with no indication that anything had gone wrong.
+- **Reproduction:** Define `[A]` as 2×2 and `[B]` as 3×3 (via the matrix
+  editor), then evaluate `[A]+[B]` → display showed `[[]]`.
+- **Fix:** The `Token::Add` branch now checks
+  `a.mat.rows != b.mat.rows || a.mat.cols != b.mat.cols` before calling
+  `matrixAdd` and returns `error_message="Dim Mismatch"`, which IMP-006
+  surfaces as `ERR:INVALID DIM`. The defensive guard in `matrixAdd`
+  itself is left in place — it's now unreachable but still cheap.
+- **Notes:** Found while reviewing the BUG-008 fix in the same session.
+  Same fix shape, same root pattern: helper returns `{}` on bad input,
+  caller doesn't check, empty result silently propagates.
+
+### BUG-011: Matrix multiplication with non-conformable dimensions silently returns an empty matrix
+- **Status:** fixed (2026-04-07, immediately after Group A engine cleanup)
+- **Location:** [core_math/src/core_math.cpp](core_math/src/core_math.cpp) (`Token::Mul` branch in `MathStateMachine::evaluate`; `matrixMul` helper)
+- **Severity:** medium
+- **Description:** Same shape as BUG-010 but for matrix multiplication.
+  When `a.cols != b.rows` (matrices not conformable for multiplication),
+  `matrixMul` returned an empty `Matrix{}` and the empty result was
+  pushed silently as a success.
+- **Reproduction:** Define `[A]` as 2×3 and `[B]` as 2×3 (not
+  conformable, since `3 != 2`), evaluate `[A]×[B]` → display showed
+  `[[]]`.
+- **Fix:** The `Token::Mul` branch now checks `a.mat.cols != b.mat.rows`
+  before calling `matrixMul` and returns `error_message="Dim Mismatch"`,
+  surfaced as `ERR:INVALID DIM` via IMP-006. The defensive guard in
+  `matrixMul` is left in place.
+- **Notes:** Found alongside BUG-010 in the same review pass. Both
+  fixed together.
+
+### BUG-009: Chained `^` evaluates left-associatively (`2^3^2 = 64`, should be `512`)
+- **Status:** fixed (2026-04-07, Group A engine cleanup)
+- **Location:** [core_math/src/core_math.cpp](core_math/src/core_math.cpp) (the shunting-yard precedence loop)
+- **Severity:** medium
+- **Description:** `is_left_associative` was declared and correctly
+  returned `false` for `Pow`, but the shunting-yard loop never called
+  it — the loop used `>=` unconditionally, treating `Pow` as
+  left-associative. `2^3^2` evaluated to `64` instead of `512`.
+- **Fix:** The precedence loop now consults `is_left_associative` for
+  the top-of-stack operator and uses `>=` for left-associative ops or
+  `>` for right-associative ones. The dead `is_left_associative`
+  function is now actually wired in.
 
 ## Won't Fix / Deferred
 

@@ -25,14 +25,9 @@ target_link_libraries(graph_ui PUBLIC core_math Qt6::Gui Qt6::Qml Qt6::Quick)
 add_executable(tux_ti83 app/main.cpp)
 target_link_libraries(tux_ti83 PRIVATE graph_ui Qt6::Gui Qt6::Qml Qt6::Quick)
 
-# Fixed Resource Mapping: Ensure Main.qml is at the root of the QRC
-qt_add_resources(tux_ti83 "qml"
-    PREFIX "/"
-    FILES
-        "graph_ui/qml/Main.qml"
-)
-
-# App-layer QML (Style singleton lives here; UI redesign components will be added)
+# App-layer QML resources (Style singleton, Main.qml, all UI components).
+# The legacy graph_ui/qml/Main.qml resource block was removed 2026-04-07
+# alongside the file's deletion at the end of Phase A.
 qt_add_resources(tux_ti83 "app_qml"
     PREFIX "/App"
     BASE "app/qml"
@@ -43,4 +38,9 @@ qt_add_resources(tux_ti83 "app_qml"
         "app/qml/components/CalcKey.qml"
         "app/qml/components/Display.qml"
         "app/qml/components/SoftKeyRow.qml"
+        "app/qml/components/HistoryPane.qml"
+        "app/qml/components/WindowPopup.qml"
+        "app/qml/components/MatrixPopup.qml"
+        "app/qml/components/FunctionSelector.qml"
+        "app/qml/components/GraphCanvas.qml"
 )
