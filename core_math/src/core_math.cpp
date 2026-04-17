@@ -7,6 +7,7 @@
 namespace tux_ti83 {
 
 std::map<Token, Matrix> MathStateMachine::matrixRegistry;
+CalculationResult MathStateMachine::lastResult{true, 0.0, {}, false, ""};
 
 int EOSPrecedence::precedence(Token t) {
   switch (t) {
@@ -157,7 +158,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
     if (t == Token::Num0)
       rpn.push_back({t, numericValues[numIdx++]});
     else if ((t >= Token::MatA && t <= Token::MatJ) || t == Token::VarX ||
-             t == Token::Pi || t == Token::E)
+             t == Token::Pi || t == Token::E || t == Token::Ans)
       rpn.push_back({t, 0.0});
     else if (EOSPrecedence::is_function(t) || t == Token::LeftParen)
       opStack.push(t);
@@ -216,7 +217,11 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
       stack.push({false, M_PI, {}});
     else if (t == Token::E)
       stack.push({false, M_E, {}});
-    else if (t >= Token::MatA && t <= Token::MatJ) {
+    else if (t == Token::Ans) {
+      // Recall the last successful evaluation result. Defaults to the
+      // scalar 0 on first use (matches TI-83 power-on state).
+      stack.push({lastResult.isMatrix, lastResult.value, lastResult.matrixValue});
+    } else if (t >= Token::MatA && t <= Token::MatJ) {
       if (matrixRegistry.count(t))
         stack.push({true, 0.0, matrixRegistry[t]});
       else
@@ -371,6 +376,12 @@ std::string MathStateMachine::toFraction(double value, double tolerance) {
   double x = value;
   long long n1 = 1, d1 = 0, n2 = 0, d2 = 1;
   double b = x;
+  // BUG-013 fix: track whether the continued-fraction loop actually
+  // converged within tolerance. Previously the function returned
+  // whatever convergent survived the 10-iteration limit, which for
+  // irrationals (e, π, √(2), ...) produced a misleading near-fraction
+  // like e → 1457/536.
+  bool converged = false;
   for (int i = 0; i < 10; ++i) {
     long long a = std::floor(b);
     long long aux_n = n1;
@@ -379,12 +390,20 @@ std::string MathStateMachine::toFraction(double value, double tolerance) {
     long long aux_d = d1;
     d1 = a * d1 + d2;
     d2 = aux_d;
-    if (std::abs(x - (double)n1 / d1) < tolerance)
+    if (std::abs(x - (double)n1 / d1) < tolerance) {
+      converged = true;
       break;
-    if (std::abs(b - a) < 1.0e-12)
+    }
+    if (std::abs(b - a) < 1.0e-12) {
+      // Continued-fraction expansion terminated exactly (integer or
+      // exact rational). Treat as converged.
+      converged = true;
       break;
+    }
     b = 1.0 / (b - a);
   }
+  if (!converged)
+    return "";
   if (d1 == 1)
     return std::to_string(n1);
   return std::to_string(n1) + "/" + std::to_string(d1);

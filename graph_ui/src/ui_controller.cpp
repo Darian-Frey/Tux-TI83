@@ -43,7 +43,11 @@ constexpr TokenSpec kTokens[] = {
 
     // Constants & variables
     {"π", Token::Pi, "π"},
+    {"e", Token::E,  "e"},
     {"X", Token::VarX, "X"},
+
+    // Last-answer recall
+    {"Ans", Token::Ans, "Ans"},
 
     // Functions — displayStr includes the opening paren
     {"sin",  Token::Sin,  "sin("},
@@ -207,6 +211,10 @@ void UIController::evaluate() {
                                      : QString::fromStdString(fracStr);
     }
     m_displayState = Evaluated;
+    // Remember this result for the next Token::Ans recall. Errors do not
+    // overwrite Ans (matches TI-83 behaviour), so this assignment is
+    // only inside the success branch.
+    MathStateMachine::lastResult = result;
   } else {
     // IMP-006: Map the engine's `error_message` classification to a
     // TI-83-style display string. The engine already categorises

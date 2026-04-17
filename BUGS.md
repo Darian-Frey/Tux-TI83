@@ -196,6 +196,31 @@ Each entry uses this template:
 - **Notes:** Found alongside BUG-010 in the same review pass. Both
   fixed together.
 
+### BUG-013: `toFraction` returns misleading fractions for irrational results
+- **Status:** fixed (2026-04-07, same session it was reported)
+- **Location:** [core_math/src/core_math.cpp](core_math/src/core_math.cpp) `MathStateMachine::toFraction`
+- **Severity:** medium
+- **Description:** `toFraction` uses a continued-fraction algorithm to
+  render scalar results as fractions (`1/3` instead of `0.333...`). The
+  loop ran up to 10 iterations checking for convergence within
+  `tolerance` (1e-9). For exact rationals the check passed and the loop
+  broke early. **But for irrationals, the loop just hit its iteration
+  limit without ever converging — and the function still returned
+  whatever the last convergent was**, treating it as a valid fraction.
+  `e` → `1457/536` (off by ~1.76e-6), `π` and `√(2)` similar.
+- **Reproduction:** Press `e` ENTER. Display showed `1457/536` instead
+  of `2.71828182846`. User reported via screenshot.
+- **Fix:** Added a `converged` flag inside the loop — set to `true`
+  only when the tolerance check passes or the continued-fraction
+  expansion terminates exactly. If the loop exits without convergence,
+  return an empty string so the caller falls back to
+  `QString::number(result.value)` (decimal).
+- **Notes:** Pre-existing since the initial core_math commit but
+  dormant — no key produced an irrational result until the `e`
+  constant landed today. Also retroactively fixes the same
+  misrepresentation for `π`, `√(2)`, and any other irrational scalar
+  output.
+
 ### BUG-009: Chained `^` evaluates left-associatively (`2^3^2 = 64`, should be `512`)
 - **Status:** fixed (2026-04-07, Group A engine cleanup)
 - **Location:** [core_math/src/core_math.cpp](core_math/src/core_math.cpp) (the shunting-yard precedence loop)

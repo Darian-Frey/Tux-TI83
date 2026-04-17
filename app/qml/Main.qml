@@ -205,7 +205,7 @@ ApplicationWindow {
             CalcKey { label: "ln(";   keyType: "function"; onPressed: uiController.processInput("ln")   }
             CalcKey { label: "log(";  keyType: "function"; onPressed: uiController.processInput("log")  }
             CalcKey { label: "π";     keyType: "function"; onPressed: uiController.processInput("π")    }
-            CalcKey { label: "MATRX"; keyType: "function"; onPressed: matrixPopup.open() }
+            CalcKey { label: "e";     keyType: "function"; onPressed: uiController.processInput("e")    }
         }
 
         // ── 6. NUMERIC section ──────────────────────────
@@ -227,7 +227,7 @@ ApplicationWindow {
             CalcKey { label: "7";  keyType: "numeric"; onPressed: uiController.processInput("7") }
             CalcKey { label: "8";  keyType: "numeric"; onPressed: uiController.processInput("8") }
             CalcKey { label: "9";  keyType: "numeric"; onPressed: uiController.processInput("9") }
-            Item { Layout.fillWidth: true; Layout.preferredHeight: Style.keyHeight }  // filler (^ moved to SCIENTIFIC)
+            CalcKey { label: "MATRX"; keyType: "function"; onPressed: matrixPopup.open() }
             CalcKey { label: "×";  keyType: "operator"; onPressed: uiController.processInput("×") }
 
             // Row 3
@@ -241,7 +241,7 @@ ApplicationWindow {
             CalcKey { label: "1";  keyType: "numeric"; onPressed: uiController.processInput("1") }
             CalcKey { label: "2";  keyType: "numeric"; onPressed: uiController.processInput("2") }
             CalcKey { label: "3";  keyType: "numeric"; onPressed: uiController.processInput("3") }
-            CalcKey { label: "Ans"; keyType: "function"; onPressed: { /* TODO: Ans recall */ } }
+            CalcKey { label: "Ans"; keyType: "function"; onPressed: uiController.processInput("Ans") }
             CalcKey { label: "+";  keyType: "operator"; onPressed: uiController.processInput("+") }
 
             // Row 5

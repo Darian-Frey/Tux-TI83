@@ -72,7 +72,7 @@ yet built: 2ND modifier system, ALPHA modifier system (see
 - ✅ `sin`, `cos`, `tan` (engine + UI keys in SCIENTIFIC section)
 - ✅ `asin`, `acos`, `atan` (engine + `ERR:DOMAIN` for inputs outside `[-1, 1]`; fixed 2026-04-07) — UI exposure pending: best route is via 2ND modifier on the sin/cos/tan keys when the modifier system lands
 - ✅ `log` (base 10), `ln` (both return `ERR:NONREAL ANS` for non-positive inputs; fixed 2026-04-07)
-- ✅ `e` constant (engine supports `Token::E` and `M_E`; needs UI exposure — no input string in the controller's token table yet)
+- ✅ `e` constant — engine + UI (SCIENTIFIC row 2 col 5, next to π; added 2026-04-07)
 - 📅 `e^(` exponential function
 - 📅 Hyperbolic: `sinh cosh tanh` and inverses
 - 💭 `logBASE(` for arbitrary base
@@ -111,7 +111,7 @@ Engine implements more than the UI currently exposes — listed below.
 
 - 📅 26 single-letter scalar variables `A`–`Z`
 - 📅 `STO→` store-to-variable key
-- 📅 `Ans` (last answer) — auto-populated after every ENTER
+- ✅ `Ans` (last answer) — auto-populated after every successful ENTER via `MathStateMachine::lastResult`; `Token::Ans` pushes the stored scalar or matrix onto the operand stack; NUMERIC row 4 col 4 CalcKey inserts it into the expression (added 2026-04-07)
 - 📅 Last-entry recall (2nd + ENTER cycles backwards through history)
 - 📅 `Y-VARS` store/recall (functions, window vars, statistics, etc.)
 - 📅 Memory management menu (`MEM`): list/delete/clear by category
@@ -232,7 +232,6 @@ Engine implements more than the UI currently exposes — listed below.
 - ✅ `x²` CalcKey wiring (sends `^` then `2`)
 
 ### Up next
-- 🔜 Wire `Ans` CalcKey — needs `Token::Ans` in `core_math/`
 - 🔜 Wire `MATH` CalcKey — needs a MATH menu popup
 - 🔜 Wire `MODE` CalcKey — needs a MODE menu popup
 - 🔜 Wire `2ND` CalcKey — needs the modifier system

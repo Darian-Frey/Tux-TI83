@@ -61,7 +61,11 @@ enum class Token {
   MatG,
   MatH,
   MatI,
-  MatJ
+  MatJ,
+  // Last-answer recall. Populated by the controller after any successful
+  // ENTER; retrieved by the evaluator when it sees this token and pushed
+  // onto the operand stack (scalar or matrix, per lastResult.isMatrix).
+  Ans
 };
 
 struct Matrix {
@@ -97,5 +101,10 @@ public:
 
   // Matrix Storage
   static std::map<Token, Matrix> matrixRegistry;
+
+  // Last successful evaluation result. Updated by the UI controller
+  // after every successful ENTER and recalled via Token::Ans. Matches
+  // a TI-83's `Ans` behaviour — errors don't overwrite it.
+  static CalculationResult lastResult;
 };
 } // namespace tux_ti83
