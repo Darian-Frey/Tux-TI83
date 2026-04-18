@@ -164,6 +164,31 @@ int main(int argc, char *argv[]) {
   check("abs(min(-5, -3)) = 5 (BUG-016 sibling)",
         eval(c, "abs(min(-5, -3))"), "5");
 
+  section("Combinatorics (nCr, nPr — Phase B)");
+  check("nCr(5, 2) = 10", eval(c, "nCr(5, 2)"), "10");
+  check("nCr(5, 0) = 1", eval(c, "nCr(5, 0)"), "1");
+  check("nCr(5, 5) = 1", eval(c, "nCr(5, 5)"), "1");
+  check("nCr(10, 3) = 120", eval(c, "nCr(10, 3)"), "120");
+  check("nCr(10, 7) = 120 (symmetry)", eval(c, "nCr(10, 7)"), "120");
+  check("nPr(5, 2) = 20", eval(c, "nPr(5, 2)"), "20");
+  check("nPr(5, 0) = 1", eval(c, "nPr(5, 0)"), "1");
+  check("nPr(5, 5) = 120", eval(c, "nPr(5, 5)"), "120");
+  check("nPr(10, 3) = 720", eval(c, "nPr(10, 3)"), "720");
+  // Domain errors
+  check("nCr(5, 6) → ERR:DOMAIN (r > n)",
+        eval(c, "nCr(5, 6)"), "ERR:DOMAIN");
+  check("nCr(-1, 2) → ERR:DOMAIN",
+        eval(c, "nCr(-1, 2)"), "ERR:DOMAIN");
+  check("nCr(5, -1) → ERR:DOMAIN",
+        eval(c, "nCr(5, -1)"), "ERR:DOMAIN");
+  check("nCr(5.5, 2) → ERR:DOMAIN (non-integer)",
+        eval(c, "nCr(5.5, 2)"), "ERR:DOMAIN");
+  check("nPr(5, 2.3) → ERR:DOMAIN",
+        eval(c, "nPr(5, 2.3)"), "ERR:DOMAIN");
+  // Composition
+  check("nCr(nCr(4, 2), 2) = 15",
+        eval(c, "nCr(nCr(4, 2), 2)"), "15");
+
   section("Hyperbolic functions (Phase B)");
   check("sinh(0) = 0", eval(c, "sinh(0)"), "0");
   check("cosh(0) = 1", eval(c, "cosh(0)"), "1");

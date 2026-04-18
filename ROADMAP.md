@@ -126,6 +126,11 @@ yet built: 2ND modifier system, ALPHA modifier system (see
 - ✅ `Comma` token + binary-function infrastructure: shunting-yard pushes a synthetic `LeftParen` for functions whose input string ends in `(`, so the matching `)` and inner commas have a clear scope marker. Unlocks future n-ary functions like `nCr(n, r)` (added 2026-04-08)
 - 📅 Sign function
 
+### Combinatorics
+- ✅ `nCr(n, r)` — combinations, n choose r (engine + UI via MATH menu; added 2026-04-08). Requires 0 ≤ r ≤ n with both non-negative integers; `ERR:DOMAIN` otherwise.
+- ✅ `nPr(n, r)` — permutations, n permute r (engine + UI via MATH menu; added 2026-04-08). Same domain rules as nCr.
+- 📅 `!` (factorial) — unary postfix, different parser shape; scheduled for its own turn
+
 ### Calculus
 - 📅 Numeric integration `fnInt(`
 - 📅 Numeric derivative `nDeriv(`

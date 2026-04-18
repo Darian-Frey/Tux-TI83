@@ -49,6 +49,8 @@ Popup {
         { label: "min(",   input: "min(",   available: true },
         { label: "max(",   input: "max(",   available: true },
         { label: "mod(",   input: "mod(",   available: true },
+        { label: "nCr(",   input: "nCr(",   available: true },
+        { label: "nPr(",   input: "nPr(",   available: true },
         { label: "sinh(",  input: "sinh(",  available: true },
         { label: "cosh(",  input: "cosh(",  available: true },
         { label: "tanh(",  input: "tanh(",  available: true },

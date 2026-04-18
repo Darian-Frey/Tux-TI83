@@ -31,6 +31,8 @@ int EOSPrecedence::precedence(Token t) {
   case Token::Min:
   case Token::Max:
   case Token::Mod:
+  case Token::NCr:
+  case Token::NPr:
   case Token::Sinh:
   case Token::Cosh:
   case Token::Tanh:
@@ -87,7 +89,8 @@ bool EOSPrecedence::is_function(Token t) {
 
 bool EOSPrecedence::is_binary_function(Token t) {
   return (t == Token::Round || t == Token::Min ||
-          t == Token::Max || t == Token::Mod);
+          t == Token::Max || t == Token::Mod ||
+          t == Token::NCr || t == Token::NPr);
 }
 
 bool EOSPrecedence::has_built_in_paren(Token t) {
@@ -102,6 +105,7 @@ bool EOSPrecedence::has_built_in_paren(Token t) {
           t == Token::FPart || t == Token::Det ||
           t == Token::Round || t == Token::Min ||
           t == Token::Max || t == Token::Mod ||
+          t == Token::NCr || t == Token::NPr ||
           t == Token::Sinh || t == Token::Cosh || t == Token::Tanh ||
           t == Token::ASinh || t == Token::ACosh || t == Token::ATanh);
 }
@@ -319,6 +323,28 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
           if (b.val == 0.0)
             return {false, 0.0, {}, false, "DIVIDE BY 0"};
           result = std::fmod(a.val, b.val);
+        } else if (t == Token::NCr || t == Token::NPr) {
+          // Both require 0 ≤ r ≤ n with n and r non-negative integers.
+          double n = a.val, r = b.val;
+          if (n < 0.0 || r < 0.0 || r > n ||
+              n != std::floor(n) || r != std::floor(r) || n > 170.0)
+            return {false, 0.0, {}, false, "DOMAIN"};
+          // Compute iteratively, multiplying and dividing together to
+          // avoid overflowing intermediate factorials even for large n.
+          if (t == Token::NCr) {
+            // Use min(r, n-r) to keep the loop short.
+            double k = std::min(r, n - r);
+            result = 1.0;
+            for (int i = 0; i < static_cast<int>(k); ++i) {
+              result *= (n - i);
+              result /= (i + 1);
+            }
+          } else {
+            // nPr = n * (n-1) * ... * (n-r+1)
+            result = 1.0;
+            for (int i = 0; i < static_cast<int>(r); ++i)
+              result *= (n - i);
+          }
         }
         stack.push({false, result, {}});
         continue;

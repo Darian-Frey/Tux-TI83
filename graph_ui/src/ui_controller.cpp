@@ -89,6 +89,10 @@ constexpr TokenSpec kTokens[] = {
     {"max(",   Token::Max,   "max("},
     {"mod(",   Token::Mod,   "mod("},
 
+    // Combinatorics (binary)
+    {"nCr(",   Token::NCr,   "nCr("},
+    {"nPr(",   Token::NPr,   "nPr("},
+
     // Hyperbolic functions (unary)
     {"sinh(",  Token::Sinh,  "sinh("},
     {"cosh(",  Token::Cosh,  "cosh("},

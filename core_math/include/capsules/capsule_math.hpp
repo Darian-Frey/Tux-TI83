@@ -59,6 +59,10 @@ enum class Token {
   Min,
   Max,
   Mod,
+  // Combinatorics (binary). Arguments must be non-negative integers
+  // with r ≤ n; domain errors otherwise.
+  NCr,
+  NPr,
   // Hyperbolic functions (unary). asinh/atanh accept all reals;
   // acosh requires x ≥ 1 (DOMAIN error otherwise); atanh requires
   // -1 < x < 1 (DOMAIN error otherwise).
