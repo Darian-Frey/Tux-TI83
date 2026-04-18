@@ -481,6 +481,83 @@ int main(int argc, char *argv[]) {
           rc2.currentDisplay(), "9+1");
   }
 
+  section("Cursor movement within expression");
+  {
+    UIController cc;
+    // Build the expression "1+2" one token at a time, then walk the
+    // cursor left and insert `×9` between "1" and "+", producing
+    // "1×9+2" which evaluates to 11.
+    cc.processInput(QStringLiteral("CLEAR"));
+    cc.processInput(QStringLiteral("1"));
+    cc.processInput(QStringLiteral("+"));
+    cc.processInput(QStringLiteral("2"));
+    check("pre-move display is 1+2",
+          cc.currentDisplay(), "1+2");
+
+    cc.moveCursorLeft();  // cursor now between + and 2
+    cc.moveCursorLeft();  // cursor now between 1 and +
+    cc.processInput(QStringLiteral("×"));
+    cc.processInput(QStringLiteral("9"));
+    check("after mid-insert display is 1×9+2",
+          cc.currentDisplay(), "1×9+2");
+
+    cc.processInput(QStringLiteral("ENTER"));
+    check("1×9+2 evaluates to 11",
+          cc.currentDisplay(), "11");
+
+    // Mid-expression backspace: build "12+3", move cursor one left
+    // (between + and 3), backspace removes the +, giving "123".
+    cc.processInput(QStringLiteral("CLEAR"));
+    cc.processExpression("12+3");
+    cc.moveCursorLeft();  // cursor between + and 3
+    cc.processInput(QStringLiteral("DEL"));  // removes the +
+    check("mid-backspace of + from 12+3 gives 123",
+          cc.currentDisplay(), "123");
+
+    // Cursor clamping — Left from 0 and Right past end are no-ops.
+    cc.processInput(QStringLiteral("CLEAR"));
+    cc.processExpression("5");
+    cc.moveCursorLeft();
+    cc.moveCursorLeft();  // over-clamp: no crash, cursor stays at 0
+    cc.processInput(QStringLiteral("7"));  // inserts at head
+    check("over-clamped-left cursor inserts at head (75)",
+          cc.currentDisplay(), "75");
+
+    // Home / End behaviour — after Home, insertions land at the front;
+    // after End, they land at the back.
+    cc.processInput(QStringLiteral("CLEAR"));
+    cc.processExpression("ABC");  // three variable tokens (uppercase)
+    cc.moveCursorHome();
+    cc.processInput(QStringLiteral("1"));
+    check("Home then 1 prepends to ABC → 1ABC",
+          cc.currentDisplay(), "1ABC");
+    cc.moveCursorEnd();
+    cc.processInput(QStringLiteral("2"));
+    check("End then 2 appends to 1ABC → 1ABC2",
+          cc.currentDisplay(), "1ABC2");
+
+    // Cursor moves are no-ops outside Inputting state.
+    cc.processInput(QStringLiteral("CLEAR"));
+    cc.processExpression("2+3");
+    cc.processInput(QStringLiteral("ENTER"));  // state → Evaluated
+    const int offsetBefore = cc.cursorOffset();
+    cc.moveCursorLeft();
+    check("moveCursorLeft is a no-op outside Inputting",
+          QString::number(cc.cursorOffset()), QString::number(offsetBefore));
+  }
+
+  section("Logic operator menu (2ND+MATH)");
+  // These operators existed on the engine but had no UI exposure until
+  // the LogicMenuPopup and the ASCII aliases in kTokens landed.
+  check("3≤5 (Unicode ≤)", eval(c, "3≤5"), "1");
+  check("5≤3 (Unicode ≤)", eval(c, "5≤3"), "0");
+  check("3<=5 (ASCII alias)", eval(c, "3<=5"), "1");
+  check("3≥5 (Unicode ≥)", eval(c, "3≥5"), "0");
+  check("5>=3 (ASCII alias)", eval(c, "5>=3"), "1");
+  check("1 xor 0 = 1", eval(c, "1 xor 0"), "1");
+  check("1 xor 1 = 0", eval(c, "1 xor 1"), "0");
+  check("0 xor 0 = 0", eval(c, "0 xor 0"), "0");
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

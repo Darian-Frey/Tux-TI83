@@ -10,3 +10,4 @@ FunctionSelector 1.0 components/FunctionSelector.qml
 GraphCanvas 1.0 components/GraphCanvas.qml
 MathMenuPopup 1.0 components/MathMenuPopup.qml
 MODEPopup 1.0 components/MODEPopup.qml
+LogicMenuPopup 1.0 components/LogicMenuPopup.qml

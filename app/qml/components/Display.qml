@@ -30,6 +30,11 @@ Rectangle {
     property string mainText: ""
     // 0 = Inputting, 1 = Evaluated, 2 = Error
     property int currentState: 0
+    // Character offset in mainText where the edit cursor sits. Only
+    // meaningful in Inputting state — callers pass
+    // `uiController.cursorOffset`; for Evaluated/Error states the
+    // readout auto-snaps to the end of the text on change.
+    property int cursorCharOffset: 0
 
     // ── Visual ────────────────────────────────────────────
     color: Style.bgDisplay
@@ -106,11 +111,17 @@ Rectangle {
             }
         }
 
-        // Snap cursor to the end whenever text changes. Ensures that
-        // long input being typed stays visible (cursor at the right
-        // edge), and that new results default to "scrolled to the end"
-        // so the user can arrow-left to walk back through clipped
-        // leading characters like the leading "[[" of a wide matrix.
-        onTextChanged: cursorPosition = text.length
+        // Cursor placement. In Inputting, it tracks the controller's
+        // token-level cursor (translated to a char offset on the C++
+        // side). In Evaluated/Error, snap to the end so long results
+        // land scrolled to the right edge and Home lets the user walk
+        // back through clipped leading characters.
+        cursorPosition: root.currentState === 0
+                        ? Math.min(root.cursorCharOffset, text.length)
+                        : text.length
+        onTextChanged: {
+            if (root.currentState !== 0)
+                cursorPosition = text.length
+        }
     }
 }

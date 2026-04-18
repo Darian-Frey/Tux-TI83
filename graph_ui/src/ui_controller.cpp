@@ -130,14 +130,22 @@ constexpr TokenSpec kTokens[] = {
     // shunting-yard treats as a function-argument separator.
     {",", Token::Comma, ","},
 
-    // Comparators / boolean
-    {"=",   Token::Equal,    "="},
-    {"≠",   Token::NotEqual, "≠"},
-    {"<",   Token::Less,     "<"},
-    {">",   Token::Greater,  ">"},
-    {"and", Token::And,      "and"},
-    {"or",  Token::Or,       "or"},
-    {"not", Token::Not,      "not"},
+    // Comparators / boolean — full set, exposed via the 2ND+MATH
+    // "TEST" menu popup. The `<=` / `>=` ASCII aliases exist so the
+    // CLI and keyboard typists can enter them without needing the
+    // Unicode "≤" / "≥" characters.
+    {"=",   Token::Equal,     "="},
+    {"≠",   Token::NotEqual,  "≠"},
+    {"<",   Token::Less,      "<"},
+    {"≤",   Token::LessEq,    "≤"},
+    {"<=",  Token::LessEq,    "≤"},
+    {">",   Token::Greater,   ">"},
+    {"≥",   Token::GreaterEq, "≥"},
+    {">=",  Token::GreaterEq, "≥"},
+    {"and", Token::And,       "and"},
+    {"or",  Token::Or,        "or"},
+    {"xor", Token::Xor,       "xor"},
+    {"not", Token::Not,       "not"},
 
     // Matrices
     {"[A]", Token::MatA, "[A]"},
@@ -184,6 +192,53 @@ void UIController::setAngleMode(int m) {
   emit angleModeChanged();
 }
 
+int UIController::cursorOffset() const {
+  const auto &buf = m_functionBuffers[m_activeIdx];
+  const auto &rev = tokenToSpec();
+  int offset = 0;
+  const int limit = std::min(m_cursorPos, static_cast<int>(buf.size()));
+  for (int i = 0; i < limit; ++i) {
+    auto it = rev.find(static_cast<int>(buf[i]));
+    if (it != rev.end())
+      offset += QString::fromUtf8(it->second->displayStr).length();
+  }
+  return offset;
+}
+
+void UIController::moveCursorLeft() {
+  if (m_displayState != Inputting || m_cursorPos <= 0)
+    return;
+  --m_cursorPos;
+  emit cursorMoved();
+}
+
+void UIController::moveCursorRight() {
+  if (m_displayState != Inputting)
+    return;
+  const int maxPos = static_cast<int>(m_functionBuffers[m_activeIdx].size());
+  if (m_cursorPos >= maxPos)
+    return;
+  ++m_cursorPos;
+  emit cursorMoved();
+}
+
+void UIController::moveCursorHome() {
+  if (m_displayState != Inputting || m_cursorPos == 0)
+    return;
+  m_cursorPos = 0;
+  emit cursorMoved();
+}
+
+void UIController::moveCursorEnd() {
+  if (m_displayState != Inputting)
+    return;
+  const int endPos = static_cast<int>(m_functionBuffers[m_activeIdx].size());
+  if (m_cursorPos == endPos)
+    return;
+  m_cursorPos = endPos;
+  emit cursorMoved();
+}
+
 void UIController::recallLastEntry() {
   if (m_entryHistory.empty())
     return;
@@ -210,12 +265,17 @@ void UIController::recallLastEntry() {
       currentStr += QString::fromUtf8(it->second->displayStr);
   }
 
+  // Cursor to end of the recalled expression so the user can append
+  // or backspace immediately without an extra End keystroke.
+  m_cursorPos = static_cast<int>(currentBuf.size());
+
   // Return to the editing state so the recalled expression can be
   // modified before the next ENTER.
   m_displayState = Inputting;
   m_displayExpression = "";
   emit displayChanged();
   emit displayStateChanged();
+  emit cursorMoved();
 }
 
 QString UIController::currentDisplay() const {
@@ -273,6 +333,7 @@ void UIController::clearAll() {
 
   currentStr = "";
   currentBuf.clear();
+  m_cursorPos = 0;
   bool stateChanged =
       (m_displayState != Inputting || !m_displayExpression.isEmpty());
   m_displayState = Inputting;
@@ -280,6 +341,7 @@ void UIController::clearAll() {
   if (stateChanged)
     emit displayStateChanged();
   emit displayChanged();
+  emit cursorMoved();
 }
 
 // DEL — backspace one token in INPUTTING; behaves like CLEAR after
@@ -292,16 +354,21 @@ void UIController::backspace() {
   if (m_displayState != Inputting) {
     currentStr = "";
     currentBuf.clear();
+    m_cursorPos = 0;
     m_displayState = Inputting;
     m_displayExpression = "";
     emit displayStateChanged();
     emit displayChanged();
+    emit cursorMoved();
     return;
   }
-  if (currentBuf.empty())
+  // In Inputting, backspace removes the token to the LEFT of the cursor
+  // (not the last token in the buffer). Cursor at 0 is a no-op.
+  if (m_cursorPos <= 0 || currentBuf.empty())
     return;
 
-  currentBuf.pop_back();
+  currentBuf.erase(currentBuf.begin() + (m_cursorPos - 1));
+  --m_cursorPos;
 
   // Rebuild the display string from the surviving tokens via the unified
   // token table. No more hand-mirrored revMap.
@@ -313,6 +380,7 @@ void UIController::backspace() {
       currentStr += QString::fromUtf8(it->second->displayStr);
   }
   emit displayChanged();
+  emit cursorMoved();
 }
 
 // ENTER — evaluate the buffer, transition to EVALUATED or ERROR.
@@ -448,6 +516,7 @@ void UIController::insertToken(const QString &input) {
   if (m_displayState != Inputting) {
     currentBuf.clear();
     currentStr = "";
+    m_cursorPos = 0;
     m_displayState = Inputting;
     m_displayExpression = "";
     emit displayStateChanged();
@@ -464,10 +533,13 @@ void UIController::insertToken(const QString &input) {
   // sees the correct shape. The `(-)` CalcKey bypasses this path
   // entirely by sending `"neg"` directly, so this only affects the
   // keyboard / `−` key ambiguity.
+  //
+  // "Prior token" is relative to the cursor, not the end of the buffer —
+  // cursor-aware editing can insert mid-expression.
   if (tokenToInsert == Token::Sub) {
-    bool isUnary = currentBuf.empty();
+    bool isUnary = (m_cursorPos == 0);
     if (!isUnary) {
-      Token prev = currentBuf.back();
+      Token prev = currentBuf[m_cursorPos - 1];
       isUnary = (prev == Token::LeftParen ||
                  prev == Token::Comma ||
                  prev == Token::Add || prev == Token::Sub ||
@@ -479,9 +551,20 @@ void UIController::insertToken(const QString &input) {
       tokenToInsert = Token::Neg;
   }
 
-  currentBuf.push_back(tokenToInsert);
-  currentStr += QString::fromUtf8(spec->displayStr);
+  // Cursor-aware insertion: splice the new token at m_cursorPos and
+  // advance the cursor past it. Rebuild the display string from the
+  // full buffer since mid-expression inserts shift everything right.
+  currentBuf.insert(currentBuf.begin() + m_cursorPos, tokenToInsert);
+  ++m_cursorPos;
+  currentStr = "";
+  const auto &rev = tokenToSpec();
+  for (auto t : currentBuf) {
+    auto rit = rev.find(static_cast<int>(t));
+    if (rit != rev.end())
+      currentStr += QString::fromUtf8(rit->second->displayStr);
+  }
   emit displayChanged();
+  emit cursorMoved();
 }
 
 // Longest-match tokeniser. Matches against the kTokens forward table

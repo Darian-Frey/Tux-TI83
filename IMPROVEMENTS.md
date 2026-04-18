@@ -188,6 +188,41 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-018: ALPHA-lock mode (2ND+ALPHA)
+
+- **Status:** applied (2026-04-18)
+- **Location:** [app/qml/Main.qml](app/qml/Main.qml)
+- **Effort:** small
+- **Description:** With ALPHA letter bindings wired (IMP-014), typing any run of letters — a variable sequence, a TI-BASIC identifier in future work — meant pressing ALPHA before *every* keystroke. Real TI-83 has a lock mode (2ND+ALPHA) that keeps ALPHA armed across presses; without it, our workflow was a strictly worse version of the real device.
+- **Change:**
+  - Added `alphaLocked` boolean root property alongside the existing one-shot `alphaArmed`, plus a derived `alphaActive = alphaArmed || alphaLocked` convenience for call sites that need the combined state.
+  - `armAlpha()` now branches three ways: 2ND + ALPHA toggles the lock, ALPHA-while-locked releases it, otherwise a single tap toggles `alphaArmed` as before. `armSecond()` no longer clears `alphaLocked` (so 2ND + letter combos mid-typing keep the lock alive). `clearModifiers()` clears all three flags.
+  - `handleKey` fires the ALPHA variant whenever `alphaArmed || alphaLocked`, and only clears the one-shot flag — the lock persists.
+  - ALPHA CalcKey's `armed` visual binds to `alphaActive` so it stays highlighted across the lock. Header badge reads `α` for a one-shot arm and `A-LOCK` when locked (matches TI-83's convention).
+  - Follow-up fix after user testing: four special-cased CalcKeys (MATH, MATRX, x², (-)) used to check only `alphaArmed` before deciding whether to route through `handleKey` or run their default action. Once locked, those checks fell through to the popup/default — making MATH open the menu instead of inserting A. Switched the four to read `alphaActive` (or `secondArmed || alphaActive` for x²).
+- **Trade-offs:** No engine or controller work — this is purely a QML modifier-state change. The `:`/`?`/`"` corner labels on `.`/`(-)`/`+` remain layout-accurate but unwired (they need statement-separator / string-literal support that's out of scope for this session); falls through to a silent arm-clear when pressed.
+- **Notes:** Completes the TI-83 modifier model. Natural follow-ups: wire `:` as a statement separator (enables `5→A:A+1→A` chained expressions), and eventually `?`/`"` once Input/Disp commands land.
+
+### IMP-017: Cursor movement within an expression
+
+- **Status:** applied (2026-04-18)
+- **Location:** [graph_ui/include/ui_controller.hpp](graph_ui/include/ui_controller.hpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/qml/components/Display.qml](app/qml/components/Display.qml), [app/qml/Main.qml](app/qml/Main.qml), [tests/test_math.cpp](tests/test_math.cpp)
+- **Effort:** medium
+- **Description:** The expression cursor was pinned to the end of the
+  buffer — every backspace had to chew through trailing tokens before
+  reaching a mid-expression typo, and every insertion appended. With
+  last-entry recall (IMP-016) landing, this gap became acute: recalling
+  a long expression only to retype it was just a slower way to
+  re-enter it.
+- **Change:**
+  - Controller: added a token-level `m_cursorPos` (0..buf.size()). `insertToken` splices at the cursor and advances by one; `backspace` erases at `cursor-1` and retreats; `clearAll` resets to 0; `recallLastEntry` sets the cursor to the end of the restored buffer. Four new Q_INVOKABLE methods (`moveCursorLeft` / `Right` / `Home` / `End`) move the cursor — each a no-op outside Inputting state and clamped at the buffer extremes. The unary-negation heuristic now inspects `buf[cursorPos-1]` rather than `buf.back()` so mid-expression `-` correctly promotes to `Neg` in unary contexts.
+  - Q_PROPERTY: `cursorOffset` (int, NOTIFY `cursorMoved`) translates the token-level cursor to a character offset by summing `displayStr` lengths for the tokens before the cursor — the Display's TextInput needs char positions for its internal cursor.
+  - Display: binds `TextInput.cursorPosition` to `root.cursorCharOffset` in Inputting state. Evaluated/Error still auto-snap to the end on text change so long results land scrolled right. Dropped the unconditional end-snap in `onTextChanged` (it was fighting the new binding).
+  - Main.qml: wired `Qt.Key_Left/Right/Home/End` to the four controller methods in the root keyboard handler.
+  - Tests: 7 new assertions covering mid-expression insert, mid-expression backspace, over-clamp behaviour at the ends, Home/End positioning, and cursor-move no-op outside Inputting. 169/169 passing.
+- **Trade-offs:** On-screen arrow CalcKeys were deliberately deferred — the current 5-column layout has no free slot, and wedging in a D-pad would require a layout shuffle that's out of scope. Keyboard arrow keys cover most of the value; an on-screen nav pad can land later alongside a MODE menu redesign or similar layout work.
+- **Notes:** Closes a long-standing editability gap and makes last-entry recall genuinely useful for editing — the original impetus for this change. Pairs with a future on-screen D-pad for touch/mouse-only users.
+
 ### IMP-016: Last-entry recall (2ND+ENTER)
 
 - **Status:** applied (2026-04-18)

@@ -28,6 +28,17 @@ ApplicationWindow {
     // ─────────────────────────────────────────────────────
     property bool secondArmed: false
     property bool alphaArmed:  false
+    // ALPHA-lock: persistent mode where letters stay accessible across
+    // multiple keypresses. Entered via 2ND + ALPHA, released by another
+    // ALPHA press or CLEAR. `alphaArmed` is the one-shot flag; `alphaLocked`
+    // is the persistent flag. Visual + handleKey treat either-or as "ALPHA
+    // is active" for the next keypress. After a key fires its ALPHA
+    // variant, alphaArmed is cleared but alphaLocked stays.
+    property bool alphaLocked: false
+    // Derived "ALPHA is in effect for the next keypress" flag. CalcKeys
+    // that bypass handleKey (MATH, MATRX, x², (-)) need this explicit
+    // combination — checking only alphaArmed would miss lock mode.
+    readonly property bool alphaActive: alphaArmed || alphaLocked
 
     // Primary-label → 2ND-variant token sequence. Values are fed to
     // `processExpression` (tokenising), so multi-token variants like
@@ -63,16 +74,33 @@ ApplicationWindow {
     })
 
     function armSecond() {
+        // Arm 2ND, clear one-shot alphaArmed. `alphaLocked` deliberately
+        // stays so "2ND + SIN" mid-typing doesn't unlock the letter
+        // mode — the lock persists to serve the next keypress too.
         alphaArmed  = false
         secondArmed = !secondArmed
     }
     function armAlpha() {
-        secondArmed = false
-        alphaArmed  = !alphaArmed
+        // Three-way: 2ND + ALPHA toggles lock, ALPHA-while-locked
+        // releases the lock, otherwise single-press toggles the
+        // one-shot alphaArmed flag.
+        if (secondArmed) {
+            secondArmed = false
+            alphaLocked = !alphaLocked
+            alphaArmed  = false
+            return
+        }
+        if (alphaLocked) {
+            alphaLocked = false
+            alphaArmed  = false
+            return
+        }
+        alphaArmed = !alphaArmed
     }
     function clearModifiers() {
         secondArmed = false
         alphaArmed  = false
+        alphaLocked = false
     }
 
     // Central key dispatcher. `primary` is the key's un-modified label
@@ -92,6 +120,13 @@ ApplicationWindow {
                 uiController.recallLastEntry()
                 return
             }
+            // 2ND + MATH opens the TEST/LOGIC operator popup. Like
+            // recall above, it's a popup trigger rather than a token
+            // insertion, so it sits outside secondMap.
+            if (primary === "MATH") {
+                logicMenuPopup.open()
+                return
+            }
             if (secondMap.hasOwnProperty(primary)) {
                 uiController.processExpression(secondMap[primary])
                 return
@@ -99,7 +134,9 @@ ApplicationWindow {
             // Fallthrough: 2ND + <unmapped key> cancels silently and
             // sends the primary — matches TI-83 behaviour.
         }
-        if (alphaArmed) {
+        if (alphaArmed || alphaLocked) {
+            // One-shot arming always clears; the persistent lock
+            // survives so the next keypress is still ALPHA-modified.
             alphaArmed = false
             if (alphaMap.hasOwnProperty(primary)) {
                 // ALPHA variants are single letters (A..Z) or literal
@@ -191,6 +228,22 @@ ApplicationWindow {
                 root.handleKey("CLEAR")
                 event.accepted = true
                 return
+            case Qt.Key_Left:
+                uiController.moveCursorLeft()
+                event.accepted = true
+                return
+            case Qt.Key_Right:
+                uiController.moveCursorRight()
+                event.accepted = true
+                return
+            case Qt.Key_Home:
+                uiController.moveCursorHome()
+                event.accepted = true
+                return
+            case Qt.Key_End:
+                uiController.moveCursorEnd()
+                event.accepted = true
+                return
             }
 
             // Printable characters routed by event.text. Using text
@@ -252,8 +305,11 @@ ApplicationWindow {
                 font.weight: Font.Bold
             }
             Text {
-                visible: root.alphaArmed
-                text: "α"
+                visible: root.alphaArmed || root.alphaLocked
+                // "α" for a one-shot arm; "A-LOCK" once the lock has
+                // been engaged (matches the TI-83 convention for
+                // alpha-lock).
+                text: root.alphaLocked ? "A-LOCK" : "α"
                 color: Style.armedBadgeAlpha
                 font.family: Style.monoFamily
                 font.pixelSize: Style.headerBrandPixelSize
@@ -288,6 +344,7 @@ ApplicationWindow {
                             ? (uiController.displayExpression + " =")
                             : ""
             mainText: uiController.currentDisplay
+            cursorCharOffset: uiController.cursorOffset
         }
 
         // ── 3. Soft-key row ─────────────────────────────
@@ -331,7 +388,7 @@ ApplicationWindow {
             CalcKey { label: "2ND";   keyType: "second";  armed: root.secondArmed; onPressed: root.armSecond() }
             CalcKey { label: "MODE";  keyType: "control"; onPressed: { root.clearModifiers(); modePopup.open() } }
             CalcKey { label: "⌫";     keyType: "control"; onPressed: root.handleKey("DEL") }
-            CalcKey { label: "ALPHA"; keyType: "control"; armed: root.alphaArmed;  onPressed: root.armAlpha() }
+            CalcKey { label: "ALPHA"; keyType: "control"; armed: root.alphaArmed || root.alphaLocked; onPressed: root.armAlpha() }
             CalcKey { label: "CLEAR"; keyType: "control"; onPressed: { root.clearModifiers(); uiController.processInput("CLEAR") } }
             // Note: corner labels intentionally omitted from CONTROL row
             // — the TI-83 equivalents (QUIT, INS, A-LOCK, RESET) aren't
@@ -350,8 +407,11 @@ ApplicationWindow {
             // MATH: ALPHA-armed → insert letter A via handleKey; otherwise
             // open the MATH menu (and always clear 2ND if it was armed,
             // since 2ND+MATH is unwired).
-            CalcKey { label: "MATH"; keyType: "function"; alphaLabel: "A"; onPressed: {
-                if (root.alphaArmed) {
+            CalcKey { label: "MATH"; keyType: "function"; secondLabel: "TEST"; alphaLabel: "A"; onPressed: {
+                // 2ND → route through handleKey so 2ND+MATH opens the
+                // TEST popup; ALPHA → route through so A gets inserted;
+                // unmodified → open the MATH menu directly.
+                if (root.secondArmed || root.alphaActive) {
                     root.handleKey("MATH")
                 } else {
                     root.clearModifiers()
@@ -392,7 +452,7 @@ ApplicationWindow {
             // MATRX: ALPHA-armed → insert letter B via handleKey;
             // otherwise open the matrix popup.
             CalcKey { label: "MATRX"; keyType: "function"; alphaLabel: "B"; onPressed: {
-                if (root.alphaArmed) {
+                if (root.alphaActive) {
                     root.handleKey("MATRX")
                 } else {
                     root.clearModifiers()
@@ -410,7 +470,7 @@ ApplicationWindow {
             // Default (no modifier) inserts the composite "^ 2" sequence,
             // which handleKey doesn't support (it sends a single token).
             CalcKey { label: "x²"; keyType: "function"; secondLabel: "√"; alphaLabel: "I"; onPressed: {
-                if (root.secondArmed || root.alphaArmed) {
+                if (root.secondArmed || root.alphaActive) {
                     root.handleKey("x²")
                 } else {
                     uiController.processInput("^")
@@ -436,8 +496,12 @@ ApplicationWindow {
             CalcKey { label: "(-)"; keyType: "numeric"; secondLabel: "ANS"; alphaLabel: "?"; onPressed: {
                 if (root.secondArmed) {
                     root.handleKey("(-)")
-                } else if (root.alphaArmed) {
-                    root.alphaArmed = false  // disarm without inserting
+                } else if (root.alphaActive) {
+                    // "?" isn't a real token yet, so pressing ALPHA+(-)
+                    // clears the one-shot arm but preserves the lock —
+                    // matches the "unmapped ALPHA key is a silent
+                    // passthrough" rule in handleKey.
+                    root.alphaArmed = false
                 } else {
                     uiController.processInput("neg")
                 }
@@ -482,5 +546,9 @@ ApplicationWindow {
 
     MODEPopup {
         id: modePopup
+    }
+
+    LogicMenuPopup {
+        id: logicMenuPopup
     }
 }

@@ -34,6 +34,12 @@ private:
     // MathStateMachine::angleMode (process-global). Header indicator
     // and MODEPopup both bind to this.
     Q_PROPERTY(int angleMode READ angleMode WRITE setAngleMode NOTIFY angleModeChanged)
+    // Cursor position within the current expression, expressed as a
+    // character offset into the rendered display string. The backing
+    // state is token-level (m_cursorPos, 0..buf.size()), but the
+    // display TextInput needs char positions — this getter walks the
+    // buffer up to the cursor and sums the displayStr lengths.
+    Q_PROPERTY(int cursorOffset READ cursorOffset NOTIFY cursorMoved)
 
 public:
     explicit UIController(QObject* parent = nullptr);
@@ -47,6 +53,7 @@ public:
         return static_cast<int>(MathStateMachine::angleMode);
     }
     void setAngleMode(int m);
+    int cursorOffset() const;
 
     Q_INVOKABLE void processInput(const QString& input);
     // Format a scalar result for display. Uses enough precision (10
@@ -74,6 +81,14 @@ public:
     // a 10-deep ring buffer; successive calls walk back through it.
     // Any non-recall processInput resets the cycle.
     Q_INVOKABLE void recallLastEntry();
+    // Token-level cursor movement. Left/Right step by one token
+    // (matches TI-83 behaviour: `sin(` is one visual step, not four);
+    // Home/End jump to the extremes. All four are no-ops outside
+    // Inputting state.
+    Q_INVOKABLE void moveCursorLeft();
+    Q_INVOKABLE void moveCursorRight();
+    Q_INVOKABLE void moveCursorHome();
+    Q_INVOKABLE void moveCursorEnd();
     Q_INVOKABLE void zoomFit();
     Q_INVOKABLE void updateMatrix(const QString& name, int rows, int cols, const QVariantList& values);
     Q_INVOKABLE QVariantList getMultiGraphPoints(int resolution);
@@ -88,6 +103,7 @@ signals:
     void graphModeChanged();
     void displayStateChanged();
     void angleModeChanged();
+    void cursorMoved();
 
 private:
     // processInput dispatches to these. Each handles one concern; the
@@ -116,6 +132,12 @@ private:
     static constexpr int kEntryHistoryCap = 10;
     std::deque<std::vector<Token>> m_entryHistory;
     int m_recallCycleIdx = -1;
+    // Token-level cursor position within m_functionBuffers[m_activeIdx].
+    // 0 = before first token; buf.size() = past last (append). Reset to
+    // 0 on clear and on state transitions back into Inputting; set to
+    // end on recall. Edit operations keep it consistent with the
+    // buffer — inserting pushes it forward, backspace pulls it back.
+    int m_cursorPos = 0;
 };
 
 } // namespace tux_ti83

@@ -302,9 +302,9 @@ Engine implements more than the UI currently exposes — listed below.
 
 - ✅ ALPHA letter bindings — added 2026-04-18 (handleKey's alphaMap routes ALPHA + primary-key to the matching VarA..VarZ token, mirroring the on-key alphaLabel annotations)
 - 📅 Remaining 2ND variants (CATALOG, TEST menu, nth-root, insert-mode toggle, etc.)
-- 📅 Cursor movement within an expression (left/right arrow editing)
+- ✅ Cursor movement within an expression (left/right arrow editing) — added 2026-04-18 (token-level cursor in UIController; insertToken/backspace are cursor-aware; Left/Right/Home/End keyboard shortcuts; Display's TextInput binds to cursorOffset so the visual cursor tracks edits mid-expression; unary-negation disambiguation now looks at the token immediately left of the cursor rather than the tail)
 - 📅 Insert mode toggle (2nd + DEL)
-- 📅 ALPHA-lock mode
+- ✅ ALPHA-lock mode — added 2026-04-18 (2ND + ALPHA toggles a persistent `alphaLocked` flag in addition to the one-shot `alphaArmed`; header shows "A-LOCK" when locked; any letter keypress fires its ALPHA variant without clearing the lock; ALPHA alone or CLEAR releases it; 2ND during lock preserves the lock so 2ND+letter combos stay usable mid-typing)
 - 📅 `MODE` menu follow-ups — wire the remaining placeholder rows (Notation: Normal/Sci/Eng, Decimal: Float/Fix N, Graph: Func/Par/Pol/Seq, Draw: Connected/Dot, Plot: Sequential/Simul, Complex: Real/a+bi/re^θi, Screen: Full/Horiz/G-T). Infrastructure is in place — each row needs a backing property + evaluator/renderer support.
 - 📅 `CATALOG` browser (alphabetical list of every command)
 - 📅 Mode indicator in the header (currently hardcoded "NORMAL  DEG")
