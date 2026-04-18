@@ -36,6 +36,16 @@ QtObject {
     readonly property real  keyPressScale:      0.91
     readonly property real  keyHoverLighten:    0.08
 
+    // ── Armed modifier (2ND / ALPHA) ──────────────────────
+    // Used by CalcKey when its `armed` property is true. Border is a
+    // warm amber that reads well against both the amber 2ND body and
+    // the neutral ALPHA body, so a single colour works for both.
+    readonly property real  armedBorderWidth:   1.5
+    readonly property real  keyArmedLighten:    0.12
+    readonly property color armedBorder:        "#f59e0b"
+    readonly property color armedBadge2nd:      "#f59e0b"
+    readonly property color armedBadgeAlpha:    "#4ade80"
+
     // ── Typography ────────────────────────────────────────
     readonly property string monoFamily: "Courier New"
 

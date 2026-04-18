@@ -295,12 +295,13 @@ Engine implements more than the UI currently exposes — listed below.
 ### Up next
 - ✅ `MATH` CalcKey wired — opens `MathMenuPopup` (see Numeric core › Number functions)
 - 🔜 Wire `MODE` CalcKey — needs a MODE menu popup
-- 🔜 Wire `2ND` CalcKey — needs the modifier system
-- 🔜 Wire `ALPHA` CalcKey — needs the modifier system (see [IMP-003](IMPROVEMENTS.md))
+- ✅ Wire `2ND` CalcKey — modifier system landed 2026-04-18 (toggle arm, mutually exclusive with ALPHA, one-shot, amber header badge; wired 2ND variants: sin(/cos(/tan(→asin(/acos(/atan(, x²→√(, ln(→e^(, (-)→Ans)
+- ✅ Wire `ALPHA` CalcKey — infrastructure landed 2026-04-18 (toggle arm, mutually exclusive with 2ND, one-shot, green α header badge); no letter variants wired yet (blocked on variable registry)
 
 ### Planned
-- 📅 ALPHA modifier system — see [IMP-003](IMPROVEMENTS.md#imp-003-add-an-alpha-modifier-gate-to-single-letter-keyboard-shortcuts)
-- 📅 2ND modifier system (yellow secondary functions on every key)
+
+- 📅 ALPHA letter bindings — wire A–Z letter insertion once the variable registry exists (see [IMP-003](IMPROVEMENTS.md))
+- 📅 Remaining 2ND variants (CATALOG, TEST menu, nth-root, insert-mode toggle, etc.)
 - 📅 Cursor movement within an expression (left/right arrow editing)
 - 📅 Insert mode toggle (2nd + DEL)
 - 📅 ALPHA-lock mode

@@ -184,41 +184,53 @@ Each entry uses this template:
   [ROADMAP.md](ROADMAP.md) as a numeric-core item. If we don't, delete
   the enum value.
 
-### IMP-003: Add an ALPHA-modifier gate to single-letter keyboard shortcuts
-- **Status:** suggested
-- **Found:** 2026-04-06 (UI redesign session, before Step 6)
-- **Location:** [app/qml/Main.qml](app/qml/Main.qml) (Keys.onPressed handler) and the eventual ALPHA CalcKey hook
-- **Effort:** small-to-medium
-- **Description:** Step 6 wires the CLAUDE.md keyboard shortcut map
-  literally — bare letters `s`, `c`, `t`, `l`, `n`, `r`, `p` immediately
-  produce `sin(`, `cos(`, `tan(`, `log(`, `ln(`, `√(`, `π`. This is fast,
-  matches the spec exactly, and gets us a working keyboard now. The
-  trade-off is that single letters can never be typed as literal text.
-  The moment we add any feature that needs literal letters (variable
-  assignment, matrix labels, MATH menu search, ANS naming, etc.), bare
-  letter shortcuts become ambiguous.
-- **Proposal:** Mirror the TI-83's hardware ALPHA modifier. Add an
-  `alphaArmed` boolean (root-level in Main.qml, or as a controller
-  property). Pressing the ALPHA `CalcKey` — or a keyboard mapping like
-  Tab or backslash — sets it true and lights up a visual indicator on
-  the ALPHA key. The next single-letter keypress checks the flag: if
-  armed, route to the function shortcut and clear the flag; if not
-  armed, either do nothing or route to a future text-input path.
-  Optionally add an "ALPHA-lock" mode (double-press or 2ND+ALPHA) that
-  keeps the flag set across multiple keystrokes, matching real TI-83
-  behaviour.
-- **Trade-offs:** Adds modal state to the keyboard handler, which is more
-  complex than the literal spec. But it's the standard TI behaviour and
-  anyone familiar with a real TI-83 will expect it. Without the gate
-  we're locked out of any future feature that needs literal letters.
-- **Notes:** Defer until we actually have a feature that needs literal
-  letters. Good time to revisit: when wiring the MATH menu, variable
-  assignment, or matrix labels. Also pairs naturally with implementing
-  the 2ND modifier for the same set of CalcKeys.
-
 ---
 
 ## Applied
+
+### IMP-003: 2ND / ALPHA modifier infrastructure (supersedes original "ALPHA gate" proposal)
+
+- **Status:** applied (2026-04-18)
+- **Location:** [app/qml/Main.qml](app/qml/Main.qml), [app/qml/components/CalcKey.qml](app/qml/components/CalcKey.qml), [app/qml/Style.qml](app/qml/Style.qml)
+- **Effort:** medium
+- **Description:** The original suggestion was narrowly scoped to
+  "gate the bare-letter keyboard shortcuts behind ALPHA". In practice
+  the 2ND and ALPHA modifiers form one shared mechanism, so this
+  landed as a unified infrastructure pass rather than just the ALPHA
+  half.
+- **Change:**
+  - Added root-level `secondArmed` / `alphaArmed` booleans in
+    `Main.qml` with `armSecond()` / `armAlpha()` / `clearModifiers()`
+    helpers. Arming one disarms the other (mutual exclusion), and
+    pressing an already-armed modifier disarms it (toggle).
+  - Added a central `handleKey(primary)` dispatcher. Every CalcKey
+    and physical-key shortcut routes through it, so the modifier
+    state applies uniformly to both input paths. When `secondArmed`,
+    the dispatcher consults a `secondMap` lookup
+    (`sin(→asin(`, `cos(→acos(`, `tan(→atan(`, `x²→√(`, `ln(→e^(`,
+    `(-)→Ans`), then clears the flag (one-shot).
+  - Added an `armed` property to `CalcKey` that thickens the border
+    and lightens the fill when active; the armed border uses a warm
+    amber that reads well against both the amber 2ND body and the
+    neutral ALPHA body.
+  - Added header badges (`2ND` in amber, `α` in green) that appear
+    only when the corresponding flag is armed.
+  - Physical-key modifier arming: `\` toggles 2ND, `Tab` toggles
+    ALPHA. Chosen to avoid conflict with existing literal keymap
+    entries.
+  - ALPHA has no letter variants wired yet — it arms and clears
+    silently on the next keypress. Wiring A–Z is blocked on the
+    variable-registry work (ROADMAP: ALPHA letter bindings).
+- **Trade-offs:** Doubled the state managed in the root QML, but the
+  dispatcher pattern kept CalcKey.qml mostly untouched — only the
+  visual-feedback plumbing changed. All existing keypresses route
+  through the same path, so regressions would have been caught by
+  any key working incorrectly in a no-modifier state.
+- **Notes:** Supersedes the narrower ALPHA-only proposal. Unlocks
+  the engine's existing `asin/acos/atan` tokens that had no UI
+  exposure before. Next step in this area: MODE menu wiring,
+  ALPHA-lock mode (double-tap or 2ND+ALPHA), and the variable
+  registry that enables ALPHA letter inputs.
 
 ### IMP-012: Right-click copy on history entries
 
