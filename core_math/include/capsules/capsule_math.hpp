@@ -45,6 +45,13 @@ enum class Token {
   Xor,
   Not,
   Det,
+  // Matrix transpose — unary prefix function that takes a matrix and
+  // returns its transpose (rows and columns swapped).
+  Transpose,
+  // Reduced row-echelon form. Takes a matrix, returns the matrix with
+  // row operations applied until each leading coefficient is 1 and is
+  // the only non-zero entry in its column (Gauss-Jordan elimination).
+  Rref,
   // Unary negation. Semantically distinct from binary Sub so we can
   // honour the TI-83's `(-)` key versus `−` key distinction.
   Neg,

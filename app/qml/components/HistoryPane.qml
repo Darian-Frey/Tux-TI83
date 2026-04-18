@@ -11,12 +11,41 @@ import ".."
 // controller `prepend`s to its history list).
 //
 // Behavioural contract: read-only display, bound to
-// `uiController.history`. Tapping a history entry could one day re-load
-// the expression — for now it's purely informational.
+// `uiController.history`. Right-clicking an entry opens a context menu
+// with "Copy" — copies that single entry's full text (expression =
+// result) to the system clipboard.
 Rectangle {
     id: root
 
     color: Style.bgSection
+
+    // Hidden TextEdit used as a clipboard proxy. Qt6 QML doesn't expose
+    // the system clipboard directly, but a TextEdit's `copy()` method
+    // writes its selected text to it — so we set the text, selectAll,
+    // and copy. Zero-sized and invisible so it doesn't affect layout.
+    TextEdit {
+        id: clipboardProxy
+        visible: false
+        width: 0
+        height: 0
+    }
+
+    function copyToClipboard(text) {
+        clipboardProxy.text = text
+        clipboardProxy.selectAll()
+        clipboardProxy.copy()
+    }
+
+    // Shared context menu — one instance, opened with the target entry's
+    // text stashed in `entryText`.
+    Menu {
+        id: contextMenu
+        property string entryText: ""
+        MenuItem {
+            text: "Copy"
+            onTriggered: root.copyToClipboard(contextMenu.entryText)
+        }
+    }
 
     // Left edge separator from the calculator column.
     Rectangle {
@@ -62,9 +91,12 @@ Rectangle {
             boundsBehavior: Flickable.StopAtBounds
 
             delegate: Rectangle {
+                id: entryRect
                 width: list.width
                 height: entryText.implicitHeight + 12
-                color: Style.bgSurface
+                color: entryMouse.containsMouse
+                       ? Qt.lighter(Style.bgSurface, 1.0 + Style.keyHoverLighten)
+                       : Style.bgSurface
                 radius: 4
 
                 Text {
@@ -79,6 +111,23 @@ Rectangle {
                     font.family: Style.monoFamily
                     font.pixelSize: Style.exprPixelSize
                     wrapMode: Text.Wrap
+                }
+
+                // Right-click opens the context menu scoped to THIS entry
+                // only (contextMenu.entryText holds the one we clicked).
+                // Left-click is a no-op for now — future: re-load the
+                // expression into the display.
+                MouseArea {
+                    id: entryMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    acceptedButtons: Qt.RightButton
+                    onClicked: (mouse) => {
+                        if (mouse.button === Qt.RightButton) {
+                            contextMenu.entryText = modelData
+                            contextMenu.popup()
+                        }
+                    }
                 }
             }
 

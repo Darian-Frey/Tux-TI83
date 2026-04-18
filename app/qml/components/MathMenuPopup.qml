@@ -140,7 +140,11 @@ Popup {
                     hoverEnabled: true
                     enabled: modelData.available
                     onClicked: {
-                        uiController.processInput(modelData.input)
+                        // processExpression tokenises multi-char inputs
+                        // (e.g. "^-1") so entries can insert composite
+                        // sequences. Single-token entries like "abs("
+                        // work identically to processInput.
+                        uiController.processExpression(modelData.input)
                         root.close()
                     }
                 }

@@ -281,6 +281,60 @@ int main(int argc, char *argv[]) {
   checkTrue("[A]-[B] returns a matrix (not Type Error)",
             matResult.startsWith("[["));
 
+  section("Matrix inverse and rref (Phase B)");
+  // Inverse of 2×2 [[1,2],[3,4]] is [[-2,1],[1.5,-0.5]].
+  c.updateMatrix("[A]", 2, 2, QVariantList{1.0, 2.0, 3.0, 4.0});
+  check("[A]^-1 for [[1,2],[3,4]]",
+        eval(c, "[A]^-1"), "[[-2,1][1.5,-0.5]]");
+  // Inverse of identity is identity.
+  c.updateMatrix("[A]", 2, 2, QVariantList{1.0, 0.0, 0.0, 1.0});
+  check("[I]^-1 = [I]",
+        eval(c, "[A]^-1"), "[[1,0][0,1]]");
+  // Multiplying a matrix by its inverse should yield identity.
+  c.updateMatrix("[A]", 2, 2, QVariantList{1.0, 2.0, 3.0, 4.0});
+  check("[A]*[A]^-1 = I",
+        eval(c, "[A]*[A]^-1"), "[[1,0][0,1]]");
+  // Singular matrix: [[1,2],[2,4]] has det 0.
+  c.updateMatrix("[A]", 2, 2, QVariantList{1.0, 2.0, 2.0, 4.0});
+  check("singular [A]^-1 → ERR:SINGULAR MAT",
+        eval(c, "[A]^-1"), "ERR:SINGULAR MAT");
+  // Non-square inverse fails.
+  c.updateMatrix("[A]", 2, 3, QVariantList{1.0, 2.0, 3.0, 4.0, 5.0, 6.0});
+  check("non-square [A]^-1 → ERR:INVALID DIM",
+        eval(c, "[A]^-1"), "ERR:INVALID DIM");
+
+  // rref of a 3×3 matrix with rank 2: rows 3 is a linear combination,
+  // so rref gives a zero row at the bottom.
+  c.updateMatrix("[A]", 3, 3,
+                 QVariantList{1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0});
+  check("rref([[1,2,3][4,5,6][7,8,9]]) = [[1,0,-1][0,1,2][0,0,0]]",
+        eval(c, "rref([A])"), "[[1,0,-1][0,1,2][0,0,0]]");
+  // rref of identity is identity.
+  c.updateMatrix("[A]", 3, 3,
+                 QVariantList{1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0});
+  check("rref(I) = I",
+        eval(c, "rref([A])"), "[[1,0,0][0,1,0][0,0,1]]");
+  // rref on scalar → type error.
+  check("rref(5) → ERR:DATA TYPE",
+        eval(c, "rref(5)"), "ERR:DATA TYPE");
+
+  section("Matrix transpose (Phase B)");
+  // 2×3 [A] = [[1, 2, 3], [4, 5, 6]]
+  c.updateMatrix("[A]", 2, 3,
+                 QVariantList{1.0, 2.0, 3.0, 4.0, 5.0, 6.0});
+  check("T([A]) of 2×3 → 3×2 [[1,4],[2,5],[3,6]]",
+        eval(c, "T([A])"), "[[1,4][2,5][3,6]]");
+  // Double transpose is identity
+  check("T(T([A])) = [A]",
+        eval(c, "T(T([A]))"), "[[1,2,3][4,5,6]]");
+  // Transpose of scalar → type error
+  check("T(5) → ERR:DATA TYPE",
+        eval(c, "T(5)"), "ERR:DATA TYPE");
+  // Transpose of square matrix
+  c.updateMatrix("[B]", 2, 2, QVariantList{1.0, 2.0, 3.0, 4.0});
+  check("T([B]) of square 2×2",
+        eval(c, "T([B])"), "[[1,3][2,4]]");
+
   section("Matrix dimension mismatch (BUG-010, BUG-011)");
   c.updateMatrix("[A]", 2, 2, QVariantList{1.0, 2.0, 3.0, 4.0});
   c.updateMatrix("[B]", 3, 3,

@@ -196,6 +196,73 @@ Each entry uses this template:
 - **Notes:** Found alongside BUG-010 in the same review pass. Both
   fixed together.
 
+### BUG-018: MatrixPopup MATH-tab `^-1` click silently does nothing
+- **Status:** fixed (2026-04-08, user-reported minutes after the inverse/rref feature shipped)
+- **Location:** [app/qml/components/MatrixPopup.qml](app/qml/components/MatrixPopup.qml) MATH-tab delegate `onClicked`
+- **Severity:** medium (a shipping menu entry was inert)
+- **Description:** The Phase B inverse feature added a `4: ^-1 (inverse)`
+  entry to MatrixPopup's MATH tab with `input: "^-1"`. The expectation
+  was that clicking it would insert the three tokens `^`, `-`, `1` into
+  the expression buffer. In the same turn I updated the NAMES tab's
+  `onClicked` to route through `processExpression` (which tokenises
+  multi-char inputs), but the MATH-tab `onClicked` still called
+  `processInput(modelData.input)`. `processInput` does an exact-match
+  lookup against `kTokens`, and `"^-1"` isn't a kTokens entry —
+  insertToken returned silently and the click did nothing. The
+  tokenisation required to split `^-1` lives one layer up in
+  `processExpression`.
+- **Reproduction:** From the GUI: MATRX → MATH tab → click
+  `4: ^-1 (inverse)` → nothing inserted into the display.
+- **Fix:** Changed the MATH-tab `onClicked` to call
+  `processExpression(modelData.input)` instead, matching the NAMES-tab
+  update from the previous turn. Now `^-1` tokenises cleanly into
+  `^ / - / 1`, the unary-negation disambiguation promotes the `-` to
+  `Neg` (since it follows `Pow`), and the evaluator's extended `Token::Pow`
+  branch (`matrix ^ -1`) applies the inverse.
+- **Notes:** Missed this in the previous turn's `replace_all` because
+  the NAMES tab used `modelData` (bare string) while the MATH tab used
+  `modelData.input` — different source patterns, so only one got
+  replaced. A consistency sweep of the two tabs would've caught it.
+
+### BUG-017: Long display output is clipped with no way to see, select, or copy
+- **Status:** fixed (2026-04-08, user-reported after the matrix-transpose demo)
+- **Location:** [app/qml/components/Display.qml](app/qml/components/Display.qml) — the bottom-line main-readout region
+- **Severity:** medium (UX — correctness unaffected but the result is literally unreachable for wide output)
+- **Description:** The LCD's main readout was a plain `Text` element
+  inside a right-anchored `Row`. When the displayed result was wider
+  than the panel (e.g., a 3×3 matrix: `[[1,4,7][2,5,8][3,6,9]]`), the
+  Row extended past the left edge of the parent Rectangle and got
+  clipped. Users saw `1,4,7][2,5,8][3,6,9]]` with the leading `[[`
+  missing entirely, no way to scroll, no way to select, no way to
+  copy to clipboard.
+- **Reproduction:** Set matrix [A] to any 3×3, press MATRX → MATH tab
+  → `2: T(`, press MATRX again → NAMES → `[A]`, close paren, ENTER.
+  The resulting 21-char string was wider than the ~400px-wide display
+  panel. Leading characters were cut off.
+- **Fix:** Replaced the `Text` with a read-only `TextInput` in
+  `Display.qml`. This gives us:
+  - native horizontal scrolling (cursor movement via arrow keys
+    scrolls the visible window — Home/End jump to edges)
+  - mouse-drag selection + Ctrl+C copy to clipboard (built-in)
+  - `onTextChanged: cursorPosition = text.length` so new output
+    always defaults to "scrolled to the right edge" (the last
+    characters of a wide result are visible)
+  - `activeFocusOnPress: root.currentState !== 0` — the display is
+    only focusable after an ENTER, so typing keys during input still
+    reaches the main keyboard handler
+  - `cursorDelegate` preserves the existing blinking-cursor visual,
+    with `color: readout.color` so the cursor automatically matches
+    the text (white while typing, green when a result is shown, red
+    on error)
+- **Notes:** TextInput's native key handling consumes arrow keys,
+  Home/End, Ctrl+A/C/X for selection/navigation but lets other keys
+  (Enter, digits, operators, function keys) bubble to the parent
+  RowLayout's `Keys.onPressed`, so the main keyboard handler still
+  receives input naturally when the TextInput has focus. User
+  verified all seven behaviours (scroll via arrows, select, copy,
+  resume typing a new expression, blink persists, focus-gate, Ctrl+C
+  roundtrip) after the fix.
+
 ### BUG-014: Unary negation is inert — `(-)` key does nothing, `abs(-5)` errors
 - **Status:** fixed (2026-04-07, user-reported during Phase B Wave 1 testing)
 - **Location:** [core_math/src/core_math.cpp](core_math/src/core_math.cpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/qml/Main.qml](app/qml/Main.qml)

@@ -76,6 +76,66 @@ Each entry uses this template:
 - **Notes:** Strongly pairs with [IMP-007](IMPROVEMENTS.md). Both should
   ship together as a single "matrix editor v2" pass.
 
+### IMP-011: CLI / REPL can't populate matrices
+- **Status:** suggested
+- **Found:** 2026-04-08 (user-reported after matrix-inverse landed)
+- **Location:** architectural — spans [cli/cli_main.cpp](cli/cli_main.cpp), [cli/repl_main.cpp](cli/repl_main.cpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp) (`MathStateMachine::matrixRegistry`)
+- **Effort:** medium
+- **Description:** Matrix values live in `MathStateMachine::matrixRegistry`
+  — a `static std::map<Token, Matrix>` inside the `tux_ti83` library.
+  Each binary is its own process, so the registry is fresh in every
+  `tux_ti83_cli` invocation and every `tux_ti83_repl` session. Worse,
+  the CLI binaries have no way to *set* a matrix — only the GUI's
+  MatrixPopup EDIT tab populates the registry. Any CLI expression
+  involving `[A]`, `[B]`, or `[C]` returns `ERR:UNDEFINED` unless the
+  user happens to reference a matrix in the same GUI instance. From a
+  user's perspective, matrix operations are GUI-only right now.
+- **Proposal:** Two shapes, picking one:
+  1. **REPL command.** Add a `:matrix NAME ROWS COLS VALUES…` command
+     so users can `:matrix [A] 2 2 1 2 3 4` and then evaluate
+     `[A]^-1` or `det([A])` in the same session. One-liner for one-shot
+     mode via stdin pipe: `echo ':matrix [A] 2 2 1 2 3 4\n[A]^-1' | tux_ti83_repl`.
+  2. **On-disk persistence.** Serialise `matrixRegistry` to a dotfile
+     (`~/.config/tux-ti83/matrices.json` or similar) whenever a matrix
+     is updated, load on startup. GUI and CLI share the same file, so
+     matrices set in one session survive to the next — and across
+     binaries.
+  Option 1 is smaller but keeps CLI and GUI as separate worlds. Option 2
+  makes them share state but introduces file-I/O concerns (locking,
+  corruption recovery, schema versioning).
+- **Trade-offs:** Option 1 is a few dozen lines of parsing + dispatch
+  in `repl_main.cpp`. Option 2 is more like 100+ lines but benefits
+  the GUI too (matrices survive across app launches).
+- **Notes:** User's actual test case
+  (`./build/tux_ti83_cli '[A]^-1'` → `ERR:UNDEFINED`) is exactly this
+  gap. The current behaviour is technically correct but uselessly so —
+  no way for a CLI user to populate the matrix first.
+
+### IMP-010: Route matrix element formatting through `formatScalar`
+- **Status:** suggested
+- **Found:** 2026-04-08 (during matrix-transpose work)
+- **Location:** [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp) `evaluate()` matrix-result formatting branch
+- **Effort:** trivial (one-line change)
+- **Description:** The scalar-result branch of `evaluate()` routes
+  through `formatScalar(double)` — a centralised helper that uses
+  10-significant-digit precision to avoid scientific-notation surprises
+  (fixed during the factorial work). But the matrix-result branch
+  still uses bare `QString::number(matrixValue.at(i, j))` with the
+  default 6-digit precision. A matrix with a large integer element
+  (anything ≥ 10⁶) would render that cell as scientific, inconsistent
+  with scalar display.
+- **Proposal:** Replace `QString::number(result.matrixValue.at(i, j))`
+  with `formatScalar(result.matrixValue.at(i, j))` in the matrix-to-
+  string loop. One-line change.
+- **Trade-offs:** None — strictly more consistent. The two display
+  paths become one semantic (10-sig-digit 'g' format).
+- **Notes:** Not user-visible yet because no test matrix has elements
+  large enough to hit the 6-digit precision cliff, but the
+  inconsistency would surface the moment someone computes e.g.
+  `[A]*[B]` where `[A]` and `[B]` have large values. Trivial to fix;
+  flagging because it's the kind of small consistency gap that grows
+  into real bugs if left to accumulate.
+
 ### IMP-004: `Token::Num0` doubles as the "numeric literal" sentinel
 - **Status:** suggested
 - **Found:** 2026-04-06 (post-Step 6 spot-check of `core_math/`)
@@ -159,6 +219,26 @@ Each entry uses this template:
 ---
 
 ## Applied
+
+### IMP-012: Right-click copy on history entries
+
+- **Status:** applied (2026-04-18)
+- **Location:** [app/qml/components/HistoryPane.qml](app/qml/components/HistoryPane.qml)
+- **Effort:** small
+- **Description:** The history pane previously had no way to extract
+  past results — no selection, no copy. Long matrix answers were
+  unreachable as plain text, and users couldn't re-use a prior result in
+  another application.
+- **Change:** Added a right-click context menu on each history entry
+  with a single `Copy` action, scoped to that one entry (copies the full
+  `expression = result` string, not the whole history). Uses a hidden
+  `TextEdit` as a clipboard proxy since Qt6 QML doesn't expose the
+  system clipboard directly. Also added a subtle hover highlight on
+  entries so it's discoverable that they're interactive.
+- **Notes:** Left-click is currently a no-op — a future improvement
+  could re-load the expression into the display for editing (see the
+  delegate comment). Triggered by user request after BUG-018 verification
+  when they noticed long answers in history needed to be copyable.
 
 ### IMP-009: Remove unused `<algorithm>` include from core_math.cpp
 - **Status:** applied (2026-04-07)

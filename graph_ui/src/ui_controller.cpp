@@ -76,6 +76,8 @@ constexpr TokenSpec kTokens[] = {
     {"ln(",   Token::Ln,   "ln("},
     {"√(",    Token::Sqrt, "√("},
     {"det(",  Token::Det,  "det("},
+    {"T(",    Token::Transpose, "T("},
+    {"rref(", Token::Rref, "rref("},
 
     // Number functions (unary)
     {"abs(",   Token::Abs,   "abs("},
@@ -297,6 +299,8 @@ void UIController::evaluate() {
       currentStr = "ERR:INVALID DIM";
     else if (msg == "Undefined Matrix")
       currentStr = "ERR:UNDEFINED";
+    else if (msg == "SINGULAR MAT")
+      currentStr = "ERR:SINGULAR MAT";
     else
       currentStr = "ERR:SYNTAX";
     m_displayState = Error;

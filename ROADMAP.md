@@ -185,9 +185,10 @@ Engine implements more than the UI currently exposes — listed below.
 - ✅ Registry `[A]`, `[B]`, `[C]` (UI exposure — engine actually supports `[A]`–`[J]`, just needs more entries in the controller's token table)
 - ✅ 3×3 matrix editor reintegrated in the new UI as `MatrixPopup` (NAMES / MATH / EDIT tabs, opened from the new MATRX CalcKey in the SCIENTIFIC section; reintegrated 2026-04-07; current limitations tracked as [IMP-007](IMPROVEMENTS.md) and [IMP-008](IMPROVEMENTS.md))
 - ✅ Matrix subtraction `[A] − [B]` (fixed 2026-04-07; returns `ERR:INVALID DIM` on mismatched dimensions)
-- 📅 Transpose `T`
-- 📅 Inverse `^-1`
-- 📅 Reduced row-echelon form `rref(`, row-echelon form `ref(`
+- ✅ Transpose `T(` — unary matrix function; engine + UI via the MatrixPopup's MATH tab (added 2026-04-08). Swaps rows and columns; returns `ERR:DATA TYPE` for scalar input.
+- ✅ Inverse `^-1` — TI-83 syntax; engine via Gauss-Jordan on the augmented `[A | I]` form; UI via MatrixPopup MATH tab entry "4: ^-1 (inverse)" which inserts the multi-token `^-1` sequence (added 2026-04-08). Non-square input returns `ERR:INVALID DIM`; singular matrices return `ERR:SINGULAR MAT`.
+- ✅ Reduced row-echelon form `rref(` — shared row-reduction engine with inverse; UI via MatrixPopup MATH tab entry "3: rref(" (added 2026-04-08). Cells with magnitude < 1e-12 are clamped to zero so results don't display with floating-point noise.
+- 📅 Row-echelon form `ref(`
 - 📅 `dim(`, `identity(`, `randM(`
 - 📅 `augment(`
 - 📅 Matrix ↔ List conversion (`Matr→List`, `List→Matr`)

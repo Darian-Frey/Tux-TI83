@@ -5,9 +5,17 @@ import ".."
 // LCD display panel for the calculator.
 //
 // Visual contract: a dark Rectangle (always #0b1120 — permanent, not themed)
-// containing a small expression-history line (top-right), a large main
-// readout (bottom-right), and a blinking cursor positioned just to the
-// right of the readout when the state machine is in INPUTTING.
+// containing a small expression-history line (top-right) and a large main
+// readout (bottom-right) with a blinking cursor when in INPUTTING state.
+//
+// The main readout is a read-only TextInput rather than a plain Text, which
+// gives the user:
+//   - horizontal scrolling when the result is wider than the panel
+//     (arrow keys move the cursor; the view follows)
+//   - Home / End to jump to either edge
+//   - mouse-drag to select, Ctrl+C to copy
+//   - default scroll-to-end on new output so the most recent characters
+//     are visible
 //
 // Owners drive it via three properties: `currentState` (mirrors
 // UIController::DisplayState — 0 Inputting / 1 Evaluated / 2 Error),
@@ -48,42 +56,48 @@ Rectangle {
         elide: Text.ElideLeft
     }
 
-    // Bottom: main readout + cursor as a right-anchored Row.
-    // The row's right edge is fixed; as the readout text grows the row
-    // extends leftward, keeping the cursor pinned just to the right of
-    // the last character (TI-83 behaviour).
-    Row {
-        id: readoutRow
+    // Bottom: main readout as a read-only TextInput so the user can
+    // scroll / select / copy long output (fixes the "matrix clipped at
+    // the left" issue that plain Text had).
+    //
+    // `activeFocusOnPress` is gated by state: while INPUTTING, clicks
+    // don't steal focus from the root keyboard handler — the user's
+    // typing goes to the calculator engine as expected. After an
+    // evaluation, clicking the display focuses it so arrow keys / mouse
+    // / Ctrl+C work on the result.
+    TextInput {
+        id: readout
+        anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
+        anchors.leftMargin: 12
         anchors.rightMargin: 12
         anchors.bottomMargin: 12
-        spacing: 3
+        text: root.mainText
+        readOnly: true
+        selectByMouse: true
+        horizontalAlignment: TextInput.AlignRight
+        clip: true
+        activeFocusOnPress: root.currentState !== 0
+        color: root.currentState === 1 ? Style.textResult
+             : root.currentState === 2 ? Style.textError
+                                       : Style.textDisplay
+        font.family: Style.monoFamily
+        font.pixelSize: Style.displayPixelSize
 
-        Text {
-            id: readout
-            anchors.verticalCenter: parent.verticalCenter
-            text: root.mainText
-            color: root.currentState === 1 ? Style.textResult
-                 : root.currentState === 2 ? Style.textError
-                                           : Style.textDisplay
-            font.family: Style.monoFamily
-            font.pixelSize: Style.displayPixelSize
-        }
-
-        Rectangle {
-            id: cursor
-            anchors.verticalCenter: parent.verticalCenter
+        // Cursor shown in INPUTTING or whenever the user has clicked
+        // the display to navigate/select. cursorDelegate replaces
+        // TextInput's default cursor with our blinking Rectangle so
+        // users see a consistent blink across all three states. The
+        // cursor's colour tracks the text colour (white while typing,
+        // green for results, red for errors) for visual consistency.
+        cursorVisible: root.currentState === 0 || readout.activeFocus
+        cursorDelegate: Rectangle {
             width: Style.cursorWidth
             height: Style.cursorHeight
-            color: Style.textDisplay
-            visible: root.currentState === 0  // INPUTTING only
-
-            // Square-wave blink at Style.cursorBlinkMs intervals.
-            // PropertyAction snaps opacity instantly so the cursor reads
-            // as a hard on/off rather than a fade.
+            color: readout.color
             SequentialAnimation on opacity {
-                running: cursor.visible
+                running: true
                 loops: Animation.Infinite
                 PropertyAction { value: 1 }
                 PauseAnimation { duration: Style.cursorBlinkMs }
@@ -91,5 +105,12 @@ Rectangle {
                 PauseAnimation { duration: Style.cursorBlinkMs }
             }
         }
+
+        // Snap cursor to the end whenever text changes. Ensures that
+        // long input being typed stays visible (cursor at the right
+        // edge), and that new results default to "scrolled to the end"
+        // so the user can arrow-left to walk back through clipped
+        // leading characters like the leading "[[" of a wide matrix.
+        onTextChanged: cursorPosition = text.length
     }
 }

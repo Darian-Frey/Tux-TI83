@@ -23,6 +23,8 @@ int EOSPrecedence::precedence(Token t) {
   case Token::Sqrt:
   case Token::Not:
   case Token::Det:
+  case Token::Transpose:
+  case Token::Rref:
   case Token::Abs:
   case Token::Int:
   case Token::IPart:
@@ -79,7 +81,8 @@ bool EOSPrecedence::is_function(Token t) {
   return (t == Token::Sin || t == Token::Cos || t == Token::Tan ||
           t == Token::ASin || t == Token::ACos || t == Token::ATan ||
           t == Token::Log || t == Token::Ln || t == Token::Sqrt ||
-          t == Token::Not || t == Token::Det || t == Token::Neg ||
+          t == Token::Not || t == Token::Det || t == Token::Transpose ||
+          t == Token::Rref || t == Token::Neg ||
           t == Token::Abs || t == Token::Int ||
           t == Token::IPart || t == Token::FPart ||
           t == Token::Sinh || t == Token::Cosh || t == Token::Tanh ||
@@ -102,7 +105,8 @@ bool EOSPrecedence::has_built_in_paren(Token t) {
           t == Token::ASin || t == Token::ACos || t == Token::ATan ||
           t == Token::Log || t == Token::Ln || t == Token::Sqrt ||
           t == Token::Abs || t == Token::Int || t == Token::IPart ||
-          t == Token::FPart || t == Token::Det ||
+          t == Token::FPart || t == Token::Det || t == Token::Transpose ||
+          t == Token::Rref ||
           t == Token::Round || t == Token::Min ||
           t == Token::Max || t == Token::Mod ||
           t == Token::NCr || t == Token::NPr ||
@@ -169,6 +173,91 @@ Matrix matrixSub(const Matrix &a, const Matrix &b) {
   for (size_t i = 0; i < a.data.size(); ++i)
     res.data[i] -= b.data[i];
   return res;
+}
+
+// Reduce matrix m in-place to reduced row-echelon form via Gauss-Jordan
+// elimination. Pivots below 1e-12 are treated as zero (floating-point
+// tolerance). After reduction, any cell with magnitude < 1e-12 is
+// clamped to exactly 0 so results don't display as "-0" or "5.551e-17".
+void rrefInPlace(Matrix &m) {
+  int rows = m.rows;
+  int cols = m.cols;
+  int lead = 0;
+  for (int r = 0; r < rows; ++r) {
+    if (lead >= cols)
+      break;
+    int i = r;
+    while (std::abs(m.at(i, lead)) < 1e-12) {
+      ++i;
+      if (i == rows) {
+        i = r;
+        ++lead;
+        if (lead == cols)
+          goto clamp;
+      }
+    }
+    if (i != r) {
+      for (int j = 0; j < cols; ++j) {
+        double tmp = m.at(r, j);
+        m.set(r, j, m.at(i, j));
+        m.set(i, j, tmp);
+      }
+    }
+    {
+      double pivot = m.at(r, lead);
+      for (int j = 0; j < cols; ++j)
+        m.set(r, j, m.at(r, j) / pivot);
+    }
+    for (int ri = 0; ri < rows; ++ri) {
+      if (ri != r) {
+        double factor = m.at(ri, lead);
+        for (int j = 0; j < cols; ++j)
+          m.set(ri, j, m.at(ri, j) - factor * m.at(r, j));
+      }
+    }
+    ++lead;
+  }
+clamp:
+  for (size_t k = 0; k < m.data.size(); ++k)
+    if (std::abs(m.data[k]) < 1e-12)
+      m.data[k] = 0.0;
+}
+
+// Compute the inverse of a square matrix via Gauss-Jordan on the
+// augmented form [A | I]. If reduction succeeds and the left half
+// becomes identity, the right half is the inverse. Non-square input
+// returns "Dim Mismatch"; singular input returns "SINGULAR MAT".
+std::string matrixInverse(const Matrix &a, Matrix &result) {
+  if (a.rows != a.cols)
+    return "Dim Mismatch";
+  int n = a.rows;
+  Matrix aug;
+  aug.rows = n;
+  aug.cols = 2 * n;
+  aug.data.resize(n * 2 * n, 0.0);
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < n; ++j) {
+      aug.set(i, j, a.at(i, j));
+      aug.set(i, j + n, (i == j) ? 1.0 : 0.0);
+    }
+  }
+  rrefInPlace(aug);
+  // Left half should be identity if A was invertible. Any deviation
+  // beyond 1e-9 means the matrix was singular or nearly so.
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < n; ++j) {
+      double expected = (i == j) ? 1.0 : 0.0;
+      if (std::abs(aug.at(i, j) - expected) > 1e-9)
+        return "SINGULAR MAT";
+    }
+  }
+  result.rows = n;
+  result.cols = n;
+  result.data.resize(n * n);
+  for (int i = 0; i < n; ++i)
+    for (int j = 0; j < n; ++j)
+      result.set(i, j, aug.at(i, j + n));
+  return "";
 }
 
 // --- CORE EVALUATOR ---
@@ -384,6 +473,23 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
         if (a.mat.rows != a.mat.cols)
           return {false, 0.0, {}, false, "Dim Mismatch"};
         stack.push({false, getDeterminant(a.mat), {}});
+      } else if (t == Token::Transpose) {
+        if (!a.isMat)
+          return {false, 0.0, {}, false, "Type Error"};
+        Matrix result;
+        result.rows = a.mat.cols;
+        result.cols = a.mat.rows;
+        result.data.resize(result.rows * result.cols, 0.0);
+        for (int i = 0; i < a.mat.rows; ++i)
+          for (int j = 0; j < a.mat.cols; ++j)
+            result.set(j, i, a.mat.at(i, j));
+        stack.push({true, 0.0, result});
+      } else if (t == Token::Rref) {
+        if (!a.isMat)
+          return {false, 0.0, {}, false, "Type Error"};
+        Matrix result = a.mat;
+        rrefInPlace(result);
+        stack.push({true, 0.0, result});
       } else {
         if (a.isMat)
           return {false, 0.0, {}, false, "Type Error"};
@@ -513,10 +619,19 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
         } else
           return {false, 0.0, {}, false, "Type Error"};
       } else if (t == Token::Pow) {
-        if (!a.isMat && !b.isMat)
+        if (!a.isMat && !b.isMat) {
           stack.push({false, std::pow(a.val, b.val), {}});
-        else
+        } else if (a.isMat && !b.isMat && b.val == -1.0) {
+          // TI-83 convention: `[A]^-1` inverts a square matrix.
+          // Any other matrix-with-scalar power is unsupported for now.
+          Matrix inv;
+          std::string err = matrixInverse(a.mat, inv);
+          if (!err.empty())
+            return {false, 0.0, {}, false, err};
+          stack.push({true, 0.0, inv});
+        } else {
           return {false, 0.0, {}, false, "Type Error"};
+        }
       } else if (t == Token::Equal)
         stack.push({false, std::abs(a.val - b.val) < 1e-9 ? 1.0 : 0.0, {}});
       else if (t == Token::NotEqual)

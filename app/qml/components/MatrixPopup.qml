@@ -160,7 +160,10 @@ Popup {
                             anchors.fill: parent
                             hoverEnabled: true
                             onClicked: {
-                                uiController.processInput(modelData)
+                                // processExpression tokenises multi-char
+                                // inputs (e.g. "^-1" → ^, -, 1) so the
+                                // MATH tab can insert composite sequences.
+                                uiController.processExpression(modelData)
                                 root.close()
                             }
                         }
@@ -172,7 +175,12 @@ Popup {
             Item {
                 ListView {
                     anchors.fill: parent
-                    model: [{ display: "1: det(", input: "det(" }]
+                    model: [
+                        { display: "1: det(",  input: "det("  },
+                        { display: "2: T(",    input: "T("    },
+                        { display: "3: rref(", input: "rref(" },
+                        { display: "4: ^-1 (inverse)", input: "^-1" }
+                    ]
                     spacing: 4
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
@@ -198,7 +206,11 @@ Popup {
                             anchors.fill: parent
                             hoverEnabled: true
                             onClicked: {
-                                uiController.processInput(modelData.input)
+                                // processExpression tokenises multi-char
+                                // inputs like "^-1" into [^, -, 1]. Plain
+                                // single-token inputs (e.g. "det(") work
+                                // identically — they just emit one token.
+                                uiController.processExpression(modelData.input)
                                 root.close()
                             }
                         }
