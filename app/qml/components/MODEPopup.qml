@@ -24,7 +24,10 @@ Popup {
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
-    width: 340
+    // The Decimal row has 11 segments (Float, 0..9). 340px was fine for
+    // ≤4-option rows but squeezed each segment to ~28px here — bumped
+    // to 420 so "Float" and the single-digit segments both breathe.
+    width: 420
     height: 420
     padding: 14
 
@@ -65,7 +68,13 @@ Popup {
             Repeater {
                 model: row.options
                 delegate: Rectangle {
+                    // `fillWidth` with a `minimumWidth` tied to the text's
+                    // implicit width keeps short digit segments modest and
+                    // lets long labels (e.g. "Float", "Connected") expand
+                    // to fit their text without being clipped. +12 is the
+                    // horizontal padding around the centred label.
                     Layout.fillWidth: true
+                    Layout.minimumWidth: segLabel.implicitWidth + 12
                     Layout.preferredHeight: 26
                     radius: 4
                     opacity: row.active ? 1.0 : 0.4
@@ -79,6 +88,7 @@ Popup {
                                   : Style.keyBorderNeutral
                     border.width: index === row.selectedIndex ? 1 : Style.keyBorderWidth
                     Text {
+                        id: segLabel
                         anchors.centerIn: parent
                         text: modelData
                         color: Style.textPrimary
@@ -128,18 +138,28 @@ Popup {
             onSelected: (index) => uiController.angleMode = index
         }
 
-        // Remaining rows are TI-83-authentic placeholders. Greyed out
-        // until the backing features land — see ROADMAP (MODE menu
-        // follow-ups).
+        // Notation: Normal / Sci / Eng — wired. Feeds formatScalar, so
+        // the next evaluation reflects the selection.
         ModeRow {
             label: "Notation"
             options: ["Normal", "Sci", "Eng"]
-            selectedIndex: 0
+            selectedIndex: uiController.notation
+            active: true
+            onSelected: (index) => uiController.notation = index
         }
+
+        // Decimal: Float / 0..9 — wired. Selection index 0 maps to the
+        // Float sentinel (-1 on the controller); 1..10 map to Fix 0..9.
         ModeRow {
             label: "Decimal"
-            options: ["Float", "Fix"]
-            selectedIndex: 0
+            options: ["Float", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+            selectedIndex: uiController.fixDecimals < 0
+                           ? 0
+                           : uiController.fixDecimals + 1
+            active: true
+            onSelected: (index) => {
+                uiController.fixDecimals = (index === 0) ? -1 : (index - 1)
+            }
         }
         ModeRow {
             label: "Graph"

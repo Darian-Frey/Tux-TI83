@@ -10,6 +10,8 @@ namespace tux_ti83 {
 std::map<Token, Matrix> MathStateMachine::matrixRegistry;
 std::array<double, 26> MathStateMachine::varRegistry{};
 AngleMode MathStateMachine::angleMode = AngleMode::Radian;
+NumberNotation MathStateMachine::notation = NumberNotation::Normal;
+int MathStateMachine::fixDecimals = -1;  // -1 = Float (no fix)
 CalculationResult MathStateMachine::lastResult{true, 0.0, {}, false, ""};
 
 int EOSPrecedence::precedence(Token t) {

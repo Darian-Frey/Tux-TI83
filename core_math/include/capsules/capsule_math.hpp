@@ -188,6 +188,14 @@ public:
 // hyperbolic arguments are dimensionless.
 enum class AngleMode { Radian, Degree };
 
+// Number-format notation for scalar results. Normal is the default
+// "smart" format ('g' precision trims trailing zeros); Sci forces
+// scientific notation (`1.234E5`); Eng forces engineering notation —
+// same as Sci but the exponent is always a multiple of 3
+// (`123.4E3` rather than `1.234E5`). Interpretation lives in
+// UIController::formatScalar so the engine stays format-agnostic.
+enum class NumberNotation { Normal, Sci, Eng };
+
 class MathStateMachine {
 public:
   CalculationResult evaluate(const std::vector<Token> &graph,
@@ -205,6 +213,12 @@ public:
   // Current angle mode. Process-global static so CLI/REPL/GUI share
   // one setting; reflected in the trig-function evaluation below.
   static AngleMode angleMode;
+
+  // Number-format controls. Both are read by UIController::formatScalar
+  // when turning a double into a display string. `fixDecimals` == -1 is
+  // the Float mode (default); 0..9 fixes that many decimal places.
+  static NumberNotation notation;
+  static int fixDecimals;
 
   // Last successful evaluation result. Updated by the UI controller
   // after every successful ENTER and recalled via Token::Ans. Matches

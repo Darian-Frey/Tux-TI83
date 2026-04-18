@@ -161,11 +161,11 @@ yet built: 2ND modifier system, ALPHA modifier system (see
 
 Engine implements more than the UI currently exposes — listed below.
 
-- ✅ `=`, `≠`, `<`, `>` (engine; UI access pending — was in the legacy LOGIC popup, deleted 2026-04-07 with the rest of the legacy file)
-- ✅ `≤`, `≥` (engine implemented; needs entries in the controller's token table to be reachable from the UI)
-- ✅ `and`, `or`, `not` (engine; UI access pending — same situation as the comparators above)
-- ✅ `xor` (engine implemented; same — needs UI exposure)
-- 🔜 Logic operator menu in the new UI — replacement for the deleted legacy LOGIC popup
+- ✅ `=`, `≠`, `<`, `>` (engine + UI via `LogicMenuPopup` → TEST section, 2026-04-18)
+- ✅ `≤`, `≥` (engine + UI via `LogicMenuPopup` → TEST section; ASCII aliases `<=`/`>=` also work from the keyboard, 2026-04-18)
+- ✅ `and`, `or`, `not` (engine + UI via `LogicMenuPopup` → LOGIC section, 2026-04-18)
+- ✅ `xor` (engine + UI via `LogicMenuPopup` → LOGIC section, 2026-04-18)
+- ✅ Logic operator menu in the new UI — `LogicMenuPopup` landed 2026-04-18 (opened via 2ND + MATH; two sections: TEST with `=`, `≠`, `<`, `≤`, `>`, `≥`, and LOGIC with `and`, `or`, `xor`, `not`; kTokens now has the missing Unicode entries `≤`/`≥` and `xor` plus ASCII aliases `<=`/`>=`; MATH CalcKey shows a `TEST` sub-label)
 
 ## Variables & storage
 
@@ -305,12 +305,12 @@ Engine implements more than the UI currently exposes — listed below.
 - ✅ Cursor movement within an expression (left/right arrow editing) — added 2026-04-18 (token-level cursor in UIController; insertToken/backspace are cursor-aware; Left/Right/Home/End keyboard shortcuts; Display's TextInput binds to cursorOffset so the visual cursor tracks edits mid-expression; unary-negation disambiguation now looks at the token immediately left of the cursor rather than the tail)
 - 📅 Insert mode toggle (2nd + DEL)
 - ✅ ALPHA-lock mode — added 2026-04-18 (2ND + ALPHA toggles a persistent `alphaLocked` flag in addition to the one-shot `alphaArmed`; header shows "A-LOCK" when locked; any letter keypress fires its ALPHA variant without clearing the lock; ALPHA alone or CLEAR releases it; 2ND during lock preserves the lock so 2ND+letter combos stay usable mid-typing)
-- 📅 `MODE` menu follow-ups — wire the remaining placeholder rows (Notation: Normal/Sci/Eng, Decimal: Float/Fix N, Graph: Func/Par/Pol/Seq, Draw: Connected/Dot, Plot: Sequential/Simul, Complex: Real/a+bi/re^θi, Screen: Full/Horiz/G-T). Infrastructure is in place — each row needs a backing property + evaluator/renderer support.
+- 📅 `MODE` menu follow-ups — Notation (Normal/Sci/Eng) and Decimal (Float/Fix N) landed 2026-04-18 via `MathStateMachine::notation` + `fixDecimals` + an extended `formatScalar`. Remaining placeholder rows: Graph: Func/Par/Pol/Seq, Draw: Connected/Dot, Plot: Sequential/Simul, Complex: Real/a+bi/re^θi, Screen: Full/Horiz/G-T. Each needs a backing property + evaluator/renderer support.
 - 📅 `CATALOG` browser (alphabetical list of every command)
 - 📅 Mode indicator in the header (currently hardcoded "NORMAL  DEG")
 - ✅ WINDOW popup ported to the new UI (see Graphing › Window settings)
 - ✅ Matrix editor popup ported to the new UI (see Matrices)
-- 📅 Logic operator menu ported to the new UI
+- ✅ Logic operator menu ported to the new UI — `LogicMenuPopup` landed 2026-04-18 (see Comparators & boolean section above for details)
 
 ### Considering
 - 💭 Resizable window (currently fixed 720×760)

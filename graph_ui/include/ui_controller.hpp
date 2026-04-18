@@ -34,6 +34,11 @@ private:
     // MathStateMachine::angleMode (process-global). Header indicator
     // and MODEPopup both bind to this.
     Q_PROPERTY(int angleMode READ angleMode WRITE setAngleMode NOTIFY angleModeChanged)
+    // Number-format settings, both backed by the engine statics that
+    // `formatScalar` consults. `notation`: 0 = Normal, 1 = Sci, 2 = Eng.
+    // `fixDecimals`: -1 = Float, 0..9 = Fix N.
+    Q_PROPERTY(int notation READ notation WRITE setNotation NOTIFY notationChanged)
+    Q_PROPERTY(int fixDecimals READ fixDecimals WRITE setFixDecimals NOTIFY fixDecimalsChanged)
     // Cursor position within the current expression, expressed as a
     // character offset into the rendered display string. The backing
     // state is token-level (m_cursorPos, 0..buf.size()), but the
@@ -53,6 +58,12 @@ public:
         return static_cast<int>(MathStateMachine::angleMode);
     }
     void setAngleMode(int m);
+    int notation() const {
+        return static_cast<int>(MathStateMachine::notation);
+    }
+    void setNotation(int n);
+    int fixDecimals() const { return MathStateMachine::fixDecimals; }
+    void setFixDecimals(int n);
     int cursorOffset() const;
 
     Q_INVOKABLE void processInput(const QString& input);
@@ -103,6 +114,8 @@ signals:
     void graphModeChanged();
     void displayStateChanged();
     void angleModeChanged();
+    void notationChanged();
+    void fixDecimalsChanged();
     void cursorMoved();
 
 private:

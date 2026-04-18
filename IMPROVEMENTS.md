@@ -188,6 +188,42 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-020: MODE menu — Notation (Normal/Sci/Eng) + Decimal (Float/Fix N) rows
+
+- **Status:** applied (2026-04-18)
+- **Location:** [core_math/include/capsules/capsule_math.hpp](core_math/include/capsules/capsule_math.hpp), [core_math/src/core_math.cpp](core_math/src/core_math.cpp), [graph_ui/include/ui_controller.hpp](graph_ui/include/ui_controller.hpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/qml/components/MODEPopup.qml](app/qml/components/MODEPopup.qml), [tests/test_math.cpp](tests/test_math.cpp)
+- **Effort:** medium
+- **Description:** Two of the seven greyed-out MODE-popup rows were the most immediately useful: Notation controls whether results render as `12345`, `1.234E4`, or `12.345E3` (engineering), and Decimal fixes the number of displayed decimals. Without them, there was no way to get consistent precision across a session or to see very large / very small numbers in a readable form.
+- **Change:**
+  - Engine: added `NumberNotation { Normal, Sci, Eng }` enum and two static fields on `MathStateMachine` — `notation` (default `Normal`) and `fixDecimals` (int, -1 = Float, 0..9 = Fix N). Defaults preserve historical behaviour.
+  - `UIController::formatScalar` grew a four-branch dispatch:
+    - Normal + Float: unchanged ('g' precision 10, trims zeros).
+    - Normal + Fix N: `%.Nf` via Qt's `'f'` formatter.
+    - Sci + Float/Fix: Qt's `'E'` formatter at precision 9 or N.
+    - Eng + Float/Fix: exponent normalised to `3 * floor(log10|v| / 3)` so the mantissa sits in `[1, 1000)`; zero special-cased as `0E0`.
+  - Controller: two new Q_PROPERTYs (`notation` as int 0/1/2; `fixDecimals` as int -1..9) with WRITE + NOTIFY. Setters clamp to the valid ranges so downstream consumers never see a corrupt state.
+  - MODEPopup: flipped the Notation and Decimal rows from `active: false` to live bindings against the new properties. Decimal's 11 segments (`Float`, `0`..`9`) made the row geometry fragile — added `Layout.minimumWidth: segLabel.implicitWidth + 12` to the segment delegate so short digits stay tight and longer labels expand (the user caught a "Float" clip on first pass; this fix also helps the rest of the placeholder rows — `Connected`, `Sequential`, `re^θi` — when they get wired).
+  - Bumped the MODE popup width from 340 → 420 so the Decimal row has room to breathe.
+  - Tests: 10 new assertions covering Normal Float / Fix 0 / Fix 2, Sci Float / Fix 2, Eng Fix 3 (including the `0 → 0.000E0` special case and a negative-exponent case). Tests restore the Normal + Float defaults at exit so downstream assertions see the environment they were written against. 187/187 passing.
+- **Trade-offs:** The engine-static approach (same pattern as `angleMode` from IMP-015) means settings are process-global — two UIController instances in the same process would share them. Fine for our shape (the app only runs one). Alternative would be per-controller state, which is more plumbing with no current benefit.
+- **Notes:** Closes out the user-facing queue for this session (cursor movement → ALPHA-lock → Logic menu → MODE Notation/Decimal). Remaining MODE placeholders (Graph mode variants, Connected/Dot, Sequential/Simul, Complex, Screen) each depend on feature work that isn't on the immediate roadmap.
+
+### IMP-019: Logic operator menu (2ND + MATH → TEST / LOGIC)
+
+- **Status:** applied (2026-04-18)
+- **Location:** [app/qml/components/LogicMenuPopup.qml](app/qml/components/LogicMenuPopup.qml), [app/qml/Main.qml](app/qml/Main.qml), [app/qml/qmldir](app/qml/qmldir), [CMakeLists.txt](CMakeLists.txt), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [tests/test_math.cpp](tests/test_math.cpp)
+- **Effort:** small
+- **Description:** Six operators were engine-implemented but had no UI path after the legacy LOGIC popup was deleted during Phase A: `≤`, `≥`, and `xor` weren't even in `kTokens`, and while `=`, `≠`, `<`, `>`, `and`, `or`, `not` were reachable via keyboard, there was no menu to discover them. 2ND + MATH on a real TI-83 opens the TEST menu — the natural home.
+- **Change:**
+  - Added `≤`, `≥`, `xor` entries to `kTokens` alongside ASCII aliases `<=` / `>=` so keyboard and CLI users have both Unicode and plain-text input paths.
+  - Built `LogicMenuPopup.qml` with two sections — TEST (6 comparators) and LOGIC (4 boolean ops). Single-column scrollable list mirrors the MATH menu's pattern; entries insert via `processInput` and close the popup. Factored the delegate into an inline `EntryRow` component and the section separators into a `SectionLabel` component so the structure stays readable even as the list grows.
+  - Wired 2ND + MATH in `handleKey` as a dedicated path (like 2ND + ENTER for recall) — popup triggers don't fit the string-in-string-out shape of `secondMap`. MATH CalcKey's `onPressed` now routes through `handleKey` whenever 2ND is armed or ALPHA is active, so the three modifier modes (none → MATH menu, 2ND → LOGIC menu, ALPHA → insert `A`) all converge on the dispatcher.
+  - Added `secondLabel: "TEST"` to the MATH CalcKey so the keytop annotation matches the new behaviour.
+  - Registered the popup in `qmldir` and the CMake resource list.
+  - Tests: 8 new assertions covering `≤`/`≥` in both Unicode and ASCII forms, and `xor` at each of its three truth-table corners. 177/177 passing.
+- **Trade-offs:** Fixed popup height was sized for the exact row count; if more operators land here it'll need to be bumped (user caught a 70px overflow on first pass — `not` was getting clipped, fixed by bumping 420→520). Alternative: size-to-content, which is a QML-y pattern but pulls in extra layout work.
+- **Notes:** Closes the Phase A logic-UI gap. Follow-up: the TEST menu on real TI-83 also has sub-tabs for specific test types (equality, inequality) — we're a single flat list, which is simpler but diverges slightly from the authentic layout. Acceptable for the operator count we have.
+
 ### IMP-018: ALPHA-lock mode (2ND+ALPHA)
 
 - **Status:** applied (2026-04-18)

@@ -558,6 +558,53 @@ int main(int argc, char *argv[]) {
   check("1 xor 1 = 0", eval(c, "1 xor 1"), "0");
   check("0 xor 0 = 0", eval(c, "0 xor 0"), "0");
 
+  section("Notation + Decimal (MODE menu)");
+  using tux_ti83::MathStateMachine;
+  using tux_ti83::NumberNotation;
+
+  // Normal + Float is the historical default — sanity-check it matches
+  // what the long list of earlier tests has been asserting.
+  MathStateMachine::notation    = NumberNotation::Normal;
+  MathStateMachine::fixDecimals = -1;
+  check("Normal Float: 1÷3 ≈ 0.333333…",
+        eval(c, "1÷3"), UIController::formatScalar(1.0 / 3.0));
+  check("Normal Float: 10! = 3628800 (integer form)",
+        eval(c, "10!"), "3628800");
+
+  // Normal + Fix N: fixed decimal places, no exponent.
+  MathStateMachine::fixDecimals = 2;
+  check("Normal Fix 2: 1÷3 → 0.33",
+        eval(c, "1÷3"), "0.33");
+  check("Normal Fix 2: 1 → 1.00",
+        eval(c, "1"), "1.00");
+  MathStateMachine::fixDecimals = 0;
+  check("Normal Fix 0: 1÷3 → 0",
+        eval(c, "1÷3"), "0");
+
+  // Sci mode — uppercase E, Qt's native 'E' formatter.
+  MathStateMachine::notation    = NumberNotation::Sci;
+  MathStateMachine::fixDecimals = -1;
+  check("Sci Float: 12345 → 1.23450…E+04",
+        eval(c, "12345"), "1.234500000E+04");
+  MathStateMachine::fixDecimals = 2;
+  check("Sci Fix 2: 12345 → 1.23E+04",
+        eval(c, "12345"), "1.23E+04");
+
+  // Eng mode: exponent is always a multiple of 3.
+  MathStateMachine::notation    = NumberNotation::Eng;
+  MathStateMachine::fixDecimals = 3;
+  check("Eng Fix 3: 12345 → 12.345E3",
+        eval(c, "12345"), "12.345E3");
+  check("Eng Fix 3: 0.005 → 5.000E-3",
+        eval(c, ".005"), "5.000E-3");
+  check("Eng Fix 3: 0 → 0.000E0",
+        eval(c, "0"), "0.000E0");
+
+  // Restore defaults so the remaining assertions in the file see the
+  // Normal + Float environment they were written against.
+  MathStateMachine::notation    = NumberNotation::Normal;
+  MathStateMachine::fixDecimals = -1;
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

@@ -192,6 +192,29 @@ void UIController::setAngleMode(int m) {
   emit angleModeChanged();
 }
 
+void UIController::setNotation(int n) {
+  // Clamp to the three valid values. Anything else becomes Normal —
+  // the default, matches prior behaviour.
+  NumberNotation newNote =
+      (n == 1) ? NumberNotation::Sci :
+      (n == 2) ? NumberNotation::Eng :
+                 NumberNotation::Normal;
+  if (MathStateMachine::notation == newNote)
+    return;
+  MathStateMachine::notation = newNote;
+  emit notationChanged();
+}
+
+void UIController::setFixDecimals(int n) {
+  // -1 = Float, 0..9 = Fix N. Anything outside that range is clamped
+  // to Float so the formatter never sees a nonsensical precision.
+  const int clamped = (n >= 0 && n <= 9) ? n : -1;
+  if (MathStateMachine::fixDecimals == clamped)
+    return;
+  MathStateMachine::fixDecimals = clamped;
+  emit fixDecimalsChanged();
+}
+
 int UIController::cursorOffset() const {
   const auto &buf = m_functionBuffers[m_activeIdx];
   const auto &rev = tokenToSpec();
@@ -283,10 +306,44 @@ QString UIController::currentDisplay() const {
 }
 
 QString UIController::formatScalar(double value) {
-  // 'g' drops trailing zeros; precision 10 shows enough digits that
-  // values up to ~10^9 stay in plain-integer form (10! = 3,628,800
-  // no longer renders as "3.6288e+06").
-  return QString::number(value, 'g', 10);
+  const auto notation = MathStateMachine::notation;
+  const int fixN = MathStateMachine::fixDecimals;  // -1 = Float
+
+  // Normal + Float: the historical default — 'g' at precision 10
+  // trims trailing zeros and keeps integer-like values (10!,
+  // 3,628,800) out of scientific notation.
+  if (notation == NumberNotation::Normal && fixN < 0)
+    return QString::number(value, 'g', 10);
+
+  // Normal + Fix N: fixed decimal places, no exponent.
+  if (notation == NumberNotation::Normal)
+    return QString::number(value, 'f', fixN);
+
+  // Sci mode maps directly onto Qt's 'e' / 'E' formatters. Use 'E'
+  // to match TI-83 conventions. Float uses precision 9 (matches the
+  // Normal mode's effective digit count in scientific form).
+  if (notation == NumberNotation::Sci) {
+    const int prec = (fixN >= 0) ? fixN : 9;
+    return QString::number(value, 'E', prec);
+  }
+
+  // Eng mode: same as Sci but the exponent is always a multiple of 3,
+  // so mantissa ∈ [1, 1000). Qt has no built-in engineering formatter
+  // so we normalise manually. Zero is a special case — log10(0) is
+  // undefined, and the canonical TI-83 display is "0E0".
+  if (value == 0.0) {
+    const int prec = (fixN >= 0) ? fixN : 0;
+    return QString::number(0.0, 'f', prec) + "E0";
+  }
+  const double absv = std::abs(value);
+  const double log10v = std::log10(absv);
+  // Round exponent down to the nearest multiple of 3 (works for
+  // negatives too via std::floor).
+  const int engExp = 3 * static_cast<int>(std::floor(log10v / 3.0));
+  const double mantissa = value / std::pow(10.0, engExp);
+  const int prec = (fixN >= 0) ? fixN : 6;
+  return QString::number(mantissa, 'f', prec) + "E" +
+         QString::number(engExp);
 }
 
 // ── processInput dispatcher ───────────────────────────────────
