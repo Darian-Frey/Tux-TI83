@@ -25,6 +25,18 @@ target_link_libraries(graph_ui PUBLIC core_math Qt6::Gui Qt6::Qml Qt6::Quick)
 add_executable(tux_ti83 app/main.cpp)
 target_link_libraries(tux_ti83 PRIVATE graph_ui Qt6::Gui Qt6::Qml Qt6::Quick)
 
+# Headless CLI binary — same UIController as the GUI, but no QML/Quick.
+# Useful as a terminal calculator and as the basis for shell pipelines.
+add_executable(tux_ti83_cli cli/cli_main.cpp)
+target_link_libraries(tux_ti83_cli PRIVATE graph_ui Qt6::Core Qt6::Gui)
+
+# Regression test binary — drives UIController programmatically and
+# asserts on the displayed result. Run with `./build/tux_ti83_tests`.
+add_executable(tux_ti83_tests tests/test_math.cpp)
+target_link_libraries(tux_ti83_tests PRIVATE graph_ui Qt6::Core Qt6::Gui)
+enable_testing()
+add_test(NAME math_regression COMMAND tux_ti83_tests)
+
 # App-layer QML resources (Style singleton, Main.qml, all UI components).
 # The legacy graph_ui/qml/Main.qml resource block was removed 2026-04-07
 # alongside the file's deletion at the end of Phase A.

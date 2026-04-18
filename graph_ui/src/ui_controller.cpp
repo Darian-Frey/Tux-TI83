@@ -36,8 +36,17 @@ constexpr TokenSpec kTokens[] = {
     {"×", Token::Mul, "×"}, {"÷", Token::Div, "÷"},
     {"^", Token::Pow, "^"},
 
+    // ASCII aliases for the Unicode operators. Keyboard typists and the
+    // CLI binary feed these directly; the QML keyboard handler also
+    // pre-converts but we accept either form. Display string matches
+    // the Unicode form so the calculator looks consistent.
+    {"-", Token::Sub, "−"},
+    {"*", Token::Mul, "×"},
+    {"/", Token::Div, "÷"},
+
     // Unary negation. Distinct from Sub — the UI's `(-)` key sends
-    // "neg" while the `−` key and keyboard `-` send Sub.
+    // "neg" while the `−` key and keyboard `-` send Sub (with
+    // disambiguation in insertToken promoting to Neg in unary contexts).
     {"neg", Token::Neg, "−"},
 
     // Punctuation
@@ -346,6 +355,59 @@ void UIController::insertToken(const QString &input) {
   currentBuf.push_back(tokenToInsert);
   currentStr += QString::fromUtf8(spec->displayStr);
   emit displayChanged();
+}
+
+// Longest-match tokeniser. Matches against the kTokens forward table
+// plus a small set of control verbs that aren't real tokens but the
+// dispatcher recognises (▶Frac, ▶Dec). Returns an empty list if any
+// non-whitespace character fails to match.
+QStringList UIController::tokenize(const QString &expr) {
+  static const QStringList kVerbs = {QStringLiteral("▶Frac"),
+                                     QStringLiteral("▶Dec")};
+  // QString::length() returns qsizetype in Qt6; using qsizetype here
+  // avoids a std::min/max type-deduction failure on 64-bit Linux.
+  static const qsizetype kMaxKeyLen = [] {
+    qsizetype m = 0;
+    for (const auto &kv : inputToSpec())
+      m = std::max(m, kv.first.length());
+    for (const auto &v : kVerbs)
+      m = std::max(m, v.length());
+    return m;
+  }();
+
+  QStringList tokens;
+  qsizetype i = 0;
+  while (i < expr.length()) {
+    if (expr[i].isSpace()) {
+      ++i;
+      continue;
+    }
+    qsizetype matchLen = 0;
+    QString matchKey;
+    qsizetype upper = std::min(kMaxKeyLen, expr.length() - i);
+    for (qsizetype len = upper; len > 0; --len) {
+      QString candidate = expr.mid(i, len);
+      if (inputToSpec().count(candidate) > 0 || kVerbs.contains(candidate)) {
+        matchLen = len;
+        matchKey = candidate;
+        break;
+      }
+    }
+    if (matchLen == 0)
+      return QStringList(); // unrecognised character
+    tokens.append(matchKey);
+    i += matchLen;
+  }
+  return tokens;
+}
+
+bool UIController::processExpression(const QString &expr) {
+  QStringList tokens = tokenize(expr);
+  if (tokens.isEmpty() && !expr.trimmed().isEmpty())
+    return false;
+  for (const QString &t : tokens)
+    processInput(t);
+  return true;
 }
 
 void UIController::updateMatrix(const QString &name, int rows, int cols,

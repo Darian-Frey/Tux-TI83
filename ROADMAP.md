@@ -44,6 +44,41 @@ yet built: 2ND modifier system, ALPHA modifier system (see
 
 ---
 
+## Tooling & testing
+
+- ✅ `tux_ti83_cli` — headless CLI binary that drives `UIController`
+  directly. One-shot mode (`tux_ti83_cli "2+2"` prints `4`) and
+  interactive REPL mode (line-per-expression, `Ans` recall between
+  lines, `:quit` to exit). ANSI colour when stdout is a tty (green
+  result, red error, blue prompt); plain output when piped. Uses only
+  Qt6::Core / Qt6::Gui — no QML or display dependency. Added 2026-04-08.
+- ✅ `tux_ti83_tests` — regression test binary with plain C++ assertions
+  (no external test framework). Drives the same `UIController` the GUI
+  uses; covers basic arithmetic, trig, log/ln, sqrt, constants, unary
+  negation (BUG-014), number functions (Phase B Wave 1), `▶Frac`/`▶Dec`
+  (BUG-015), Ans recall, all engine bug fixes (BUG-005/006/007/009/010/
+  011/013), matrix subtraction (BUG-008), matrix dimension errors. 56
+  tests at first cut. Wired into CTest (`enable_testing()` +
+  `add_test(NAME math_regression …)`). Added 2026-04-08.
+- ✅ `Q_INVOKABLE bool UIController::processExpression(const QString&)`
+  — full-string tokeniser + dispatcher. Used by both the CLI and the
+  test binary; available to QML for future paste-an-expression / batch
+  features.
+- ✅ ASCII operator aliases (`-`, `*`, `/`) added to the `kTokens` table
+  so keyboard typists and the CLI can use plain ASCII without any
+  pre-conversion layer. Display still shows the Unicode forms (`−`,
+  `×`, `÷`) for consistency.
+- 📅 Wire CTest into the build script (`./build.sh --test`?) so tests
+  run automatically alongside builds.
+- 📅 Continuous integration (GitHub Actions runner that builds + runs
+  `tux_ti83_tests` on every push).
+- 📅 CLI commands beyond bare expressions: `:vars`, `:matrix [A]`,
+  `:graph X^2 -10 10`, etc. Currently REPL only handles expressions.
+- 💭 Test coverage measurement (gcov / lcov) once the test suite grows.
+- 💭 Property-based / fuzz testing for the parser (FuzzTest, libFuzzer).
+
+---
+
 ## Architecture
 
 - ✅ Custom recursive-descent parser + shunting-yard evaluator (`core_math/`)

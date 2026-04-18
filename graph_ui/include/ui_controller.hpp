@@ -40,6 +40,16 @@ public:
     QString displayExpression() const { return m_displayExpression; }
 
     Q_INVOKABLE void processInput(const QString& input);
+    // Tokenise a free-form expression string ("2+sin(0.5)") into the
+    // sequence of input strings the controller's processInput method
+    // accepts. Longest-match against the kTokens table plus a small set
+    // of control verbs (▶Frac, ▶Dec). Returns an empty list if any
+    // character can't be tokenised. Whitespace is ignored.
+    static QStringList tokenize(const QString& expr);
+    // Tokenise `expr` and feed each token through processInput in order.
+    // Returns true on full success, false if tokenisation failed.
+    // Note: does not call ENTER — caller decides whether to evaluate.
+    Q_INVOKABLE bool processExpression(const QString& expr);
     Q_INVOKABLE void setActiveFunction(int index) { m_activeIdx = index; emit activeFunctionIndexChanged(); }
     Q_INVOKABLE void toggleGraphMode() { m_isGraphMode = !m_isGraphMode; emit graphModeChanged(); }
     Q_INVOKABLE void resetViewport() { m_xMin = -10; m_xMax = 10; m_yMin = -10; m_yMax = 10; emit viewportChanged(); }
