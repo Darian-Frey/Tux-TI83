@@ -195,7 +195,7 @@ ApplicationWindow {
             rowSpacing: 6
             columnSpacing: 6
 
-            CalcKey { label: "MATH"; keyType: "function"; onPressed: { /* TODO: MATH menu */ } }
+            CalcKey { label: "MATH"; keyType: "function"; onPressed: mathMenuPopup.open() }
             CalcKey { label: "sin(";  keyType: "function"; onPressed: uiController.processInput("sin")  }
             CalcKey { label: "cos(";  keyType: "function"; onPressed: uiController.processInput("cos")  }
             CalcKey { label: "tan(";  keyType: "function"; onPressed: uiController.processInput("tan")  }
@@ -247,7 +247,7 @@ ApplicationWindow {
             // Row 5
             CalcKey { label: "0";   keyType: "numeric"; onPressed: uiController.processInput("0") }
             CalcKey { label: ".";   keyType: "numeric"; onPressed: uiController.processInput(".") }
-            CalcKey { label: "(-)"; keyType: "numeric"; onPressed: uiController.processInput("-") }
+            CalcKey { label: "(-)"; keyType: "numeric"; onPressed: uiController.processInput("neg") }
             CalcKey {
                 label: "ENTER"
                 keyType: "enter"
@@ -279,5 +279,9 @@ ApplicationWindow {
 
     MatrixPopup {
         id: matrixPopup
+    }
+
+    MathMenuPopup {
+        id: mathMenuPopup
     }
 }

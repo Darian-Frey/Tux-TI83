@@ -196,6 +196,88 @@ Each entry uses this template:
 - **Notes:** Found alongside BUG-010 in the same review pass. Both
   fixed together.
 
+### BUG-014: Unary negation is inert — `(-)` key does nothing, `abs(-5)` errors
+- **Status:** fixed (2026-04-07, user-reported during Phase B Wave 1 testing)
+- **Location:** [core_math/src/core_math.cpp](core_math/src/core_math.cpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/qml/Main.qml](app/qml/Main.qml)
+- **Severity:** high (blocked basic use — any expression with a unary
+  minus errored, including `abs(-5)`, `int(-3.7)`, `iPart(-3.7)`,
+  `fPart(-3.7)`, `−3²`, etc.)
+- **Description:** Two related problems:
+  1. The on-screen `(-)` CalcKey sent `"-"` (plain hyphen) through
+     `processInput`, but the controller's token table had no entry for
+     `"-"` — the keypress was silently dropped and nothing appeared on
+     the display.
+  2. The keyboard `-` key correctly mapped to `−` (binary Sub). Typing
+     something like `abs(-5)` via keyboard produced a token sequence
+     `[Abs, (, Sub, 5, )]`, which parsed as "abs of (subtract 5 from
+     nothing)" — a syntax error with no left operand for Sub.
+  A TI-83's solution is two physically different keys (`−` and `(-)`)
+  with two internally distinct tokens. We had the physical distinction
+  on the UI but not the token-level distinction.
+- **Reproduction:** `abs(-5)` ENTER → `ERR:SYNTAX`. `int(-3.7)` ENTER →
+  `ERR:SYNTAX`. See history in the user's screenshot from Phase B Wave 1
+  testing.
+- **Fix:** landed in two passes within the same session:
+  - Pass 1: added `Token::Neg` to the enum in `capsule_math.hpp`;
+    registered `Neg` in `is_function()` (so the shunting-yard pushes
+    it like a unary prefix function) with precedence 2 — same family
+    as Mul/Div, but `is_function` keeps it from popping prior operators
+    of higher precedence. Gives the correct TI-83 groupings:
+    `−3^2 = −9` (Pow binds tighter), `−3*4 = −12`, `3*−4 = −12`.
+    Added a unary dispatch case `else if (t == Token::Neg) v = -v;`.
+    Added `{"neg", Token::Neg, "−"}` to `kTokens`. Rewired the `(-)`
+    CalcKey to send `"neg"`.
+  - Pass 2: added context-aware disambiguation in
+    `UIController::insertToken` — when a `Token::Sub` is about to be
+    inserted and there's no left operand available (empty buffer,
+    previous token is `LeftParen`, an operator, or a function),
+    promote it to `Token::Neg` instead. This makes both the keyboard
+    `-` key and the on-screen `−` key do the right thing in unary
+    contexts (e.g. `abs(-5)` via keyboard now works). User reported
+    Pass 1 alone wasn't enough during Phase B Wave 1 verification.
+- **Notes:** The `(-)` CalcKey bypasses disambiguation by sending
+  `"neg"` directly, so it's always an explicit unary. Keyboard `-` and
+  the `−` CalcKey become context-aware: unary at the start of an
+  expression or after an operator/function/paren, binary otherwise.
+  Matches the informal convention most calculator apps and typed
+  math use.
+
+### BUG-015: `▶Frac` is not really implemented — acts as ENTER alias, results auto-convert to fractions with no way to "exit"
+- **Status:** fixed (2026-04-07, user-reported during Phase B Wave 1 testing)
+- **Location:** [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp) `evaluate()` and `processInput()`, [app/qml/components/MathMenuPopup.qml](app/qml/components/MathMenuPopup.qml)
+- **Severity:** medium
+- **Description:** Previously, `UIController::evaluate()` ran every
+  scalar result through `MathStateMachine::toFraction()` and displayed
+  the fraction form whenever the conversion succeeded. This made
+  `fPart(3.7)` display as `7/10` (exact rational) instead of `0.7` — a
+  design mismatch with what users expect. Worse, `▶Frac` itself was
+  wired as a literal ENTER alias (`if (input == "ENTER" || input ==
+  "▶Frac")`), doing nothing meaningful beyond forcing an evaluation.
+  User couldn't distinguish "I want a fraction" from "I want a decimal"
+  because the calculator always tried fractions on its own.
+- **Reproduction:** `fPart(3.7)` ENTER → displayed `7/10` instead of
+  `0.7`. No way to toggle display format. User's mental model assumed
+  some sort of "frac mode", but there was none.
+- **Fix:** Option A — the TI-83-faithful design:
+  - Removed the auto-`toFraction` call from `evaluate()`'s success
+    branch. Scalar results now display as decimal by default.
+  - `▶Frac` is now a post-hoc display conversion: if the current state
+    is `Evaluated` and the result was scalar, it looks up the stored
+    `MathStateMachine::lastResult.value`, runs `toFraction` on it, and
+    replaces the display with the fraction form (if one exists within
+    tolerance).
+  - Added `▶Dec` as the reverse — redisplays the stored result in its
+    raw decimal form.
+  - Both conversions prepend an `Ans▶Frac = …` / `Ans▶Dec = …` history
+    entry so the transformation is visible.
+  - Added `▶Dec` as a new entry in `MathMenuPopup` alongside `▶Frac`.
+- **Notes:** Means rationals like `1÷3` now show as `.333333...` by
+  default; the user presses `MATH` → `▶Frac` to see `1/3`. Irrational
+  results (`e`, `π`, `√(2)`) silently leave the decimal alone when
+  `▶Frac` is pressed, since `toFraction` returns empty for those after
+  the BUG-013 fix. Could add an error signal for the "can't convert"
+  case in the future but silent no-op is the TI-83 behaviour.
+
 ### BUG-013: `toFraction` returns misleading fractions for irrational results
 - **Status:** fixed (2026-04-07, same session it was reported)
 - **Location:** [core_math/src/core_math.cpp](core_math/src/core_math.cpp) `MathStateMachine::toFraction`

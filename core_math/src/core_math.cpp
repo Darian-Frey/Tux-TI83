@@ -22,11 +22,16 @@ int EOSPrecedence::precedence(Token t) {
   case Token::Sqrt:
   case Token::Not:
   case Token::Det:
+  case Token::Abs:
+  case Token::Int:
+  case Token::IPart:
+  case Token::FPart:
     return 4;
   case Token::Pow:
     return 3;
   case Token::Mul:
   case Token::Div:
+  case Token::Neg: // Same as Mul/Div so −3*4 = (−3)*4 = −12 but −3^2 = −(3^2) = −9.
     return 2;
   case Token::Add:
   case Token::Sub:
@@ -53,10 +58,17 @@ bool EOSPrecedence::is_operator(Token t) {
   return precedence(t) != 0 && !is_function(t);
 }
 bool EOSPrecedence::is_function(Token t) {
+  // Note: Neg is treated as a function here so the shunting-yard pushes
+  // it onto the opStack without popping prior operators (unary prefix
+  // behaviour). Its precedence is still honoured when subsequent
+  // operators arrive, which is how −3*4 vs −3^2 end up with different
+  // groupings.
   return (t == Token::Sin || t == Token::Cos || t == Token::Tan ||
           t == Token::ASin || t == Token::ACos || t == Token::ATan ||
           t == Token::Log || t == Token::Ln || t == Token::Sqrt ||
-          t == Token::Not || t == Token::Det);
+          t == Token::Not || t == Token::Det || t == Token::Neg ||
+          t == Token::Abs || t == Token::Int ||
+          t == Token::IPart || t == Token::FPart);
 }
 
 // --- MATRIX MATH HELPERS ---
@@ -278,6 +290,18 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
           v = std::log(v);
         } else if (t == Token::Not)
           v = toB(v) ? 0.0 : 1.0;
+        else if (t == Token::Neg)
+          v = -v;
+        else if (t == Token::Abs)
+          v = std::abs(v);
+        else if (t == Token::Int)
+          // TI-83 `int(` is floor, not truncation toward zero.
+          // `iPart(` is the truncation variant (separate token below).
+          v = std::floor(v);
+        else if (t == Token::IPart)
+          v = std::trunc(v);
+        else if (t == Token::FPart)
+          v = v - std::trunc(v);
         stack.push({false, v, {}});
       }
     } else {

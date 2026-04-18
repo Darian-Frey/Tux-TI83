@@ -64,6 +64,10 @@ private:
     void backspace();
     void evaluate();
     void insertToken(const QString& input);
+    // Post-hoc display conversions applied to the last result. No-op
+    // unless we're in Evaluated state with a scalar result.
+    void convertDisplayToFraction();
+    void convertDisplayToDecimal();
 
     std::vector<std::vector<Token>> m_functionBuffers;
     std::vector<QString> m_displayStrings;

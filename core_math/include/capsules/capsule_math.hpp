@@ -45,6 +45,14 @@ enum class Token {
   Xor,
   Not,
   Det,
+  // Unary negation. Semantically distinct from binary Sub so we can
+  // honour the TI-83's `(-)` key versus `−` key distinction.
+  Neg,
+  // Number functions (unary)
+  Abs,
+  Int,
+  IPart,
+  FPart,
   LeftParen,
   RightParen,
   VarX,

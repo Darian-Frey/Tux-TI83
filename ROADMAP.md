@@ -63,7 +63,7 @@ yet built: 2ND modifier system, ALPHA modifier system (see
 - ✅ Square root `√(` (returns `ERR:NONREAL ANS` for negatives; fixed 2026-04-07)
 - ✅ Parentheses, decimal point, π
 - ✅ Order of operations
-- 📅 Unary negation `(-)` *(currently inert — no token in controller's tokenMap)*
+- ✅ Unary negation `(-)` — `Token::Neg` with precedence 2 and `is_function` semantics; the on-screen `(-)` CalcKey sends `"neg"` while the `−` key and keyboard `-` still send binary Sub (fixed 2026-04-07, closes BUG-014)
 - 📅 `x²` shortcut key
 - 📅 `nthroot(`
 - 📅 Implicit multiplication by juxtaposition (`2(3)`, `2π`) — see [IMP-005](IMPROVEMENTS.md) for the dead `Token::ImplicitMul`
@@ -78,13 +78,16 @@ yet built: 2ND modifier system, ALPHA modifier system (see
 - 💭 `logBASE(` for arbitrary base
 
 ### Number functions
-- 📅 `abs(`
-- 📅 `int(`, `iPart(`, `fPart(`
-- 📅 `round(`
-- 📅 `min(`, `max(`
-- 📅 `mod(`, integer division
+- ✅ `abs(` — engine + UI via MATH menu (added 2026-04-07, Phase B Wave 1)
+- ✅ `int(` — floor; engine + UI via MATH menu (added 2026-04-07)
+- ✅ `iPart(` — truncation toward zero; engine + UI via MATH menu (added 2026-04-07)
+- ✅ `fPart(` — fractional part; engine + UI via MATH menu (added 2026-04-07)
+- ✅ `▶Frac` — MATH menu entry; post-hoc conversion of the last scalar result to its fraction form (fixed 2026-04-07, closes BUG-015)
+- ✅ `▶Dec` — MATH menu entry; reverse of `▶Frac`, restores the raw decimal display of the last result
+- 📅 `round(` — binary, needs Wave 2 binary-function infrastructure
+- 📅 `min(`, `max(` — binary, Wave 2
+- 📅 `mod(` — binary, Wave 2
 - 📅 Sign function
-- 📅 `▶Frac` — convert last result to fraction (engine already alternates as ENTER via `processInput("▶Frac")`; UI access deleted with the legacy LOGIC popup, needs the future MATH menu)
 
 ### Calculus
 - 📅 Numeric integration `fnInt(`
@@ -232,7 +235,7 @@ Engine implements more than the UI currently exposes — listed below.
 - ✅ `x²` CalcKey wiring (sends `^` then `2`)
 
 ### Up next
-- 🔜 Wire `MATH` CalcKey — needs a MATH menu popup
+- ✅ `MATH` CalcKey wired — opens `MathMenuPopup` (see Numeric core › Number functions)
 - 🔜 Wire `MODE` CalcKey — needs a MODE menu popup
 - 🔜 Wire `2ND` CalcKey — needs the modifier system
 - 🔜 Wire `ALPHA` CalcKey — needs the modifier system (see [IMP-003](IMPROVEMENTS.md))

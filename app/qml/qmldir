@@ -8,3 +8,4 @@ WindowPopup 1.0 components/WindowPopup.qml
 MatrixPopup 1.0 components/MatrixPopup.qml
 FunctionSelector 1.0 components/FunctionSelector.qml
 GraphCanvas 1.0 components/GraphCanvas.qml
+MathMenuPopup 1.0 components/MathMenuPopup.qml

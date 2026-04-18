@@ -36,6 +36,10 @@ constexpr TokenSpec kTokens[] = {
     {"×", Token::Mul, "×"}, {"÷", Token::Div, "÷"},
     {"^", Token::Pow, "^"},
 
+    // Unary negation. Distinct from Sub — the UI's `(-)` key sends
+    // "neg" while the `−` key and keyboard `-` send Sub.
+    {"neg", Token::Neg, "−"},
+
     // Punctuation
     {"(", Token::LeftParen, "("},
     {")", Token::RightParen, ")"},
@@ -60,6 +64,12 @@ constexpr TokenSpec kTokens[] = {
     {"ln",   Token::Ln,   "ln("},
     {"√",    Token::Sqrt, "√("},
     {"det(", Token::Det,  "det("},
+
+    // Number functions (unary)
+    {"abs(",   Token::Abs,   "abs("},
+    {"int(",   Token::Int,   "int("},
+    {"iPart(", Token::IPart, "iPart("},
+    {"fPart(", Token::FPart, "fPart("},
 
     // Comparators / boolean
     {"=",   Token::Equal,    "="},
@@ -123,8 +133,16 @@ void UIController::processInput(const QString &input) {
     backspace();
     return;
   }
-  if (input == "ENTER" || input == "▶Frac") {
+  if (input == "ENTER") {
     evaluate();
+    return;
+  }
+  if (input == "▶Frac") {
+    convertDisplayToFraction();
+    return;
+  }
+  if (input == "▶Dec") {
+    convertDisplayToDecimal();
     return;
   }
   insertToken(input);
@@ -206,9 +224,9 @@ void UIController::evaluate() {
       }
       currentStr = matStr + "]]";
     } else {
-      std::string fracStr = MathStateMachine::toFraction(result.value);
-      currentStr = (fracStr.empty()) ? QString::number(result.value)
-                                     : QString::fromStdString(fracStr);
+      // BUG-015 fix: default scalar display is decimal. Users get the
+      // fraction form on demand via the ▶Frac MATH-menu entry.
+      currentStr = QString::number(result.value);
     }
     m_displayState = Evaluated;
     // Remember this result for the next Token::Ans recall. Errors do not
@@ -245,6 +263,38 @@ void UIController::evaluate() {
   emit displayStateChanged();
 }
 
+// Convert the current scalar result to its fraction form (if one exists
+// within the toFraction tolerance). No-op unless we're in Evaluated
+// state with a scalar result. Adds an "Ans▶Frac = …" history entry so
+// the conversion is visible both on the display and in history.
+void UIController::convertDisplayToFraction() {
+  if (m_displayState != Evaluated || MathStateMachine::lastResult.isMatrix)
+    return;
+  std::string fracStr = MathStateMachine::toFraction(MathStateMachine::lastResult.value);
+  if (fracStr.empty())
+    return; // Irrational or unconvertible — silently leave the decimal.
+  auto &currentStr = m_displayStrings[m_activeIdx];
+  currentStr = QString::fromStdString(fracStr);
+  m_history.prepend("Y" + QString::number(m_activeIdx + 1) +
+                    ": Ans▶Frac = " + currentStr);
+  emit historyChanged();
+  emit displayChanged();
+}
+
+// Convert the current scalar result back to its raw decimal form.
+// Mirror of convertDisplayToFraction; uses the stored lastResult.value
+// rather than trying to parse the current display string.
+void UIController::convertDisplayToDecimal() {
+  if (m_displayState != Evaluated || MathStateMachine::lastResult.isMatrix)
+    return;
+  auto &currentStr = m_displayStrings[m_activeIdx];
+  currentStr = QString::number(MathStateMachine::lastResult.value);
+  m_history.prepend("Y" + QString::number(m_activeIdx + 1) +
+                    ": Ans▶Dec = " + currentStr);
+  emit historyChanged();
+  emit displayChanged();
+}
+
 // Token input. Looks up via the unified table; unknown inputs are silently
 // ignored and must NOT disturb display state (otherwise an unbound key
 // would prematurely flush an EVALUATED result on click).
@@ -269,7 +319,31 @@ void UIController::insertToken(const QString &input) {
   }
 
   const TokenSpec *spec = it->second;
-  currentBuf.push_back(spec->token);
+  Token tokenToInsert = spec->token;
+
+  // BUG-014 extension: keyboard `-` and the on-screen `−` key both map
+  // to Token::Sub, but that's only correct for binary subtraction. When
+  // a `−` arrives with no left operand available (empty buffer, right
+  // after `(`, right after an operator, right after a function token),
+  // it's really unary negation — promote it to Token::Neg so the parser
+  // sees the correct shape. The `(-)` CalcKey bypasses this path
+  // entirely by sending `"neg"` directly, so this only affects the
+  // keyboard / `−` key ambiguity.
+  if (tokenToInsert == Token::Sub) {
+    bool isUnary = currentBuf.empty();
+    if (!isUnary) {
+      Token prev = currentBuf.back();
+      isUnary = (prev == Token::LeftParen ||
+                 prev == Token::Add || prev == Token::Sub ||
+                 prev == Token::Mul || prev == Token::Div ||
+                 prev == Token::Pow ||
+                 EOSPrecedence::is_function(prev));
+    }
+    if (isUnary)
+      tokenToInsert = Token::Neg;
+  }
+
+  currentBuf.push_back(tokenToInsert);
   currentStr += QString::fromUtf8(spec->displayStr);
   emit displayChanged();
 }
