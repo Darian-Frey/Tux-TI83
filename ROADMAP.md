@@ -172,7 +172,7 @@ Engine implements more than the UI currently exposes — listed below.
 - ✅ 26 single-letter scalar variables `A`–`Z` — added 2026-04-18 (contiguous `Token::VarA..VarZ`, backed by `MathStateMachine::varRegistry`; unset reads as 0; ALPHA + letter key inserts via the unified dispatcher; `X` doubles as the graph sweep variable in graph mode and as a scalar in calc mode)
 - ✅ `STO→` store-to-variable — added 2026-04-18 (`Token::Sto`, lowest precedence, preprocessing consumes the target `VarA..VarZ` and records its index; accessible via the MATH menu `→ (STO)` entry, keyboard `|`, or ASCII `->`; error paths don't mutate the registry)
 - ✅ `Ans` (last answer) — auto-populated after every successful ENTER via `MathStateMachine::lastResult`; `Token::Ans` pushes the stored scalar or matrix onto the operand stack; NUMERIC row 4 col 4 CalcKey inserts it into the expression (added 2026-04-07)
-- 📅 Last-entry recall (2nd + ENTER cycles backwards through history)
+- ✅ Last-entry recall (2nd + ENTER cycles backwards through history) — added 2026-04-18 (10-deep ring buffer in UIController; each non-empty ENTER pushes the raw token stream; recallLastEntry walks back one step per call and clamps at the oldest entry; any non-recall input resets the cycle; errors get stored too so typos can be fixed)
 - 📅 `Y-VARS` store/recall (functions, window vars, statistics, etc.)
 - 📅 Memory management menu (`MEM`): list/delete/clear by category
 - 💭 Persistent storage across runs (save calculator state to disk)

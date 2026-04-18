@@ -188,6 +188,51 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-016: Last-entry recall (2ND+ENTER)
+
+- **Status:** applied (2026-04-18)
+- **Location:** [graph_ui/include/ui_controller.hpp](graph_ui/include/ui_controller.hpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/qml/Main.qml](app/qml/Main.qml), [tests/test_math.cpp](tests/test_math.cpp)
+- **Effort:** small
+- **Description:** Last-entry recall was the final Phase B item. Real
+  TI-83 users rely on 2ND+ENTER to bring a prior expression back to
+  the edit line — either to re-run it or to tweak one term without
+  retyping the whole thing. Without it, the only way to repeat work
+  was the keyboard history scroll in the REPL, which doesn't exist in
+  the GUI at all.
+- **Change:**
+  - Controller: added a 10-deep `std::deque<std::vector<Token>>`
+    ring buffer (`m_entryHistory`) + a cycle counter
+    (`m_recallCycleIdx`) on UIController. Each non-empty ENTER
+    pushes the raw token stream into the deque before the
+    evaluate/display branching; oldest entries evict once the cap is
+    reached. A new `Q_INVOKABLE recallLastEntry()` advances the
+    counter (clamping at the oldest entry), restores the token
+    buffer verbatim, rebuilds the display string via the unified
+    `tokenToSpec` table, and flips back to Inputting state. The
+    cycle resets whenever `processInput` fires with anything else —
+    including CLEAR, a fresh keypress, or an edit.
+  - UI: special-cased 2ND+ENTER in `handleKey` to call
+    `recallLastEntry()` directly (the existing `secondMap` is
+    string-in-string-out and ENTER is a control sentinel, not a
+    kTokens entry). Added `secondLabel: "ENTRY"` to the ENTER
+    CalcKey so the keytop annotation matches the new behaviour.
+  - Tests: 8 new assertions covering recall-on-empty-history (no-op),
+    walking back through three entries, clamp-at-oldest, cycle
+    reset after a non-recall input, edit-and-reeval, and the
+    empty-ENTER-doesn't-pollute-history guard. 161/161 passing.
+- **Trade-offs:** Chose a 10-entry cap to match real TI-83 depth —
+  small enough to keep memory negligible, big enough for any
+  realistic workflow. Storing failed entries (not just successful
+  ones) was deliberate: if a user types a typo and hits ENTER,
+  2ND+ENTER lets them fix it rather than starting over. Considered
+  exposing the deque as a Q_PROPERTY for an external history viewer
+  but that's out of scope — the existing HistoryPane already shows
+  "expr = result" strings.
+- **Notes:** Closes Phase B. Next natural follow-ups: cursor
+  movement within an expression (so `2ND+ENTER` + edit becomes truly
+  useful for long expressions), and an ALPHA-lock mode now that the
+  modifier infrastructure has matured.
+
 ### IMP-015: MODE menu + angle-mode (Radian/Degree) wiring
 
 - **Status:** applied (2026-04-18)

@@ -184,6 +184,40 @@ void UIController::setAngleMode(int m) {
   emit angleModeChanged();
 }
 
+void UIController::recallLastEntry() {
+  if (m_entryHistory.empty())
+    return;
+
+  // Advance the cycle. Capped at the oldest available entry so
+  // repeated 2ND+ENTER presses stop walking back once we hit the
+  // beginning of the ring buffer.
+  const int maxIdx = static_cast<int>(m_entryHistory.size()) - 1;
+  m_recallCycleIdx = std::min(m_recallCycleIdx + 1, maxIdx);
+
+  const size_t sourceIdx = m_entryHistory.size() - 1 - m_recallCycleIdx;
+  auto &currentBuf = m_functionBuffers[m_activeIdx];
+  auto &currentStr = m_displayStrings[m_activeIdx];
+
+  // Restore the token buffer verbatim and rebuild the display string
+  // via the unified token table — same approach used by backspace so
+  // the renderer stays consistent.
+  currentBuf = m_entryHistory[sourceIdx];
+  currentStr = "";
+  const auto &rev = tokenToSpec();
+  for (auto t : currentBuf) {
+    auto it = rev.find(static_cast<int>(t));
+    if (it != rev.end())
+      currentStr += QString::fromUtf8(it->second->displayStr);
+  }
+
+  // Return to the editing state so the recalled expression can be
+  // modified before the next ENTER.
+  m_displayState = Inputting;
+  m_displayExpression = "";
+  emit displayChanged();
+  emit displayStateChanged();
+}
+
 QString UIController::currentDisplay() const {
   return m_displayStrings[m_activeIdx];
 }
@@ -201,6 +235,10 @@ QString UIController::formatScalar(double value) {
 // helper that owns one concern. New input categories should be added by
 // extending the dispatch table here, not by growing the helpers.
 void UIController::processInput(const QString &input) {
+  // Any non-recall input resets the last-entry cycle. recallLastEntry()
+  // bypasses processInput, so it's safe to unconditionally reset here.
+  m_recallCycleIdx = -1;
+
   // Control sentinels use multi-character strings so they can't collide
   // with single-letter variable inputs (A..Z). "CLEAR" replaced the old
   // "C" sentinel once VarC landed; "C" on its own now inserts the VarC
@@ -281,6 +319,16 @@ void UIController::backspace() {
 void UIController::evaluate() {
   auto &currentBuf = m_functionBuffers[m_activeIdx];
   auto &currentStr = m_displayStrings[m_activeIdx];
+
+  // Push this entry into the recall ring buffer before any further
+  // mutation. Empty buffers (ENTER on an empty line) skip the push —
+  // TI-83 doesn't cycle through blank entries. Both successful and
+  // failed entries get stored so users can recall a typo to fix it.
+  if (!currentBuf.empty()) {
+    m_entryHistory.push_back(currentBuf);
+    while (m_entryHistory.size() > static_cast<size_t>(kEntryHistoryCap))
+      m_entryHistory.pop_front();
+  }
 
   // Snapshot expression for the top "expression =" display line before
   // currentStr is overwritten with the result.

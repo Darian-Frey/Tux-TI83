@@ -2,6 +2,7 @@
 #include <QObject>
 #include <QStringList>
 #include <QVariantList>
+#include <deque>
 #include <vector>
 #include "capsules/capsule_math.hpp"
 
@@ -68,6 +69,11 @@ public:
     Q_INVOKABLE void setActiveFunction(int index) { m_activeIdx = index; emit activeFunctionIndexChanged(); }
     Q_INVOKABLE void toggleGraphMode() { m_isGraphMode = !m_isGraphMode; emit graphModeChanged(); }
     Q_INVOKABLE void resetViewport() { m_xMin = -10; m_xMax = 10; m_yMin = -10; m_yMax = 10; emit viewportChanged(); }
+    // Last-entry recall (2ND+ENTER on a real TI-83). Each successful or
+    // failed ENTER with a non-empty buffer pushes the token stream into
+    // a 10-deep ring buffer; successive calls walk back through it.
+    // Any non-recall processInput resets the cycle.
+    Q_INVOKABLE void recallLastEntry();
     Q_INVOKABLE void zoomFit();
     Q_INVOKABLE void updateMatrix(const QString& name, int rows, int cols, const QVariantList& values);
     Q_INVOKABLE QVariantList getMultiGraphPoints(int resolution);
@@ -103,6 +109,13 @@ private:
     double m_xMin = -10, m_xMax = 10, m_yMin = -10, m_yMax = 10;
     DisplayState m_displayState = Inputting;
     QString m_displayExpression;
+    // Entry-recall ring buffer. Newest at back; oldest evicted when
+    // size exceeds kEntryHistoryCap. m_recallCycleIdx tracks how far
+    // back the current cycle has walked: -1 = not cycling, 0 = last
+    // entry, 1 = second-to-last, etc.
+    static constexpr int kEntryHistoryCap = 10;
+    std::deque<std::vector<Token>> m_entryHistory;
+    int m_recallCycleIdx = -1;
 };
 
 } // namespace tux_ti83

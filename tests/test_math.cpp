@@ -412,6 +412,75 @@ int main(int argc, char *argv[]) {
   check("after mode restore: asin(1) rad ≈ π/2",
         eval(c, "asin(1)"), UIController::formatScalar(M_PI / 2.0));
 
+  section("Last-entry recall (2ND+ENTER)");
+  {
+    // Fresh controller so the entry-history ring buffer starts empty.
+    UIController rc;
+
+    // Baseline: recall with nothing in history is a no-op. Display
+    // should remain empty after the call.
+    rc.recallLastEntry();
+    check("recall on empty history leaves display empty",
+          rc.currentDisplay(), "");
+
+    // Push three entries, then cycle back through them. After each
+    // recall the display shows the recalled expression; ENTER then
+    // re-evaluates and pushes the same entry again. For the cycle
+    // tests we just inspect currentDisplay() without pressing ENTER.
+    evalChained(rc, "1+2");  // result 3 — pushes [1,+,2]
+    rc.processInput(QStringLiteral("CLEAR"));
+    evalChained(rc, "4×5");  // result 20 — pushes [4,×,5]
+    rc.processInput(QStringLiteral("CLEAR"));
+    evalChained(rc, "7-3");  // result 4 — pushes [7,-,3]
+
+    // After CLEAR the display is empty. First 2ND+ENTER brings back
+    // the most recent entry.
+    rc.processInput(QStringLiteral("CLEAR"));
+    rc.recallLastEntry();
+    check("first recall shows last entry (7-3)",
+          rc.currentDisplay(), "7−3");
+
+    // Second recall walks further back.
+    rc.recallLastEntry();
+    check("second recall shows 2nd-last entry (4×5)",
+          rc.currentDisplay(), "4×5");
+
+    rc.recallLastEntry();
+    check("third recall shows 3rd-last entry (1+2)",
+          rc.currentDisplay(), "1+2");
+
+    // Extra recalls past the beginning of history clamp — the oldest
+    // entry stays displayed rather than disappearing.
+    rc.recallLastEntry();
+    check("recall past oldest clamps on the oldest entry",
+          rc.currentDisplay(), "1+2");
+
+    // Any non-recall input resets the cycle so the next 2ND+ENTER
+    // starts from the most recent entry again.
+    rc.processInput(QStringLiteral("CLEAR"));
+    rc.recallLastEntry();
+    check("after non-recall input, cycle restarts at last entry",
+          rc.currentDisplay(), "7−3");
+
+    // Recalled expression can be evaluated — this also re-pushes it
+    // to history (a real TI-83 stores every ENTER).
+    rc.processInput(QStringLiteral("ENTER"));
+    check("recalled 7-3 evaluates to 4",
+          rc.currentDisplay(), "4");
+
+    // Pressing ENTER on an empty buffer should NOT push to history.
+    // Verify by entering something, clearing, pressing ENTER (empty),
+    // then recalling — the last pushed entry should still be what we
+    // stored, not the empty one.
+    UIController rc2;
+    evalChained(rc2, "9+1");           // pushes [9,+,1]
+    rc2.processInput(QStringLiteral("CLEAR"));
+    rc2.processInput(QStringLiteral("ENTER")); // empty — must not push
+    rc2.recallLastEntry();
+    check("empty ENTER does not pollute history",
+          rc2.currentDisplay(), "9+1");
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

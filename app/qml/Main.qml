@@ -84,6 +84,14 @@ ApplicationWindow {
     function handleKey(primary) {
         if (secondArmed) {
             secondArmed = false
+            // 2ND + ENTER is last-entry recall. Dedicated path because
+            // it calls a controller method rather than inserting tokens,
+            // and ENTER itself is a control sentinel (not a kTokens
+            // entry) — so it can't live in secondMap cleanly.
+            if (primary === "ENTER") {
+                uiController.recallLastEntry()
+                return
+            }
             if (secondMap.hasOwnProperty(primary)) {
                 uiController.processExpression(secondMap[primary])
                 return
@@ -437,6 +445,7 @@ ApplicationWindow {
             CalcKey {
                 label: "ENTER"
                 keyType: "enter"
+                secondLabel: "ENTRY"
                 Layout.columnSpan: 2
                 onPressed: root.handleKey("ENTER")
             }
