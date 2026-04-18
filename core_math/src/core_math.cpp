@@ -8,6 +8,8 @@
 namespace tux_ti83 {
 
 std::map<Token, Matrix> MathStateMachine::matrixRegistry;
+std::array<double, 26> MathStateMachine::varRegistry{};
+AngleMode MathStateMachine::angleMode = AngleMode::Radian;
 CalculationResult MathStateMachine::lastResult{true, 0.0, {}, false, ""};
 
 int EOSPrecedence::precedence(Token t) {
@@ -63,6 +65,8 @@ int EOSPrecedence::precedence(Token t) {
   case Token::Or:
   case Token::Xor:
     return -3;
+  case Token::Sto:
+    return -10;
   default:
     return 0;
   }
@@ -291,13 +295,36 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
   }
   flushNum();
 
+  // Second preprocessing pass: Sto consumes its following VarA..VarZ
+  // target and records the letter index in `storeTargets`. The evaluator
+  // reads this in source order as each Sto fires, so the sidebar layout
+  // mirrors `numericValues` for Num0.
+  std::vector<Token> finalTokens;
+  std::vector<int> storeTargets;
+  finalTokens.reserve(processedTokens.size());
+  for (size_t i = 0; i < processedTokens.size(); ++i) {
+    if (processedTokens[i] == Token::Sto) {
+      if (i + 1 >= processedTokens.size() ||
+          processedTokens[i + 1] < Token::VarA ||
+          processedTokens[i + 1] > Token::VarZ)
+        return {false, 0.0, {}, false, "Syntax Error"};
+      storeTargets.push_back(
+          (int)processedTokens[i + 1] - (int)Token::VarA);
+      finalTokens.push_back(Token::Sto);
+      ++i;  // skip the target Var — already consumed.
+    } else {
+      finalTokens.push_back(processedTokens[i]);
+    }
+  }
+
   std::vector<std::pair<Token, double>> rpn;
   std::stack<Token> opStack;
   int numIdx = 0;
-  for (auto t : processedTokens) {
+  for (auto t : finalTokens) {
     if (t == Token::Num0)
       rpn.push_back({t, numericValues[numIdx++]});
-    else if ((t >= Token::MatA && t <= Token::MatJ) || t == Token::VarX ||
+    else if ((t >= Token::MatA && t <= Token::MatJ) ||
+             (t >= Token::VarA && t <= Token::VarZ) ||
              t == Token::Pi || t == Token::E || t == Token::Ans)
       rpn.push_back({t, 0.0});
     else if (t == Token::Fact) {
@@ -375,12 +402,18 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
   std::stack<Operand> stack;
   auto toB = [](double v) { return std::abs(v) > 1e-9; };
 
+  int storeIdx = 0;
   for (auto &node : rpn) {
     Token t = node.first;
     if (t == Token::Num0)
       stack.push({false, node.second, {}});
-    else if (t == Token::VarX)
-      stack.push({false, xValue, {}});
+    else if (t >= Token::VarA && t <= Token::VarZ) {
+      if (t == Token::VarX)
+        stack.push({false, xValue, {}});
+      else
+        stack.push({false,
+                    varRegistry[(int)t - (int)Token::VarA], {}});
+    }
     else if (t == Token::Pi)
       stack.push({false, M_PI, {}});
     else if (t == Token::E)
@@ -389,6 +422,18 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
       // Recall the last successful evaluation result. Defaults to the
       // scalar 0 on first use (matches TI-83 power-on state).
       stack.push({lastResult.isMatrix, lastResult.value, lastResult.matrixValue});
+    } else if (t == Token::Sto) {
+      // Write the top-of-stack value into varRegistry[target] and push
+      // it back so the display reflects the stored value. Scalar only —
+      // matrices have their own registry and `[A]..[J]` syntax.
+      if (stack.empty())
+        return {false, 0.0, {}, false, "Error"};
+      Operand v = stack.top();
+      stack.pop();
+      if (v.isMat)
+        return {false, 0.0, {}, false, "Type Error"};
+      varRegistry[storeTargets[storeIdx++]] = v.val;
+      stack.push(v);
     } else if (t >= Token::MatA && t <= Token::MatJ) {
       if (matrixRegistry.count(t))
         stack.push({true, 0.0, matrixRegistry[t]});
@@ -494,12 +539,20 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
         if (a.isMat)
           return {false, 0.0, {}, false, "Type Error"};
         double v = a.val;
+        // Trig angle-mode conversions. Degree mode scales sin/cos/tan
+        // inputs by π/180 on the way in, and asin/acos/atan outputs by
+        // 180/π on the way out. Radian mode (the default) is a no-op.
+        // Hyperbolic functions ignore this — their argument isn't an
+        // angle.
+        const double degToRad = M_PI / 180.0;
+        const double radToDeg = 180.0 / M_PI;
+        const bool deg = (angleMode == AngleMode::Degree);
         if (t == Token::Sin)
-          v = std::sin(v);
+          v = std::sin(deg ? v * degToRad : v);
         else if (t == Token::Cos)
-          v = std::cos(v);
+          v = std::cos(deg ? v * degToRad : v);
         else if (t == Token::Tan)
-          v = std::tan(v);
+          v = std::tan(deg ? v * degToRad : v);
         else if (t == Token::ASin) {
           // BUG-004 fix: ASin/ACos/ATan were declared as functions and
           // accepted by the parser, but the dispatch chain had no
@@ -507,12 +560,15 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
           if (v < -1.0 || v > 1.0)
             return {false, 0.0, {}, false, "DOMAIN"};
           v = std::asin(v);
+          if (deg) v *= radToDeg;
         } else if (t == Token::ACos) {
           if (v < -1.0 || v > 1.0)
             return {false, 0.0, {}, false, "DOMAIN"};
           v = std::acos(v);
+          if (deg) v *= radToDeg;
         } else if (t == Token::ATan) {
           v = std::atan(v); // domain is all reals
+          if (deg) v *= radToDeg;
         } else if (t == Token::Sqrt) {
           // BUG-006 fix: was silently returning 0 for negative input.
           if (v < 0.0)

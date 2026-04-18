@@ -57,7 +57,26 @@ constexpr TokenSpec kTokens[] = {
     // Constants & variables
     {"π", Token::Pi, "π"},
     {"e", Token::E,  "e"},
-    {"X", Token::VarX, "X"},
+
+    // Scalar variables A–Z. `X` doubles as the graph independent
+    // variable (same token, same symbol); in calc mode the controller
+    // passes `varRegistry[X]` as xValue so `5→X` then `X+1` reads the
+    // stored value, while graph mode passes the sweep x.
+    {"A", Token::VarA, "A"}, {"B", Token::VarB, "B"}, {"C", Token::VarC, "C"},
+    {"D", Token::VarD, "D"}, {"E", Token::VarE, "E"}, {"F", Token::VarF, "F"},
+    {"G", Token::VarG, "G"}, {"H", Token::VarH, "H"}, {"I", Token::VarI, "I"},
+    {"J", Token::VarJ, "J"}, {"K", Token::VarK, "K"}, {"L", Token::VarL, "L"},
+    {"M", Token::VarM, "M"}, {"N", Token::VarN, "N"}, {"O", Token::VarO, "O"},
+    {"P", Token::VarP, "P"}, {"Q", Token::VarQ, "Q"}, {"R", Token::VarR, "R"},
+    {"S", Token::VarS, "S"}, {"T", Token::VarT, "T"}, {"U", Token::VarU, "U"},
+    {"V", Token::VarV, "V"}, {"W", Token::VarW, "W"}, {"X", Token::VarX, "X"},
+    {"Y", Token::VarY, "Y"}, {"Z", Token::VarZ, "Z"},
+
+    // Assignment arrow — typed `→` or the ASCII alias `->`. Display
+    // always renders the Unicode form. Preprocessing in the engine
+    // consumes the following VarA..VarZ token and records the target.
+    {"→",  Token::Sto, "→"},
+    {"->", Token::Sto, "→"},
 
     // Last-answer recall
     {"Ans", Token::Ans, "Ans"},
@@ -155,6 +174,16 @@ UIController::UIController(QObject *parent) : QObject(parent), m_activeIdx(0) {
   m_displayStrings.resize(3, "");
 }
 
+void UIController::setAngleMode(int m) {
+  // Clamp to the two valid values. Anything else becomes Radian — the
+  // safer default, matches mathematical convention.
+  AngleMode newMode = (m == 1) ? AngleMode::Degree : AngleMode::Radian;
+  if (MathStateMachine::angleMode == newMode)
+    return;
+  MathStateMachine::angleMode = newMode;
+  emit angleModeChanged();
+}
+
 QString UIController::currentDisplay() const {
   return m_displayStrings[m_activeIdx];
 }
@@ -172,7 +201,11 @@ QString UIController::formatScalar(double value) {
 // helper that owns one concern. New input categories should be added by
 // extending the dispatch table here, not by growing the helpers.
 void UIController::processInput(const QString &input) {
-  if (input == "C") {
+  // Control sentinels use multi-character strings so they can't collide
+  // with single-letter variable inputs (A..Z). "CLEAR" replaced the old
+  // "C" sentinel once VarC landed; "C" on its own now inserts the VarC
+  // token via the insertToken path below.
+  if (input == "CLEAR") {
     clearAll();
     return;
   }
@@ -256,7 +289,12 @@ void UIController::evaluate() {
       "Y" + QString::number(m_activeIdx + 1) + ": " + currentStr + " = ";
 
   MathStateMachine msm;
-  CalculationResult result = msm.evaluate(currentBuf);
+  // In calc mode, X behaves like any other scalar variable — resolve
+  // it from the registry so `5→X: X+1` gives 6. Graph-mode evaluation
+  // (plot sweeps) passes its own xValue and bypasses this path.
+  const double xIndex = static_cast<double>((int)Token::VarX - (int)Token::VarA);
+  CalculationResult result = msm.evaluate(currentBuf,
+      MathStateMachine::varRegistry[static_cast<size_t>(xIndex)]);
   if (result.success) {
     if (result.isMatrix) {
       QString matStr = "[[";

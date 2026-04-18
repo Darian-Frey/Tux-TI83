@@ -54,7 +54,7 @@ void checkTrue(const std::string &description, bool condition) {
 // on Ans-not-being-set should be the first in their section, or use
 // a fresh controller.
 QString eval(UIController &c, const QString &expr) {
-  c.processInput(QStringLiteral("C"));
+  c.processInput(QStringLiteral("CLEAR"));
   c.processExpression(expr);
   c.processInput(QStringLiteral("ENTER"));
   return c.currentDisplay();
@@ -243,20 +243,20 @@ int main(int argc, char *argv[]) {
   check("π displays as decimal", eval(c, "π"), UIController::formatScalar(M_PI));
 
   section("Ans recall (Phase B)");
-  c.processInput(QStringLiteral("C"));
+  c.processInput(QStringLiteral("CLEAR"));
   // First result: 5
   check("set up: 2+3 = 5", evalChained(c, "2+3"), "5");
   // Ans should now be 5
   check("Ans+10 = 15", eval(c, "Ans+10"), "15");
   check("Ans*2 = 30 (uses prior Ans=15)", eval(c, "Ans*2"), "30");
   // Errors don't overwrite Ans
-  c.processInput(QStringLiteral("C"));
+  c.processInput(QStringLiteral("CLEAR"));
   c.processExpression("5÷0");
   c.processInput(QStringLiteral("ENTER"));
   check("After error, Ans still recalls last good (30)", eval(c, "Ans"), "30");
 
   section("▶Frac / ▶Dec post-hoc conversions (BUG-015)");
-  c.processInput(QStringLiteral("C"));
+  c.processInput(QStringLiteral("CLEAR"));
   evalChained(c, "1÷3");
   c.processInput(QStringLiteral("▶Frac"));
   check("1÷3 then ▶Frac → 1/3", c.currentDisplay(), "1/3");
@@ -264,7 +264,7 @@ int main(int argc, char *argv[]) {
   check("then ▶Dec returns to decimal", c.currentDisplay(),
         UIController::formatScalar(1.0 / 3.0));
   // ▶Frac on irrational silently leaves decimal
-  c.processInput(QStringLiteral("C"));
+  c.processInput(QStringLiteral("CLEAR"));
   evalChained(c, "e");
   QString eDecimal = c.currentDisplay();
   c.processInput(QStringLiteral("▶Frac"));
@@ -343,6 +343,74 @@ int main(int argc, char *argv[]) {
         eval(c, "[A]+[B]"), "ERR:INVALID DIM");
   check("[A]×[B] non-conformable → ERR:INVALID DIM (BUG-011)",
         eval(c, "[A]×[B]"), "ERR:INVALID DIM");
+
+  section("Scalar variables and STO");
+  // Fresh controller so we don't inherit values from earlier sections.
+  // MathStateMachine::varRegistry is a process-global static, so reset
+  // the two letters we'll touch to zero up front.
+  tux_ti83::MathStateMachine::varRegistry.fill(0.0);
+
+  // Unset variables default to 0 (TI-83 power-on state).
+  check("A with no store → 0", eval(c, "A"), "0");
+  check("B+3 with no store → 3", eval(c, "B+3"), "3");
+
+  // Basic store. The display shows the stored value, and subsequent
+  // reads return it.
+  check("5→A returns 5", eval(c, "5→A"), "5");
+  check("A after 5→A is 5", eval(c, "A"), "5");
+
+  // Arithmetic before store, then read-back.
+  check("A+3→A returns 8", eval(c, "A+3→A"), "8");
+  check("A after A+3→A is 8", eval(c, "A"), "8");
+
+  // Independence — writing to A doesn't touch B.
+  check("B still 0 after all A mutations", eval(c, "B"), "0");
+
+  // ASCII alias for the arrow.
+  check("7->C returns 7 (ASCII arrow alias)", eval(c, "7->C"), "7");
+  check("C after 7->C is 7", eval(c, "C"), "7");
+
+  // Errors don't mutate state: after a DIVIDE BY 0 attempt on D,
+  // D should still be its previous value (0, since untouched).
+  check("1÷0→D → ERR:DIVIDE BY 0", eval(c, "1÷0→D"), "ERR:DIVIDE BY 0");
+  check("D unchanged after failed store", eval(c, "D"), "0");
+
+  // Malformed: Sto not followed by a variable.
+  check("5→ alone → ERR:SYNTAX", eval(c, "5→"), "ERR:SYNTAX");
+  check("5→5 → ERR:SYNTAX", eval(c, "5→5"), "ERR:SYNTAX");
+
+  // Matrix-to-scalar-var is a type error.
+  c.updateMatrix("[A]", 2, 2, QVariantList{1.0, 2.0, 3.0, 4.0});
+  check("[A]→E → ERR:DATA TYPE", eval(c, "[A]→E"), "ERR:DATA TYPE");
+
+  // X as calc-mode scalar: stored via Sto, read back via the registry
+  // (not the graph-mode xValue=0 default that used to win).
+  check("9→X returns 9", eval(c, "9→X"), "9");
+  check("X+1 after 9→X is 10", eval(c, "X+1"), "10");
+
+  section("Angle mode (MODE menu)");
+  // Default is Radian — previously-run trig tests already proved this.
+  // Flip to Degree and confirm standard reference values work.
+  tux_ti83::MathStateMachine::angleMode = tux_ti83::AngleMode::Degree;
+
+  check("sin(0°) = 0", eval(c, "sin(0)"), "0");
+  check("sin(30°) = 0.5", eval(c, "sin(30)"), "0.5");
+  check("sin(90°) = 1", eval(c, "sin(90)"), "1");
+  check("cos(0°) = 1", eval(c, "cos(0)"), "1");
+  check("cos(60°) = 0.5", eval(c, "cos(60)"), "0.5");
+  check("cos(90°) = 0 (tol)", eval(c, "cos(90)"), "6.123233996e-17");
+  check("tan(45°) = 1", eval(c, "tan(45)"), "1");
+
+  // Inverse trig: result should be in degrees now.
+  check("asin(1) in deg = 90", eval(c, "asin(1)"), "90");
+  check("acos(0) in deg = 90", eval(c, "acos(0)"), "90");
+  check("atan(1) in deg = 45", eval(c, "atan(1)"), "45");
+
+  // Restore radians before subsequent tests (and make sure we're back).
+  tux_ti83::MathStateMachine::angleMode = tux_ti83::AngleMode::Radian;
+  check("after mode restore: sin(0 rad) = 0", eval(c, "sin(0)"), "0");
+  check("after mode restore: asin(1) rad ≈ π/2",
+        eval(c, "asin(1)"), UIController::formatScalar(M_PI / 2.0));
 
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");

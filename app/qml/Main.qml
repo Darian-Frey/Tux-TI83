@@ -41,6 +41,27 @@ ApplicationWindow {
         "(-)":  "Ans"
     })
 
+    // Primary-label → ALPHA-variant token. Backed by the VarA..VarZ
+    // tokens that resolve via `MathStateMachine::varRegistry`. Mirrors
+    // the on-key `alphaLabel` annotations so the visual layout matches
+    // the functional mapping one-to-one.
+    // Only letters A..Z are routed — ":", "?" and '"' on the `.` / (-)
+    // / `+` keys are layout-accurate labels (they show what those keys
+    // *would* send under ALPHA on a real TI-83) but aren't tokens in
+    // our vocabulary yet, so pressing ALPHA + those keys just clears
+    // the modifier without inserting anything.
+    readonly property var alphaMap: ({
+        "MATH":  "A", "MATRX": "B",
+        "sin(":  "E", "cos(":  "F", "tan(": "G", "^": "H",
+        "ln(":   "S", "log(":  "N",
+        "(":     "K", ")":     "L", ",":    "J",
+        "÷":     "M", "×":     "R", "−":    "W",
+        "x²":    "I",
+        "7":     "O", "8":     "P", "9":    "Q",
+        "4":     "T", "5":     "U", "6":    "V",
+        "1":     "Y", "2":     "Z"
+    })
+
     function armSecond() {
         alphaArmed  = false
         secondArmed = !secondArmed
@@ -55,7 +76,7 @@ ApplicationWindow {
     }
 
     // Central key dispatcher. `primary` is the key's un-modified label
-    // ("sin(", "7", "ENTER", "DEL", "C", …). For modifier-free presses
+    // ("sin(", "7", "ENTER", "DEL", "CLEAR", …). For modifier-free presses
     // this is identical to the old inline routing — the dispatcher just
     // forwards to `processInput`. Modifier-armed presses look up the
     // variant, call `processExpression` (to handle multi-token variants
@@ -72,7 +93,16 @@ ApplicationWindow {
         }
         if (alphaArmed) {
             alphaArmed = false
-            // No ALPHA variants wired yet; primary still runs.
+            if (alphaMap.hasOwnProperty(primary)) {
+                // ALPHA variants are single letters (A..Z) or literal
+                // punctuation (:, ?, "). processExpression handles all
+                // of them via the unified kTokens table. For tokens
+                // that tokenise as multiple inputs (none of ours
+                // currently do) it would still Just Work.
+                uiController.processExpression(alphaMap[primary])
+                return
+            }
+            // Fallthrough: ALPHA + unmapped key just sends the primary.
         }
         uiController.processInput(primary)
     }
@@ -150,7 +180,7 @@ ApplicationWindow {
                 return
             case Qt.Key_Escape:
                 root.clearModifiers()
-                root.handleKey("C")
+                root.handleKey("CLEAR")
                 event.accepted = true
                 return
             }
@@ -169,7 +199,8 @@ ApplicationWindow {
                 "^": "^", "(": "(", ")": ")",
                 "s": "sin(", "c": "cos(", "t": "tan(",
                 "l": "log(", "n": "ln(", "r": "√(", "p": "π",
-                "!": "!"
+                "!": "!",
+                "|": "→"  // STO assignment arrow — Shift-\\ on US layout.
             }
             if (map.hasOwnProperty(ch)) {
                 root.handleKey(map[ch])
@@ -223,7 +254,11 @@ ApplicationWindow {
             }
 
             Text {
-                text: "NORMAL  DEG"
+                // Notation slot is a placeholder ("NORMAL") until the
+                // Sci/Eng modes are wired; angle slot binds to the live
+                // controller property so flipping the MODE popup updates
+                // the badge immediately.
+                text: "NORMAL  " + (uiController.angleMode === 1 ? "DEG" : "RAD")
                 color: Style.textMuted
                 font.family: Style.monoFamily
                 font.pixelSize: Style.headerBrandPixelSize
@@ -286,10 +321,14 @@ ApplicationWindow {
             columnSpacing: 6
 
             CalcKey { label: "2ND";   keyType: "second";  armed: root.secondArmed; onPressed: root.armSecond() }
-            CalcKey { label: "MODE";  keyType: "control"; onPressed: { /* TODO: mode menu */ } }
+            CalcKey { label: "MODE";  keyType: "control"; onPressed: { root.clearModifiers(); modePopup.open() } }
             CalcKey { label: "⌫";     keyType: "control"; onPressed: root.handleKey("DEL") }
             CalcKey { label: "ALPHA"; keyType: "control"; armed: root.alphaArmed;  onPressed: root.armAlpha() }
-            CalcKey { label: "CLEAR"; keyType: "control"; onPressed: { root.clearModifiers(); uiController.processInput("C") } }
+            CalcKey { label: "CLEAR"; keyType: "control"; onPressed: { root.clearModifiers(); uiController.processInput("CLEAR") } }
+            // Note: corner labels intentionally omitted from CONTROL row
+            // — the TI-83 equivalents (QUIT, INS, A-LOCK, RESET) aren't
+            // wired yet. Labelling them would advertise behaviour the
+            // keys don't deliver.
         }
 
         // ── 5. SCIENTIFIC section ───────────────────────
@@ -300,15 +339,25 @@ ApplicationWindow {
             rowSpacing: 6
             columnSpacing: 6
 
-            CalcKey { label: "MATH"; keyType: "function"; onPressed: { root.clearModifiers(); mathMenuPopup.open() } }
-            CalcKey { label: "sin(";  keyType: "function"; onPressed: root.handleKey("sin(")  }
-            CalcKey { label: "cos(";  keyType: "function"; onPressed: root.handleKey("cos(")  }
-            CalcKey { label: "tan(";  keyType: "function"; onPressed: root.handleKey("tan(")  }
-            CalcKey { label: "^";     keyType: "function"; onPressed: root.handleKey("^")    }
+            // MATH: ALPHA-armed → insert letter A via handleKey; otherwise
+            // open the MATH menu (and always clear 2ND if it was armed,
+            // since 2ND+MATH is unwired).
+            CalcKey { label: "MATH"; keyType: "function"; alphaLabel: "A"; onPressed: {
+                if (root.alphaArmed) {
+                    root.handleKey("MATH")
+                } else {
+                    root.clearModifiers()
+                    mathMenuPopup.open()
+                }
+            } }
+            CalcKey { label: "sin(";  keyType: "function"; secondLabel: "sin⁻¹"; alphaLabel: "E"; onPressed: root.handleKey("sin(")  }
+            CalcKey { label: "cos(";  keyType: "function"; secondLabel: "cos⁻¹"; alphaLabel: "F"; onPressed: root.handleKey("cos(")  }
+            CalcKey { label: "tan(";  keyType: "function"; secondLabel: "tan⁻¹"; alphaLabel: "G"; onPressed: root.handleKey("tan(")  }
+            CalcKey { label: "^";     keyType: "function"; alphaLabel: "H"; onPressed: root.handleKey("^") }
 
             CalcKey { label: "√(";    keyType: "function"; onPressed: root.handleKey("√(")    }
-            CalcKey { label: "ln(";   keyType: "function"; onPressed: root.handleKey("ln(")   }
-            CalcKey { label: "log(";  keyType: "function"; onPressed: root.handleKey("log(")  }
+            CalcKey { label: "ln(";   keyType: "function"; secondLabel: "eˣ"; alphaLabel: "S"; onPressed: root.handleKey("ln(")   }
+            CalcKey { label: "log(";  keyType: "function"; alphaLabel: "N"; onPressed: root.handleKey("log(")  }
             CalcKey { label: "π";     keyType: "function"; onPressed: root.handleKey("π")    }
             CalcKey { label: "e";     keyType: "function"; onPressed: root.handleKey("e")    }
         }
@@ -322,50 +371,65 @@ ApplicationWindow {
             columnSpacing: 6
 
             // Row 1
-            CalcKey { label: "(";  keyType: "function"; onPressed: root.handleKey("(") }
-            CalcKey { label: ")";  keyType: "function"; onPressed: root.handleKey(")") }
-            CalcKey { label: ",";  keyType: "function"; onPressed: root.handleKey(",") }
+            CalcKey { label: "(";  keyType: "function"; alphaLabel: "K"; onPressed: root.handleKey("(") }
+            CalcKey { label: ")";  keyType: "function"; alphaLabel: "L"; onPressed: root.handleKey(")") }
+            CalcKey { label: ",";  keyType: "function"; alphaLabel: "J"; onPressed: root.handleKey(",") }
             CalcKey { label: "X";  keyType: "function"; onPressed: root.handleKey("X") }
-            CalcKey { label: "÷";  keyType: "operator"; onPressed: root.handleKey("÷") }
+            CalcKey { label: "÷";  keyType: "operator"; alphaLabel: "M"; onPressed: root.handleKey("÷") }
 
             // Row 2
-            CalcKey { label: "7";  keyType: "numeric"; onPressed: root.handleKey("7") }
-            CalcKey { label: "8";  keyType: "numeric"; onPressed: root.handleKey("8") }
-            CalcKey { label: "9";  keyType: "numeric"; onPressed: root.handleKey("9") }
-            CalcKey { label: "MATRX"; keyType: "function"; onPressed: { root.clearModifiers(); matrixPopup.open() } }
-            CalcKey { label: "×";  keyType: "operator"; onPressed: root.handleKey("×") }
+            CalcKey { label: "7";  keyType: "numeric"; alphaLabel: "O"; onPressed: root.handleKey("7") }
+            CalcKey { label: "8";  keyType: "numeric"; alphaLabel: "P"; onPressed: root.handleKey("8") }
+            CalcKey { label: "9";  keyType: "numeric"; alphaLabel: "Q"; onPressed: root.handleKey("9") }
+            // MATRX: ALPHA-armed → insert letter B via handleKey;
+            // otherwise open the matrix popup.
+            CalcKey { label: "MATRX"; keyType: "function"; alphaLabel: "B"; onPressed: {
+                if (root.alphaArmed) {
+                    root.handleKey("MATRX")
+                } else {
+                    root.clearModifiers()
+                    matrixPopup.open()
+                }
+            } }
+            CalcKey { label: "×";  keyType: "operator"; alphaLabel: "R"; onPressed: root.handleKey("×") }
 
             // Row 3
-            CalcKey { label: "4";  keyType: "numeric"; onPressed: root.handleKey("4") }
-            CalcKey { label: "5";  keyType: "numeric"; onPressed: root.handleKey("5") }
-            CalcKey { label: "6";  keyType: "numeric"; onPressed: root.handleKey("6") }
-            // x² routes through handleKey so 2ND + x² can intercept and
-            // send √( instead of the default "^ then 2" sequence.
-            CalcKey { label: "x²"; keyType: "function"; onPressed: {
-                if (root.secondArmed) {
+            CalcKey { label: "4";  keyType: "numeric"; alphaLabel: "T"; onPressed: root.handleKey("4") }
+            CalcKey { label: "5";  keyType: "numeric"; alphaLabel: "U"; onPressed: root.handleKey("5") }
+            CalcKey { label: "6";  keyType: "numeric"; alphaLabel: "V"; onPressed: root.handleKey("6") }
+            // x² routes through handleKey when any modifier is armed so
+            // 2ND + x² → √( and ALPHA + x² → I get intercepted there.
+            // Default (no modifier) inserts the composite "^ 2" sequence,
+            // which handleKey doesn't support (it sends a single token).
+            CalcKey { label: "x²"; keyType: "function"; secondLabel: "√"; alphaLabel: "I"; onPressed: {
+                if (root.secondArmed || root.alphaArmed) {
                     root.handleKey("x²")
                 } else {
                     uiController.processInput("^")
                     uiController.processInput("2")
                 }
             } }
-            CalcKey { label: "−";  keyType: "operator"; onPressed: root.handleKey("−") }
+            CalcKey { label: "−";  keyType: "operator"; alphaLabel: "W"; onPressed: root.handleKey("−") }
 
             // Row 4
-            CalcKey { label: "1";  keyType: "numeric"; onPressed: root.handleKey("1") }
-            CalcKey { label: "2";  keyType: "numeric"; onPressed: root.handleKey("2") }
+            CalcKey { label: "1";  keyType: "numeric"; alphaLabel: "Y"; onPressed: root.handleKey("1") }
+            CalcKey { label: "2";  keyType: "numeric"; alphaLabel: "Z"; onPressed: root.handleKey("2") }
             CalcKey { label: "3";  keyType: "numeric"; onPressed: root.handleKey("3") }
             CalcKey { label: "Ans"; keyType: "function"; onPressed: root.handleKey("Ans") }
-            CalcKey { label: "+";  keyType: "operator"; onPressed: root.handleKey("+") }
+            CalcKey { label: "+";  keyType: "operator"; alphaLabel: "\""; onPressed: root.handleKey("+") }
 
             // Row 5
             CalcKey { label: "0";   keyType: "numeric"; onPressed: root.handleKey("0") }
-            CalcKey { label: ".";   keyType: "numeric"; onPressed: root.handleKey(".") }
-            // (-) routes through handleKey so 2ND + (-) → Ans (TI-83
-            // convention). Default primary is "neg" for unary negation.
-            CalcKey { label: "(-)"; keyType: "numeric"; onPressed: {
+            CalcKey { label: ".";   keyType: "numeric"; alphaLabel: ":"; onPressed: root.handleKey(".") }
+            // (-) routes through handleKey when 2ND is armed (→ Ans).
+            // ALPHA label "?" is aspirational — not a real token — so
+            // ALPHA + (-) just disarms silently. Default primary is
+            // "neg" for unary negation.
+            CalcKey { label: "(-)"; keyType: "numeric"; secondLabel: "ANS"; alphaLabel: "?"; onPressed: {
                 if (root.secondArmed) {
                     root.handleKey("(-)")
+                } else if (root.alphaArmed) {
+                    root.alphaArmed = false  // disarm without inserting
                 } else {
                     uiController.processInput("neg")
                 }
@@ -405,5 +469,9 @@ ApplicationWindow {
 
     MathMenuPopup {
         id: mathMenuPopup
+    }
+
+    MODEPopup {
+        id: modePopup
     }
 }

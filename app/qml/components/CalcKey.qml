@@ -21,6 +21,11 @@ Rectangle {
     // after being pressed once, ALPHA similarly). The owner flips this
     // based on the root modifier state; CalcKey just reflects it.
     property bool armed: false
+    // Corner sub-labels showing what the key does under the 2ND or
+    // ALPHA modifier. Rendered as tiny amber/green text in the top
+    // corners, mirroring TI-83 keytop markings. Leave empty to hide.
+    property string secondLabel: ""
+    property string alphaLabel:  ""
     signal pressed()
 
     // ── Layout defaults ───────────────────────────────────
@@ -69,6 +74,32 @@ Rectangle {
                         ? Style.funcKeyLabelPixelSize
                         : Style.keyLabelPixelSize
         font.weight: Style.keyLabelFontWeight
+    }
+
+    // 2ND sub-label — top-left, amber. Visible only when populated.
+    Text {
+        visible: root.secondLabel.length > 0
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.topMargin: 2
+        anchors.leftMargin: 4
+        text: root.secondLabel
+        color: Style.armedBadge2nd
+        font.family: Style.monoFamily
+        font.pixelSize: Style.cornerLabelPixelSize
+    }
+
+    // ALPHA sub-label — top-right, green. Visible only when populated.
+    Text {
+        visible: root.alphaLabel.length > 0
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.topMargin: 2
+        anchors.rightMargin: 4
+        text: root.alphaLabel
+        color: Style.armedBadgeAlpha
+        font.family: Style.monoFamily
+        font.pixelSize: Style.cornerLabelPixelSize
     }
 
     MouseArea {

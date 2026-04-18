@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <map>
 #include <string>
 #include <vector>
@@ -85,7 +86,46 @@ enum class Token {
   ATanh,
   LeftParen,
   RightParen,
+  // Scalar variables A..Z (26 contiguous tokens). Backing store is
+  // MathStateMachine::varRegistry, indexed by `(int)t - (int)VarA`.
+  // VarX is dual-purpose: in calc-mode evaluation the controller passes
+  // `varRegistry[X_idx]` as xValue so `5→X` then `X+1` reads the stored
+  // value; in graph-mode evaluation the controller passes the sweep x,
+  // so plotting Y1=X² walks across the window. All other letters always
+  // resolve via the registry.
+  VarA,
+  VarB,
+  VarC,
+  VarD,
+  VarE,
+  VarF,
+  VarG,
+  VarH,
+  VarI,
+  VarJ,
+  VarK,
+  VarL,
+  VarM,
+  VarN,
+  VarO,
+  VarP,
+  VarQ,
+  VarR,
+  VarS,
+  VarT,
+  VarU,
+  VarV,
+  VarW,
   VarX,
+  VarY,
+  VarZ,
+  // Assignment: <expr> → <var>. Evaluate::preprocess consumes the
+  // target VarA..VarZ token and records its index in a sidebar; the
+  // evaluator pops the top of the stack, writes it to varRegistry,
+  // then pushes the value back so it also appears on the display.
+  // Lowest precedence (-10) so the whole LHS expression resolves
+  // before the store.
+  Sto,
   // Matrix Specific Tokens
   OpenBracket,
   CloseBracket,
@@ -141,6 +181,13 @@ public:
   static bool has_built_in_paren(Token t);
 };
 
+// Trig-function angle interpretation. Default is Radian (matches
+// mathematical convention and preserves prior behaviour). When set to
+// Degree, sin/cos/tan convert their input from degrees, and
+// asin/acos/atan return degrees. Hyperbolic functions ignore this —
+// hyperbolic arguments are dimensionless.
+enum class AngleMode { Radian, Degree };
+
 class MathStateMachine {
 public:
   CalculationResult evaluate(const std::vector<Token> &graph,
@@ -149,6 +196,15 @@ public:
 
   // Matrix Storage
   static std::map<Token, Matrix> matrixRegistry;
+
+  // Scalar variable registry A..Z. Zero-initialised on program start;
+  // mutated via Sto. Errors don't overwrite — the evaluator writes to
+  // the registry only after a successful arithmetic result.
+  static std::array<double, 26> varRegistry;
+
+  // Current angle mode. Process-global static so CLI/REPL/GUI share
+  // one setting; reflected in the trig-function evaluation below.
+  static AngleMode angleMode;
 
   // Last successful evaluation result. Updated by the UI controller
   // after every successful ENTER and recalled via Token::Ans. Matches

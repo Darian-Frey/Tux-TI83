@@ -41,7 +41,7 @@ inline void printResult(const UIController &c) {
 // false on tokenisation failure or evaluation error. Prints the result
 // (or ERR:...) to stdout, optionally coloured.
 inline bool evaluateLine(UIController &c, const QString &line) {
-  c.processInput(QStringLiteral("C")); // fresh expression buffer
+  c.processInput(QStringLiteral("CLEAR")); // fresh expression buffer
   if (!c.processExpression(line)) {
     bool colorize = isTty();
     if (colorize) std::cout << kRed;

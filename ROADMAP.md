@@ -169,8 +169,8 @@ Engine implements more than the UI currently exposes — listed below.
 
 ## Variables & storage
 
-- 📅 26 single-letter scalar variables `A`–`Z`
-- 📅 `STO→` store-to-variable key
+- ✅ 26 single-letter scalar variables `A`–`Z` — added 2026-04-18 (contiguous `Token::VarA..VarZ`, backed by `MathStateMachine::varRegistry`; unset reads as 0; ALPHA + letter key inserts via the unified dispatcher; `X` doubles as the graph sweep variable in graph mode and as a scalar in calc mode)
+- ✅ `STO→` store-to-variable — added 2026-04-18 (`Token::Sto`, lowest precedence, preprocessing consumes the target `VarA..VarZ` and records its index; accessible via the MATH menu `→ (STO)` entry, keyboard `|`, or ASCII `->`; error paths don't mutate the registry)
 - ✅ `Ans` (last answer) — auto-populated after every successful ENTER via `MathStateMachine::lastResult`; `Token::Ans` pushes the stored scalar or matrix onto the operand stack; NUMERIC row 4 col 4 CalcKey inserts it into the expression (added 2026-04-07)
 - 📅 Last-entry recall (2nd + ENTER cycles backwards through history)
 - 📅 `Y-VARS` store/recall (functions, window vars, statistics, etc.)
@@ -294,18 +294,18 @@ Engine implements more than the UI currently exposes — listed below.
 
 ### Up next
 - ✅ `MATH` CalcKey wired — opens `MathMenuPopup` (see Numeric core › Number functions)
-- 🔜 Wire `MODE` CalcKey — needs a MODE menu popup
+- ✅ Wire `MODE` CalcKey — `MODEPopup` landed 2026-04-18 (8 TI-83-authentic rows; Angle row wired to `MathStateMachine::angleMode`, which feeds trig/inverse-trig evaluation; header indicator binds to the same property; remaining rows rendered as TI-83-authentic greyed placeholders)
 - ✅ Wire `2ND` CalcKey — modifier system landed 2026-04-18 (toggle arm, mutually exclusive with ALPHA, one-shot, amber header badge; wired 2ND variants: sin(/cos(/tan(→asin(/acos(/atan(, x²→√(, ln(→e^(, (-)→Ans)
 - ✅ Wire `ALPHA` CalcKey — infrastructure landed 2026-04-18 (toggle arm, mutually exclusive with 2ND, one-shot, green α header badge); no letter variants wired yet (blocked on variable registry)
 
 ### Planned
 
-- 📅 ALPHA letter bindings — wire A–Z letter insertion once the variable registry exists (see [IMP-003](IMPROVEMENTS.md))
+- ✅ ALPHA letter bindings — added 2026-04-18 (handleKey's alphaMap routes ALPHA + primary-key to the matching VarA..VarZ token, mirroring the on-key alphaLabel annotations)
 - 📅 Remaining 2ND variants (CATALOG, TEST menu, nth-root, insert-mode toggle, etc.)
 - 📅 Cursor movement within an expression (left/right arrow editing)
 - 📅 Insert mode toggle (2nd + DEL)
 - 📅 ALPHA-lock mode
-- 📅 `MODE` menu (angle: Deg/Rad; display: Float/Sci/Eng/Fix; func/par/pol/seq; etc.)
+- 📅 `MODE` menu follow-ups — wire the remaining placeholder rows (Notation: Normal/Sci/Eng, Decimal: Float/Fix N, Graph: Func/Par/Pol/Seq, Draw: Connected/Dot, Plot: Sequential/Simul, Complex: Real/a+bi/re^θi, Screen: Full/Horiz/G-T). Infrastructure is in place — each row needs a backing property + evaluator/renderer support.
 - 📅 `CATALOG` browser (alphabetical list of every command)
 - 📅 Mode indicator in the header (currently hardcoded "NORMAL  DEG")
 - ✅ WINDOW popup ported to the new UI (see Graphing › Window settings)
@@ -315,8 +315,9 @@ Engine implements more than the UI currently exposes — listed below.
 ### Considering
 - 💭 Resizable window (currently fixed 720×760)
 - 💭 Themes beyond Nord (light mode, high contrast, monochrome retro LCD)
+- 💭 UI scale / zoom setting — global multiplier on key sizes, font sizes, and display pixel sizes so the whole calculator can be scaled up for accessibility or larger monitors. Likely implemented as a `Style.uiScale` property feeding into every pixel-size/size constant, with a persisted setting and a control in a future Settings panel. Pairs naturally with the theming work since both live in `Style.qml`.
 - 💭 Touch input refinement
-- 💭 On-screen 2nd/Alpha indicator badges over the keys
+- ✅ On-screen 2nd/Alpha sub-labels on each key — added 2026-04-18 (tiny amber 2ND function in top-left corner, green ALPHA letter in top-right; 2ND labels shown only for wired variants, ALPHA letters follow TI-83 layout)
 
 ## Programming (TI-BASIC subset)
 

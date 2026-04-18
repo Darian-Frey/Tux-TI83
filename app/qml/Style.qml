@@ -52,9 +52,14 @@ QtObject {
     readonly property int displayPixelSize:      30
     readonly property int exprPixelSize:         11
     readonly property int sectionLabelPixelSize: 8
-    readonly property int keyLabelPixelSize:     11
-    readonly property int funcKeyLabelPixelSize: 10
+    readonly property int keyLabelPixelSize:     13
+    readonly property int funcKeyLabelPixelSize: 12
     readonly property int headerBrandPixelSize:  10
+    // Corner sub-labels showing each key's 2ND and ALPHA functions.
+    // Deliberately small so they frame the primary label instead of
+    // competing with it — mirrors the tiny printed markings on a real
+    // TI-83 keytop.
+    readonly property int cornerLabelPixelSize:  9
 
     readonly property real sectionLabelLetterSpacing: 0.12
     readonly property real headerBrandLetterSpacing:  0.14

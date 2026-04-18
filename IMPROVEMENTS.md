@@ -188,6 +188,138 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-015: MODE menu + angle-mode (Radian/Degree) wiring
+
+- **Status:** applied (2026-04-18)
+- **Location:** [core_math/include/capsules/capsule_math.hpp](core_math/include/capsules/capsule_math.hpp), [core_math/src/core_math.cpp](core_math/src/core_math.cpp), [graph_ui/include/ui_controller.hpp](graph_ui/include/ui_controller.hpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/qml/Main.qml](app/qml/Main.qml), [app/qml/components/MODEPopup.qml](app/qml/components/MODEPopup.qml), [app/qml/qmldir](app/qml/qmldir), [CMakeLists.txt](CMakeLists.txt), [tests/test_math.cpp](tests/test_math.cpp)
+- **Effort:** medium
+- **Description:** The MODE CalcKey was a no-op — the one remaining
+  unwired control-row key. The header read "NORMAL DEG" regardless of
+  any actual setting, and trig functions always used radians with no
+  way to switch.
+- **Change:**
+  - Engine: added `AngleMode` enum (`Radian` | `Degree`) and the
+    static `MathStateMachine::angleMode` field, defaulting to Radian.
+    Extended the trig evaluator — sin/cos/tan scale inputs by π/180
+    when degree mode is active, and asin/acos/atan scale outputs by
+    180/π. Hyperbolic functions stay mode-agnostic (their argument
+    isn't an angle).
+  - Controller: exposed `angleMode` as a Q_PROPERTY (int, 0=Radian,
+    1=Degree) with WRITE and NOTIFY so QML can bind bidirectionally.
+    Setter clamps to the two valid values.
+  - UI: built `MODEPopup.qml` with a reusable `ModeRow` inline
+    component (label + segmented options + active/inactive styling),
+    rendering 8 TI-83-authentic rows. The Angle row is wired to
+    `uiController.angleMode`; the other seven (Notation, Decimal,
+    Graph, Draw, Plot, Complex, Screen) render as greyed placeholders
+    so the shape of the MODE screen is right today — each one will
+    get a backing property as the corresponding feature lands.
+    Registered the component in `qmldir` and CMakeLists's resource
+    list, then wired the MODE CalcKey to open it and the header
+    string to bind to the live property.
+  - Tests: 12 new assertions covering sin/cos/tan at standard
+    degree reference points (0°, 30°, 45°, 60°, 90°), inverse trig
+    returning degrees in Degree mode, and a round-trip flip back to
+    Radian to confirm the mutation is symmetric. 153/153 passing.
+- **Trade-offs:** The placeholder rows risk implying more than is
+  true — users might expect clicking them to do something. Greying
+  them out at 0.4 opacity and disabling their MouseAreas makes it
+  clear they're not interactive; keeping them visible is still
+  valuable as a roadmap-in-the-UI. Alternative considered: render
+  only the Angle row and add others as they're wired. Rejected
+  because a one-row MODE screen felt thinner than the TI-83
+  reference and hid upcoming work.
+- **Notes:** Unblocks any future trig-heavy work (graphing
+  `sin(x)` where users expect degrees, etc.) and establishes the
+  pattern for the remaining MODE rows. The controller's `setAngleMode`
+  is a reusable pattern — Notation/Decimal/Graph will follow the
+  same shape.
+
+### IMP-014: Scalar variable registry A–Z + STO assignment
+
+- **Status:** applied (2026-04-18)
+- **Location:** [core_math/include/capsules/capsule_math.hpp](core_math/include/capsules/capsule_math.hpp), [core_math/src/core_math.cpp](core_math/src/core_math.cpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/qml/Main.qml](app/qml/Main.qml), [app/qml/components/MathMenuPopup.qml](app/qml/components/MathMenuPopup.qml), [tests/test_math.cpp](tests/test_math.cpp)
+- **Effort:** medium
+- **Description:** The two remaining Phase B engine features were
+  scalar variables A–Z and the STO assignment arrow. Without them, the
+  ALPHA modifier could arm and flash labels but pressing a letter
+  inserted nothing, and there was no way to bind a value to a name —
+  blocking any TI-BASIC-like expression (`5→A`, `A+3→A`).
+- **Change:**
+  - Engine: replaced the standalone `Token::VarX` with a contiguous
+    `VarA..VarZ` block (26 tokens), added `Token::Sto` at precedence
+    -10, added `std::array<double, 26> MathStateMachine::varRegistry`
+    (zero-initialised, mutated only on successful stores), extended
+    the preprocessing pass to consume the target VarA..VarZ that
+    follows each Sto (syntax error if missing), and added evaluator
+    cases for both. `VarX` stayed dual-purpose: graph-mode eval
+    passes the sweep x, calc-mode eval now passes
+    `varRegistry[X_idx]`.
+  - Controller: added A–Z entries and `→` / `->` aliases to
+    `kTokens`. Renamed the CLEAR sentinel from `"C"` to `"CLEAR"`
+    to resolve the collision with `VarC` (CalcKey, keyboard
+    handler, CLI helper, and tests all updated).
+  - UI: added `alphaMap` mirroring the on-key `alphaLabel` layout
+    and extended `handleKey` to route ALPHA-armed presses through
+    it. Special-cased CalcKeys (MATH, MATRX, x², (-)) that had
+    bespoke `onPressed` bodies now also branch on `alphaArmed`
+    before running their default action. Added a `→ (STO)` entry
+    to the MATH menu and a `|` keyboard shortcut.
+  - Tests: 16 new regression assertions covering defaults, basic
+    stores, chained read-modify-writes, letter independence,
+    error-don't-mutate, malformed Sto syntax, matrix-to-scalar
+    type error, ASCII alias, and the graph-X dual role. 141/141
+    passing.
+- **Trade-offs:** The CLEAR sentinel rename touched a handful of
+  files but removed an ambiguous one-character input. Letters that
+  real TI-83 maps to punctuation (`.`→`:`, `(-)`→`?`, `+`→`"`) kept
+  their layout-accurate labels but the `alphaMap` doesn't wire them
+  — they'd need to land in `kTokens` first, and none of those
+  characters have evaluator semantics yet. ALPHA-armed press on
+  those keys disarms silently.
+- **Notes:** Closes Phase B proper. Unblocks the programming roadmap
+  (TI-BASIC `:` separator, `Disp`, `Input`, `For(`, etc.) which all
+  depend on readable/writable scalars. Follow-up: `:` as a
+  statement separator, ALPHA-lock mode, last-entry recall
+  (2ND+ENTER).
+
+### IMP-013: On-key corner labels for 2ND and ALPHA functions
+
+- **Status:** applied (2026-04-18)
+- **Location:** [app/qml/components/CalcKey.qml](app/qml/components/CalcKey.qml), [app/qml/Main.qml](app/qml/Main.qml), [app/qml/Style.qml](app/qml/Style.qml)
+- **Effort:** small
+- **Description:** With the 2ND/ALPHA modifier infrastructure landed
+  (IMP-003), keys had no visible indication of what their modifier
+  functions were — users had to guess or read the codebase. Real
+  TI-83 hardware prints tiny coloured markings above each key to
+  teach the layout; we were missing that affordance.
+- **Change:**
+  - Added `secondLabel` and `alphaLabel` optional string properties
+    to `CalcKey`, rendered as 7px text in the top-left (amber, 2ND
+    colour) and top-right (green, ALPHA colour) corners respectively.
+    Hidden when empty, so keys without modifier functions stay clean.
+  - Added `Style.cornerLabelPixelSize` constant so the sub-label
+    typography is centralised.
+  - Populated `secondLabel` on every CalcKey whose 2ND variant is
+    wired in `secondMap` — `sin⁻¹`/`cos⁻¹`/`tan⁻¹` on the trig keys,
+    `eˣ` on LN, `√` on x², and `ANS` on `(-)`. 2ND labels are
+    deliberately withheld on unwired keys (MATH→TEST, ^→ˣ√, LOG→10ˣ,
+    etc.) to avoid advertising behaviour that doesn't work yet.
+  - Populated `alphaLabel` on every CalcKey whose real-TI-83
+    counterpart has an ALPHA letter, adapted to our key layout.
+    Letters are shown even though ALPHA variants aren't wired yet —
+    this teaches the layout now and is harmless since pressing ALPHA
+    then any key currently just clears the flag.
+- **Trade-offs:** Keys are visibly busier, but the sub-labels are
+  small enough (7px in the corners) that they frame the primary
+  label rather than compete with it. The ALPHA-letter asymmetry
+  (visible but non-functional) is a deliberate trade — we agreed
+  showing the layout early outweighs the "does nothing" surprise.
+- **Notes:** Promoted the old "💭 On-screen 2nd/Alpha indicator
+  badges over the keys" ROADMAP entry to ✅. Blocked follow-ups:
+  wiring the remaining 2ND actions (CATALOG, TEST menu, nth-root,
+  etc.) and ALPHA letter inputs (requires variable registry).
+
 ### IMP-003: 2ND / ALPHA modifier infrastructure (supersedes original "ALPHA gate" proposal)
 
 - **Status:** applied (2026-04-18)

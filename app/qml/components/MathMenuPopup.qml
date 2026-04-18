@@ -59,7 +59,11 @@ Popup {
         { label: "acosh(", input: "acosh(", available: true },
         { label: "atanh(", input: "atanh(", available: true },
         { label: "▶Frac",  input: "▶Frac",  available: true },
-        { label: "▶Dec",   input: "▶Dec",   available: true }
+        { label: "▶Dec",   input: "▶Dec",   available: true },
+        // STO → lives here until there's a dedicated key. Inserting it
+        // mid-expression lets the user type `5 → A` from the GUI without
+        // needing the keyboard `->` shortcut.
+        { label: "→ (STO)", input: "→",      available: true }
     ]
 
     contentItem: ColumnLayout {

@@ -29,6 +29,10 @@ private:
     Q_PROPERTY(bool isGraphMode MEMBER m_isGraphMode NOTIFY graphModeChanged)
     Q_PROPERTY(DisplayState displayState READ displayState NOTIFY displayStateChanged)
     Q_PROPERTY(QString displayExpression READ displayExpression NOTIFY displayStateChanged)
+    // Angle mode: 0 = Radian, 1 = Degree. Mirrors
+    // MathStateMachine::angleMode (process-global). Header indicator
+    // and MODEPopup both bind to this.
+    Q_PROPERTY(int angleMode READ angleMode WRITE setAngleMode NOTIFY angleModeChanged)
 
 public:
     explicit UIController(QObject* parent = nullptr);
@@ -38,6 +42,10 @@ public:
     int activeFunctionIndex() const { return m_activeIdx; }
     DisplayState displayState() const { return m_displayState; }
     QString displayExpression() const { return m_displayExpression; }
+    int angleMode() const {
+        return static_cast<int>(MathStateMachine::angleMode);
+    }
+    void setAngleMode(int m);
 
     Q_INVOKABLE void processInput(const QString& input);
     // Format a scalar result for display. Uses enough precision (10
@@ -73,6 +81,7 @@ signals:
     void viewportChanged();
     void graphModeChanged();
     void displayStateChanged();
+    void angleModeChanged();
 
 private:
     // processInput dispatches to these. Each handles one concern; the
