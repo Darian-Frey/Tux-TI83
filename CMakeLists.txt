@@ -25,10 +25,16 @@ target_link_libraries(graph_ui PUBLIC core_math Qt6::Gui Qt6::Qml Qt6::Quick)
 add_executable(tux_ti83 app/main.cpp)
 target_link_libraries(tux_ti83 PRIVATE graph_ui Qt6::Gui Qt6::Qml Qt6::Quick)
 
-# Headless CLI binary — same UIController as the GUI, but no QML/Quick.
-# Useful as a terminal calculator and as the basis for shell pipelines.
+# Headless one-shot CLI — evaluate a single expression and exit.
+# Usage: tux_ti83_cli "2+2". Wrap expressions with `!` in single quotes
+# to avoid bash history expansion.
 add_executable(tux_ti83_cli cli/cli_main.cpp)
 target_link_libraries(tux_ti83_cli PRIVATE graph_ui Qt6::Core Qt6::Gui)
+
+# Interactive REPL — prompt-per-line calculator with Ans recall
+# between lines. Reads stdin, so bash history expansion doesn't apply.
+add_executable(tux_ti83_repl cli/repl_main.cpp)
+target_link_libraries(tux_ti83_repl PRIVATE graph_ui Qt6::Core Qt6::Gui)
 
 # Regression test binary — drives UIController programmatically and
 # asserts on the displayed result. Run with `./build/tux_ti83_tests`.

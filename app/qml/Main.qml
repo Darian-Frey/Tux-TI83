@@ -87,7 +87,8 @@ ApplicationWindow {
                 "+": "+", "-": "−", "*": "×", "/": "÷",
                 "^": "^", "(": "(", ")": ")",
                 "s": "sin(", "c": "cos(", "t": "tan(",
-                "l": "log(", "n": "ln(", "r": "√(", "p": "π"
+                "l": "log(", "n": "ln(", "r": "√(", "p": "π",
+                "!": "!"
             }
             if (map.hasOwnProperty(ch)) {
                 uiController.processInput(map[ch])

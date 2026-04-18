@@ -63,6 +63,10 @@ enum class Token {
   // with r ≤ n; domain errors otherwise.
   NCr,
   NPr,
+  // Factorial — unary postfix. Accepts non-negative integers ≤ 170
+  // (beyond that a double would overflow). Returns DOMAIN error for
+  // negatives, non-integers, or values > 170.
+  Fact,
   // Hyperbolic functions (unary). asinh/atanh accept all reals;
   // acosh requires x ≥ 1 (DOMAIN error otherwise); atanh requires
   // -1 < x < 1 (DOMAIN error otherwise).

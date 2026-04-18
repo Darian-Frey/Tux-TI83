@@ -93,6 +93,9 @@ constexpr TokenSpec kTokens[] = {
     {"nCr(",   Token::NCr,   "nCr("},
     {"nPr(",   Token::NPr,   "nPr("},
 
+    // Factorial — unary postfix
+    {"!", Token::Fact, "!"},
+
     // Hyperbolic functions (unary)
     {"sinh(",  Token::Sinh,  "sinh("},
     {"cosh(",  Token::Cosh,  "cosh("},
@@ -152,6 +155,13 @@ UIController::UIController(QObject *parent) : QObject(parent), m_activeIdx(0) {
 
 QString UIController::currentDisplay() const {
   return m_displayStrings[m_activeIdx];
+}
+
+QString UIController::formatScalar(double value) {
+  // 'g' drops trailing zeros; precision 10 shows enough digits that
+  // values up to ~10^9 stay in plain-integer form (10! = 3,628,800
+  // no longer renders as "3.6288e+06").
+  return QString::number(value, 'g', 10);
 }
 
 // ── processInput dispatcher ───────────────────────────────────
@@ -261,7 +271,7 @@ void UIController::evaluate() {
     } else {
       // BUG-015 fix: default scalar display is decimal. Users get the
       // fraction form on demand via the ▶Frac MATH-menu entry.
-      currentStr = QString::number(result.value);
+      currentStr = formatScalar(result.value);
     }
     m_displayState = Evaluated;
     // Remember this result for the next Token::Ans recall. Errors do not
@@ -323,7 +333,7 @@ void UIController::convertDisplayToDecimal() {
   if (m_displayState != Evaluated || MathStateMachine::lastResult.isMatrix)
     return;
   auto &currentStr = m_displayStrings[m_activeIdx];
-  currentStr = QString::number(MathStateMachine::lastResult.value);
+  currentStr = formatScalar(MathStateMachine::lastResult.value);
   m_history.prepend("Y" + QString::number(m_activeIdx + 1) +
                     ": Ans▶Dec = " + currentStr);
   emit historyChanged();

@@ -40,6 +40,13 @@ public:
     QString displayExpression() const { return m_displayExpression; }
 
     Q_INVOKABLE void processInput(const QString& input);
+    // Format a scalar result for display. Uses enough precision (10
+    // significant digits) that results like 10! (= 3,628,800) and larger
+    // integers below the 170!-overflow cap display as plain decimal
+    // numbers rather than scientific notation, while keeping trailing
+    // zeros trimmed. Single source of truth for result formatting —
+    // the evaluator, `▶Dec`, and the test suite all route through here.
+    static QString formatScalar(double value);
     // Tokenise a free-form expression string ("2+sin(0.5)") into the
     // sequence of input strings the controller's processInput method
     // accepts. Longest-match against the kTokens table plus a small set

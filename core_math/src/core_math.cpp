@@ -211,6 +211,13 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
     else if ((t >= Token::MatA && t <= Token::MatJ) || t == Token::VarX ||
              t == Token::Pi || t == Token::E || t == Token::Ans)
       rpn.push_back({t, 0.0});
+    else if (t == Token::Fact) {
+      // Unary postfix. Its operand is already in rpn ahead of this,
+      // so we can emit Fact directly. Immediate emission gives `!` a
+      // higher effective precedence than any binary operator, matching
+      // the mathematical convention that factorial binds tightest.
+      rpn.push_back({t, 0.0});
+    }
     else if (EOSPrecedence::is_function(t) || t == Token::LeftParen) {
       opStack.push(t);
       // Functions with a built-in opening paren (input strings like
@@ -298,6 +305,21 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
         stack.push({true, 0.0, matrixRegistry[t]});
       else
         return {false, 0.0, {}, false, "Undefined Matrix"};
+    } else if (t == Token::Fact) {
+      if (stack.empty())
+        return {false, 0.0, {}, false, "Error"};
+      Operand a = stack.top();
+      stack.pop();
+      if (a.isMat)
+        return {false, 0.0, {}, false, "Type Error"};
+      double val = a.val;
+      // Non-negative integers only, capped at 170 (171! overflows double).
+      if (val < 0.0 || val != std::floor(val) || val > 170.0)
+        return {false, 0.0, {}, false, "DOMAIN"};
+      double result = 1.0;
+      for (int i = 2; i <= static_cast<int>(val); ++i)
+        result *= i;
+      stack.push({false, result, {}});
     } else if (EOSPrecedence::is_function(t)) {
       // Binary functions (round, min, max, mod) — pop two operands.
       if (EOSPrecedence::is_binary_function(t)) {

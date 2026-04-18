@@ -84,8 +84,8 @@ int main(int argc, char *argv[]) {
   check("Parens override: (2+3)*4", eval(c, "(2+3)*4"), "20");
 
   section("Constants");
-  check("π evaluates to ≈3.14159", eval(c, "π"), QString::number(M_PI));
-  check("e evaluates to ≈2.71828", eval(c, "e"), QString::number(M_E));
+  check("π evaluates to ≈3.14159", eval(c, "π"), UIController::formatScalar(M_PI));
+  check("e evaluates to ≈2.71828", eval(c, "e"), UIController::formatScalar(M_E));
 
   section("Trig (sin / cos / tan)");
   check("sin(0) = 0", eval(c, "sin(0)"), "0");
@@ -160,9 +160,30 @@ int main(int argc, char *argv[]) {
   check("max(sin(0),cos(0)) = 1 (BUG-016)",
         eval(c, "max(sin(0),cos(0))"), "1");
   check("sin(max(0, 1)) = sin(1) (BUG-016 sibling)",
-        eval(c, "sin(max(0, 1))"), QString::number(std::sin(1.0)));
+        eval(c, "sin(max(0, 1))"), UIController::formatScalar(std::sin(1.0)));
   check("abs(min(-5, -3)) = 5 (BUG-016 sibling)",
         eval(c, "abs(min(-5, -3))"), "5");
+
+  section("Factorial (Phase B)");
+  check("0! = 1", eval(c, "0!"), "1");
+  check("1! = 1", eval(c, "1!"), "1");
+  check("5! = 120", eval(c, "5!"), "120");
+  check("10! = 3628800", eval(c, "10!"), "3628800");
+  check("5!+3! = 126", eval(c, "5!+3!"), "126");
+  check("5!/5 = 24", eval(c, "5!/5"), "24");
+  // Precedence: factorial binds tighter than ^
+  check("2^3! = 64 (= 2^(3!) = 2^6)", eval(c, "2^3!"), "64");
+  check("5!^2 = 14400", eval(c, "5!^2"), "14400");
+  // Unary negation and factorial
+  check("-5! = -120 (= -(5!))", eval(c, "-5!"), "-120");
+  check("(-5)! → ERR:DOMAIN", eval(c, "(-5)!"), "ERR:DOMAIN");
+  // Domain errors
+  check("3.5! → ERR:DOMAIN (non-integer)",
+        eval(c, "3.5!"), "ERR:DOMAIN");
+  check("(-1)! → ERR:DOMAIN",
+        eval(c, "(-1)!"), "ERR:DOMAIN");
+  // Composition with combinatorics
+  check("nCr(5, 2) × 3! = 60", eval(c, "nCr(5, 2)*3!"), "60");
 
   section("Combinatorics (nCr, nPr — Phase B)");
   check("nCr(5, 2) = 10", eval(c, "nCr(5, 2)"), "10");
@@ -196,12 +217,12 @@ int main(int argc, char *argv[]) {
   check("asinh(0) = 0", eval(c, "asinh(0)"), "0");
   check("acosh(1) = 0", eval(c, "acosh(1)"), "0");
   check("atanh(0) = 0", eval(c, "atanh(0)"), "0");
-  check("cosh(1) ≈ 1.543", eval(c, "cosh(1)"), QString::number(std::cosh(1.0)));
-  check("sinh(1) ≈ 1.175", eval(c, "sinh(1)"), QString::number(std::sinh(1.0)));
+  check("cosh(1) ≈ 1.543", eval(c, "cosh(1)"), UIController::formatScalar(std::cosh(1.0)));
+  check("sinh(1) ≈ 1.175", eval(c, "sinh(1)"), UIController::formatScalar(std::sinh(1.0)));
   // Inverse identities
   check("sinh(asinh(3)) = 3", eval(c, "sinh(asinh(3))"), "3");
   check("tanh(atanh(0.5)) = 0.5",
-        eval(c, "tanh(atanh(0.5))"), QString::number(std::tanh(std::atanh(0.5))));
+        eval(c, "tanh(atanh(0.5))"), UIController::formatScalar(std::tanh(std::atanh(0.5))));
   // Domain errors
   check("acosh(0.5) → ERR:DOMAIN (requires x ≥ 1)",
         eval(c, "acosh(0.5)"), "ERR:DOMAIN");
@@ -216,10 +237,10 @@ int main(int argc, char *argv[]) {
 
   section("toFraction default behaviour (BUG-013, BUG-015)");
   check("1÷3 displays as decimal, not 1/3", eval(c, "1÷3"),
-        QString::number(1.0 / 3.0));
+        UIController::formatScalar(1.0 / 3.0));
   check("e displays as decimal, not 1457/536", eval(c, "e"),
-        QString::number(M_E));
-  check("π displays as decimal", eval(c, "π"), QString::number(M_PI));
+        UIController::formatScalar(M_E));
+  check("π displays as decimal", eval(c, "π"), UIController::formatScalar(M_PI));
 
   section("Ans recall (Phase B)");
   c.processInput(QStringLiteral("C"));
@@ -241,7 +262,7 @@ int main(int argc, char *argv[]) {
   check("1÷3 then ▶Frac → 1/3", c.currentDisplay(), "1/3");
   c.processInput(QStringLiteral("▶Dec"));
   check("then ▶Dec returns to decimal", c.currentDisplay(),
-        QString::number(1.0 / 3.0));
+        UIController::formatScalar(1.0 / 3.0));
   // ▶Frac on irrational silently leaves decimal
   c.processInput(QStringLiteral("C"));
   evalChained(c, "e");

@@ -46,12 +46,19 @@ yet built: 2ND modifier system, ALPHA modifier system (see
 
 ## Tooling & testing
 
-- ✅ `tux_ti83_cli` — headless CLI binary that drives `UIController`
-  directly. One-shot mode (`tux_ti83_cli "2+2"` prints `4`) and
-  interactive REPL mode (line-per-expression, `Ans` recall between
-  lines, `:quit` to exit). ANSI colour when stdout is a tty (green
-  result, red error, blue prompt); plain output when piped. Uses only
-  Qt6::Core / Qt6::Gui — no QML or display dependency. Added 2026-04-08.
+- ✅ `tux_ti83_cli` — headless one-shot binary. `tux_ti83_cli "2+2"`
+  prints `4`, exits. Usage message + exit code 2 when run without args.
+  Added 2026-04-08; split into its own binary on 2026-04-08 after the
+  REPL moved to `tux_ti83_repl`.
+- ✅ `tux_ti83_repl` — interactive REPL binary. Prompt-per-line with
+  `Ans` recall between lines, `:quit` / `:q` / Ctrl+D to exit. Reads
+  stdin, so it bypasses bash's history expansion entirely — you can
+  type `5!+3!` at the prompt without any shell-escape gotcha.
+  Added 2026-04-08.
+- ✅ Shared CLI helpers live in [cli/cli_common.hpp](cli/cli_common.hpp)
+  (inline header) so both binaries route through the same result
+  formatting, error reporting, and ANSI colour logic. No duplicated
+  code between the two entry points.
 - ✅ `tux_ti83_tests` — regression test binary with plain C++ assertions
   (no external test framework). Drives the same `UIController` the GUI
   uses; covers basic arithmetic, trig, log/ln, sqrt, constants, unary
@@ -74,6 +81,13 @@ yet built: 2ND modifier system, ALPHA modifier system (see
   `tux_ti83_tests` on every push).
 - 📅 CLI commands beyond bare expressions: `:vars`, `:matrix [A]`,
   `:graph X^2 -10 10`, etc. Currently REPL only handles expressions.
+- 🚧 [`USER_MANUAL.md`](USER_MANUAL.md) — end-user documentation covering
+  the GUI keypad layout, MATH / MATRX / WINDOW menus, graph mode,
+  keyboard shortcuts, CLI / REPL usage, error messages, and worked
+  examples. **Skeleton landed 2026-04-08** with all 17 sections stubbed;
+  sections marked *"planned"* will be fleshed out over time (screenshots,
+  worked examples, the function-reference appendix, troubleshooting
+  expansion).
 - 💭 Test coverage measurement (gcov / lcov) once the test suite grows.
 - 💭 Property-based / fuzz testing for the parser (FuzzTest, libFuzzer).
 
@@ -129,7 +143,8 @@ yet built: 2ND modifier system, ALPHA modifier system (see
 ### Combinatorics
 - ✅ `nCr(n, r)` — combinations, n choose r (engine + UI via MATH menu; added 2026-04-08). Requires 0 ≤ r ≤ n with both non-negative integers; `ERR:DOMAIN` otherwise.
 - ✅ `nPr(n, r)` — permutations, n permute r (engine + UI via MATH menu; added 2026-04-08). Same domain rules as nCr.
-- 📅 `!` (factorial) — unary postfix, different parser shape; scheduled for its own turn
+- ✅ `!` (factorial) — unary postfix, engine + UI via MATH menu, keyboard shortcut `!` (added 2026-04-08). Accepts non-negative integers ≤ 170; returns `ERR:DOMAIN` otherwise. Binds tighter than `^` (so `2^3! = 2^(3!) = 64`).
+- ✅ `UIController::formatScalar(double)` helper — centralised display formatting at 10-significant-digit precision, used by `evaluate`, `▶Dec`, and the test suite. Fixes an implicit bug where results ≥ 10⁶ displayed as scientific notation by default (`10! = 3628800` now renders as the integer, not `3.6288e+06`).
 
 ### Calculus
 - 📅 Numeric integration `fnInt(`
