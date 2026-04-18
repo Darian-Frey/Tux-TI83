@@ -62,23 +62,45 @@ constexpr TokenSpec kTokens[] = {
     // Last-answer recall
     {"Ans", Token::Ans, "Ans"},
 
-    // Functions — displayStr includes the opening paren
-    {"sin",  Token::Sin,  "sin("},
-    {"cos",  Token::Cos,  "cos("},
-    {"tan",  Token::Tan,  "tan("},
-    {"asin", Token::ASin, "asin("},
-    {"acos", Token::ACos, "acos("},
-    {"atan", Token::ATan, "atan("},
-    {"log",  Token::Log,  "log("},
-    {"ln",   Token::Ln,   "ln("},
-    {"√",    Token::Sqrt, "√("},
-    {"det(", Token::Det,  "det("},
+    // Functions — inputs include the opening paren, so the buffer
+    // always has just the function token (no separate LeftParen).
+    // The shunting-yard pushes a synthetic LeftParen for all of these,
+    // giving a uniform scope marker that nests correctly.
+    {"sin(",  Token::Sin,  "sin("},
+    {"cos(",  Token::Cos,  "cos("},
+    {"tan(",  Token::Tan,  "tan("},
+    {"asin(", Token::ASin, "asin("},
+    {"acos(", Token::ACos, "acos("},
+    {"atan(", Token::ATan, "atan("},
+    {"log(",  Token::Log,  "log("},
+    {"ln(",   Token::Ln,   "ln("},
+    {"√(",    Token::Sqrt, "√("},
+    {"det(",  Token::Det,  "det("},
 
     // Number functions (unary)
     {"abs(",   Token::Abs,   "abs("},
     {"int(",   Token::Int,   "int("},
     {"iPart(", Token::IPart, "iPart("},
     {"fPart(", Token::FPart, "fPart("},
+
+    // Number functions (binary) — Wave 2
+    {"round(", Token::Round, "round("},
+    {"min(",   Token::Min,   "min("},
+    {"max(",   Token::Max,   "max("},
+    {"mod(",   Token::Mod,   "mod("},
+
+    // Hyperbolic functions (unary)
+    {"sinh(",  Token::Sinh,  "sinh("},
+    {"cosh(",  Token::Cosh,  "cosh("},
+    {"tanh(",  Token::Tanh,  "tanh("},
+    {"asinh(", Token::ASinh, "asinh("},
+    {"acosh(", Token::ACosh, "acosh("},
+    {"atanh(", Token::ATanh, "atanh("},
+
+    // Argument separator for binary/n-ary functions. Without this entry
+    // the `,` CalcKey was inert; now it inserts Token::Comma which the
+    // shunting-yard treats as a function-argument separator.
+    {",", Token::Comma, ","},
 
     // Comparators / boolean
     {"=",   Token::Equal,    "="},
@@ -343,6 +365,7 @@ void UIController::insertToken(const QString &input) {
     if (!isUnary) {
       Token prev = currentBuf.back();
       isUnary = (prev == Token::LeftParen ||
+                 prev == Token::Comma ||
                  prev == Token::Add || prev == Token::Sub ||
                  prev == Token::Mul || prev == Token::Div ||
                  prev == Token::Pow ||

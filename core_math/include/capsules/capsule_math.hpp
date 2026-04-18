@@ -53,6 +53,21 @@ enum class Token {
   Int,
   IPart,
   FPart,
+  // Number functions (binary). Pop two operands during evaluation;
+  // arguments are separated by Comma in the source expression.
+  Round,
+  Min,
+  Max,
+  Mod,
+  // Hyperbolic functions (unary). asinh/atanh accept all reals;
+  // acosh requires x ≥ 1 (DOMAIN error otherwise); atanh requires
+  // -1 < x < 1 (DOMAIN error otherwise).
+  Sinh,
+  Cosh,
+  Tanh,
+  ASinh,
+  ACosh,
+  ATanh,
   LeftParen,
   RightParen,
   VarX,
@@ -99,6 +114,16 @@ public:
   static bool is_left_associative(Token t);
   static bool is_operator(Token t);
   static bool is_function(Token t);
+  // True for functions that pop two operands during evaluation
+  // (round, min, max, mod). Arguments are comma-separated in the source.
+  static bool is_binary_function(Token t);
+  // True for functions whose kTokens input string ends in `(` (so the
+  // user types e.g. `abs(` as one keystroke and never types a separate
+  // `(`). The shunting-yard pushes a synthetic LeftParen alongside
+  // these so the matching `)` and any inner commas have a clear scope
+  // marker. Functions whose input is bare (sin, cos, ..., neg) instead
+  // expect the user to type `(` separately.
+  static bool has_built_in_paren(Token t);
 };
 
 class MathStateMachine {

@@ -45,12 +45,18 @@ Popup {
         { label: "int(",   input: "int(",   available: true  },
         { label: "iPart(", input: "iPart(", available: true  },
         { label: "fPart(", input: "fPart(", available: true  },
-        { label: "round(", input: "round(", available: false },
-        { label: "min(",   input: "min(",   available: false },
-        { label: "max(",   input: "max(",   available: false },
-        { label: "mod(",   input: "mod(",   available: false },
-        { label: "▶Frac",  input: "▶Frac",  available: true  },
-        { label: "▶Dec",   input: "▶Dec",   available: true  }
+        { label: "round(", input: "round(", available: true },
+        { label: "min(",   input: "min(",   available: true },
+        { label: "max(",   input: "max(",   available: true },
+        { label: "mod(",   input: "mod(",   available: true },
+        { label: "sinh(",  input: "sinh(",  available: true },
+        { label: "cosh(",  input: "cosh(",  available: true },
+        { label: "tanh(",  input: "tanh(",  available: true },
+        { label: "asinh(", input: "asinh(", available: true },
+        { label: "acosh(", input: "acosh(", available: true },
+        { label: "atanh(", input: "atanh(", available: true },
+        { label: "▶Frac",  input: "▶Frac",  available: true },
+        { label: "▶Dec",   input: "▶Dec",   available: true }
     ]
 
     contentItem: ColumnLayout {
@@ -117,7 +123,7 @@ Popup {
                     }
                     Text {
                         visible: !modelData.available
-                        text: "(binary — Wave 2)"
+                        text: "(unavailable)"
                         color: Style.textMuted
                         font.family: Style.monoFamily
                         font.pixelSize: Style.exprPixelSize

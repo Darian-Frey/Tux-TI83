@@ -138,6 +138,57 @@ int main(int argc, char *argv[]) {
   check("iPart(3.7) = 3", eval(c, "iPart(3.7)"), "3");
   check("fPart(3.7) = 0.7", eval(c, "fPart(3.7)"), "0.7");
 
+  section("Binary functions (Phase B Wave 2)");
+  check("min(3, 5) = 3", eval(c, "min(3, 5)"), "3");
+  check("max(3, 5) = 5", eval(c, "max(3, 5)"), "5");
+  check("min(-3, 5) = -3 (negation works inside)", eval(c, "min(-3, 5)"),
+        "-3");
+  check("max(-3, -7) = -3", eval(c, "max(-3, -7)"), "-3");
+  check("mod(10, 3) = 1", eval(c, "mod(10, 3)"), "1");
+  check("mod(7, 0) → ERR:DIVIDE BY 0", eval(c, "mod(7, 0)"),
+        "ERR:DIVIDE BY 0");
+  check("round(0.123, 2) = 0.12", eval(c, "round(0.123, 2)"), "0.12");
+  check("round(3.5, 0) = 4 (rounds away from zero)",
+        eval(c, "round(3.5, 0)"), "4");
+  check("round(0.005, 2) ≈ 0.01", eval(c, "round(0.005, 2)"), "0.01");
+  // Nested: max of two function results
+  check("max(sin(0), cos(0)) = 1", eval(c, "max(sin(0), cos(0))"), "1");
+  // Nested binary
+  check("min(max(1, 2), 5) = 2", eval(c, "min(max(1, 2), 5)"), "2");
+  // BUG-016: the same expression formed with no whitespace — this was
+  // the exact user-reported reproduction. Must produce 1, not SYNTAX.
+  check("max(sin(0),cos(0)) = 1 (BUG-016)",
+        eval(c, "max(sin(0),cos(0))"), "1");
+  check("sin(max(0, 1)) = sin(1) (BUG-016 sibling)",
+        eval(c, "sin(max(0, 1))"), QString::number(std::sin(1.0)));
+  check("abs(min(-5, -3)) = 5 (BUG-016 sibling)",
+        eval(c, "abs(min(-5, -3))"), "5");
+
+  section("Hyperbolic functions (Phase B)");
+  check("sinh(0) = 0", eval(c, "sinh(0)"), "0");
+  check("cosh(0) = 1", eval(c, "cosh(0)"), "1");
+  check("tanh(0) = 0", eval(c, "tanh(0)"), "0");
+  check("asinh(0) = 0", eval(c, "asinh(0)"), "0");
+  check("acosh(1) = 0", eval(c, "acosh(1)"), "0");
+  check("atanh(0) = 0", eval(c, "atanh(0)"), "0");
+  check("cosh(1) ≈ 1.543", eval(c, "cosh(1)"), QString::number(std::cosh(1.0)));
+  check("sinh(1) ≈ 1.175", eval(c, "sinh(1)"), QString::number(std::sinh(1.0)));
+  // Inverse identities
+  check("sinh(asinh(3)) = 3", eval(c, "sinh(asinh(3))"), "3");
+  check("tanh(atanh(0.5)) = 0.5",
+        eval(c, "tanh(atanh(0.5))"), QString::number(std::tanh(std::atanh(0.5))));
+  // Domain errors
+  check("acosh(0.5) → ERR:DOMAIN (requires x ≥ 1)",
+        eval(c, "acosh(0.5)"), "ERR:DOMAIN");
+  check("acosh(-1) → ERR:DOMAIN",
+        eval(c, "acosh(-1)"), "ERR:DOMAIN");
+  check("atanh(1) → ERR:DOMAIN (requires |x| < 1)",
+        eval(c, "atanh(1)"), "ERR:DOMAIN");
+  check("atanh(-1) → ERR:DOMAIN",
+        eval(c, "atanh(-1)"), "ERR:DOMAIN");
+  check("atanh(2) → ERR:DOMAIN",
+        eval(c, "atanh(2)"), "ERR:DOMAIN");
+
   section("toFraction default behaviour (BUG-013, BUG-015)");
   check("1÷3 displays as decimal, not 1/3", eval(c, "1÷3"),
         QString::number(1.0 / 3.0));

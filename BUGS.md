@@ -278,6 +278,43 @@ Each entry uses this template:
   the BUG-013 fix. Could add an error signal for the "can't convert"
   case in the future but silent no-op is the TI-83 behaviour.
 
+### BUG-016: `max(sin(0), cos(0))` errors with ERR:SYNTAX from the GUI
+- **Status:** fixed (2026-04-08, user-reported after Phase B Wave 2 shipped)
+- **Location:** [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp) `kTokens` + [app/qml/Main.qml](app/qml/Main.qml) (SCIENTIFIC CalcKey handlers and keyboard shortcut map) + [core_math/src/core_math.cpp](core_math/src/core_math.cpp) `has_built_in_paren`
+- **Severity:** medium
+- **Description:** Phase B Wave 2's binary-function infrastructure pushed
+  a synthetic `LeftParen` onto the shunting-yard stack for functions
+  with input strings ending in `(` (abs, int, round, min, max, mod,
+  det). But trig/log functions (sin, cos, tan, asin, acos, atan, log,
+  ln, √) had bare input strings (`"sin"` not `"sin("`) and did NOT get
+  the synth. The two conventions conflicted when nested: in
+  `max(sin(0), cos(0))`, the inner sin's `)` closed max's synthetic
+  LeftParen, popping Max prematurely and leaving the evaluator with
+  only one operand when Max actually fired. Result: ERR:SYNTAX.
+  Interestingly the test suite caught no failure because the CLI
+  tokeniser emitted an explicit `LeftParen` for inputs matching
+  `"("` after `sin` (longest-match didn't produce `"sin("` since that
+  wasn't in the map), giving a different buffer shape than the GUI
+  produced. So GUI and CLI disagreed — user found the GUI case, tests
+  happened to take the CLI path.
+- **Reproduction:** From the GUI: click MATH → `max(` → `sin(` →
+  `0` → `)` → `,` → `cos(` → `0` → `)` → `)` → ENTER. Was
+  `ERR:SYNTAX`, should be `1`.
+- **Fix:** Unified the function-token convention. All functions with
+  displayStr ending in `(` now also have kTokens input strings ending
+  in `(` — `"sin("`, `"cos("`, `"tan("`, `"asin("`, `"acos("`,
+  `"atan("`, `"log("`, `"ln("`, `"√("`. The CalcKey handlers in
+  SCIENTIFIC send the new input strings; the keyboard shortcut map
+  updates `s`, `c`, `t`, `l`, `n`, `r` to send the `(`-suffixed forms.
+  `has_built_in_paren` now returns true for all of these, giving each
+  one a synthetic LeftParen in the shunting-yard. Buffers produced by
+  the GUI and the CLI tokeniser now match token-for-token.
+- **Notes:** Caught by the user within minutes of the Wave 2 release —
+  good case for the regression suite being load-bearing, and a
+  reminder that visible-in-GUI-but-not-in-tests bugs exist when the
+  two code paths diverge. Added an implicit future task: keep
+  CalcKey/input-string convention consistent across all tokens.
+
 ### BUG-013: `toFraction` returns misleading fractions for irrational results
 - **Status:** fixed (2026-04-07, same session it was reported)
 - **Location:** [core_math/src/core_math.cpp](core_math/src/core_math.cpp) `MathStateMachine::toFraction`

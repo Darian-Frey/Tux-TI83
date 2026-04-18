@@ -1,4 +1,5 @@
 #include "capsules/capsule_math.hpp"
+#include <algorithm>
 #include <cmath>
 #include <map>
 #include <stack>
@@ -26,6 +27,16 @@ int EOSPrecedence::precedence(Token t) {
   case Token::Int:
   case Token::IPart:
   case Token::FPart:
+  case Token::Round:
+  case Token::Min:
+  case Token::Max:
+  case Token::Mod:
+  case Token::Sinh:
+  case Token::Cosh:
+  case Token::Tanh:
+  case Token::ASinh:
+  case Token::ACosh:
+  case Token::ATanh:
     return 4;
   case Token::Pow:
     return 3;
@@ -68,7 +79,31 @@ bool EOSPrecedence::is_function(Token t) {
           t == Token::Log || t == Token::Ln || t == Token::Sqrt ||
           t == Token::Not || t == Token::Det || t == Token::Neg ||
           t == Token::Abs || t == Token::Int ||
-          t == Token::IPart || t == Token::FPart);
+          t == Token::IPart || t == Token::FPart ||
+          t == Token::Sinh || t == Token::Cosh || t == Token::Tanh ||
+          t == Token::ASinh || t == Token::ACosh || t == Token::ATanh ||
+          is_binary_function(t));
+}
+
+bool EOSPrecedence::is_binary_function(Token t) {
+  return (t == Token::Round || t == Token::Min ||
+          t == Token::Max || t == Token::Mod);
+}
+
+bool EOSPrecedence::has_built_in_paren(Token t) {
+  // All functions with kTokens input strings ending in `(`. The shunting-
+  // yard pushes a synthetic LeftParen for each; this is the uniform
+  // contract that makes nested function-arg scopes work correctly
+  // (fixes the `max(sin(0), cos(0))` regression).
+  return (t == Token::Sin || t == Token::Cos || t == Token::Tan ||
+          t == Token::ASin || t == Token::ACos || t == Token::ATan ||
+          t == Token::Log || t == Token::Ln || t == Token::Sqrt ||
+          t == Token::Abs || t == Token::Int || t == Token::IPart ||
+          t == Token::FPart || t == Token::Det ||
+          t == Token::Round || t == Token::Min ||
+          t == Token::Max || t == Token::Mod ||
+          t == Token::Sinh || t == Token::Cosh || t == Token::Tanh ||
+          t == Token::ASinh || t == Token::ACosh || t == Token::ATanh);
 }
 
 // --- MATRIX MATH HELPERS ---
@@ -172,8 +207,18 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
     else if ((t >= Token::MatA && t <= Token::MatJ) || t == Token::VarX ||
              t == Token::Pi || t == Token::E || t == Token::Ans)
       rpn.push_back({t, 0.0});
-    else if (EOSPrecedence::is_function(t) || t == Token::LeftParen)
+    else if (EOSPrecedence::is_function(t) || t == Token::LeftParen) {
       opStack.push(t);
+      // Functions with a built-in opening paren (input strings like
+      // "abs(", "min(") never see a separate LeftParen pushed by the
+      // user typing `(`. Push a synthetic one so the matching `)` and
+      // any inner commas have a clear scope marker — the legacy
+      // RightParen handler ("pop until LeftParen, then pop the
+      // function above") and the simple "Comma pops until LeftParen"
+      // rule both work uniformly across function styles.
+      if (EOSPrecedence::has_built_in_paren(t))
+        opStack.push(Token::LeftParen);
+    }
     else if (t == Token::RightParen) {
       while (!opStack.empty() && opStack.top() != Token::LeftParen) {
         rpn.push_back({opStack.top(), 0.0});
@@ -182,6 +227,17 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
       if (!opStack.empty())
         opStack.pop();
       if (!opStack.empty() && EOSPrecedence::is_function(opStack.top())) {
+        rpn.push_back({opStack.top(), 0.0});
+        opStack.pop();
+      }
+    } else if (t == Token::Comma) {
+      // Argument separator for binary functions like round(x, n). Pops
+      // operators (including unary functions inside the current
+      // argument) until the matching LeftParen of the enclosing
+      // function. The synthetic LeftParen pushed by built-in-paren
+      // functions makes this work uniformly. The comma itself isn't
+      // pushed anywhere; it's just a structural marker.
+      while (!opStack.empty() && opStack.top() != Token::LeftParen) {
         rpn.push_back({opStack.top(), 0.0});
         opStack.pop();
       }
@@ -239,6 +295,35 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
       else
         return {false, 0.0, {}, false, "Undefined Matrix"};
     } else if (EOSPrecedence::is_function(t)) {
+      // Binary functions (round, min, max, mod) — pop two operands.
+      if (EOSPrecedence::is_binary_function(t)) {
+        if (stack.size() < 2)
+          return {false, 0.0, {}, false, "Error"};
+        Operand b = stack.top();
+        stack.pop();
+        Operand a = stack.top();
+        stack.pop();
+        if (a.isMat || b.isMat)
+          return {false, 0.0, {}, false, "Type Error"};
+        double result = 0.0;
+        if (t == Token::Round) {
+          // round(x, n) — round x to n decimal places. n is truncated to
+          // an integer if fractional. Negative n rounds to powers of 10.
+          double pow10 = std::pow(10.0, std::trunc(b.val));
+          result = std::round(a.val * pow10) / pow10;
+        } else if (t == Token::Min) {
+          result = std::min(a.val, b.val);
+        } else if (t == Token::Max) {
+          result = std::max(a.val, b.val);
+        } else if (t == Token::Mod) {
+          if (b.val == 0.0)
+            return {false, 0.0, {}, false, "DIVIDE BY 0"};
+          result = std::fmod(a.val, b.val);
+        }
+        stack.push({false, result, {}});
+        continue;
+      }
+      // Unary functions — pop one operand.
       if (stack.empty())
         return {false, 0.0, {}, false, "Error"};
       Operand a = stack.top();
@@ -302,6 +387,23 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
           v = std::trunc(v);
         else if (t == Token::FPart)
           v = v - std::trunc(v);
+        else if (t == Token::Sinh)
+          v = std::sinh(v);
+        else if (t == Token::Cosh)
+          v = std::cosh(v);
+        else if (t == Token::Tanh)
+          v = std::tanh(v);
+        else if (t == Token::ASinh)
+          v = std::asinh(v); // all reals in domain
+        else if (t == Token::ACosh) {
+          if (v < 1.0)
+            return {false, 0.0, {}, false, "DOMAIN"};
+          v = std::acosh(v);
+        } else if (t == Token::ATanh) {
+          if (v <= -1.0 || v >= 1.0)
+            return {false, 0.0, {}, false, "DOMAIN"};
+          v = std::atanh(v);
+        }
         stack.push({false, v, {}});
       }
     } else {

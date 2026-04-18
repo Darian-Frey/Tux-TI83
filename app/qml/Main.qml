@@ -86,8 +86,8 @@ ApplicationWindow {
                 ".": ".",
                 "+": "+", "-": "−", "*": "×", "/": "÷",
                 "^": "^", "(": "(", ")": ")",
-                "s": "sin", "c": "cos", "t": "tan",
-                "l": "log", "n": "ln", "r": "√", "p": "π"
+                "s": "sin(", "c": "cos(", "t": "tan(",
+                "l": "log(", "n": "ln(", "r": "√(", "p": "π"
             }
             if (map.hasOwnProperty(ch)) {
                 uiController.processInput(map[ch])
@@ -196,14 +196,14 @@ ApplicationWindow {
             columnSpacing: 6
 
             CalcKey { label: "MATH"; keyType: "function"; onPressed: mathMenuPopup.open() }
-            CalcKey { label: "sin(";  keyType: "function"; onPressed: uiController.processInput("sin")  }
-            CalcKey { label: "cos(";  keyType: "function"; onPressed: uiController.processInput("cos")  }
-            CalcKey { label: "tan(";  keyType: "function"; onPressed: uiController.processInput("tan")  }
+            CalcKey { label: "sin(";  keyType: "function"; onPressed: uiController.processInput("sin(")  }
+            CalcKey { label: "cos(";  keyType: "function"; onPressed: uiController.processInput("cos(")  }
+            CalcKey { label: "tan(";  keyType: "function"; onPressed: uiController.processInput("tan(")  }
             CalcKey { label: "^";     keyType: "function"; onPressed: uiController.processInput("^")    }
 
-            CalcKey { label: "√(";    keyType: "function"; onPressed: uiController.processInput("√")    }
-            CalcKey { label: "ln(";   keyType: "function"; onPressed: uiController.processInput("ln")   }
-            CalcKey { label: "log(";  keyType: "function"; onPressed: uiController.processInput("log")  }
+            CalcKey { label: "√(";    keyType: "function"; onPressed: uiController.processInput("√(")    }
+            CalcKey { label: "ln(";   keyType: "function"; onPressed: uiController.processInput("ln(")   }
+            CalcKey { label: "log(";  keyType: "function"; onPressed: uiController.processInput("log(")  }
             CalcKey { label: "π";     keyType: "function"; onPressed: uiController.processInput("π")    }
             CalcKey { label: "e";     keyType: "function"; onPressed: uiController.processInput("e")    }
         }

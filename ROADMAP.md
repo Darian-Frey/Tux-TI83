@@ -109,7 +109,7 @@ yet built: 2ND modifier system, ALPHA modifier system (see
 - ✅ `log` (base 10), `ln` (both return `ERR:NONREAL ANS` for non-positive inputs; fixed 2026-04-07)
 - ✅ `e` constant — engine + UI (SCIENTIFIC row 2 col 5, next to π; added 2026-04-07)
 - 📅 `e^(` exponential function
-- 📅 Hyperbolic: `sinh cosh tanh` and inverses
+- ✅ Hyperbolic: `sinh`, `cosh`, `tanh`, `asinh`, `acosh`, `atanh` — engine + UI via MATH menu (added 2026-04-08). Domain checks: `acosh` requires x ≥ 1, `atanh` requires |x| < 1 (both return `ERR:DOMAIN` otherwise); the other four accept all reals.
 - 💭 `logBASE(` for arbitrary base
 
 ### Number functions
@@ -119,9 +119,11 @@ yet built: 2ND modifier system, ALPHA modifier system (see
 - ✅ `fPart(` — fractional part; engine + UI via MATH menu (added 2026-04-07)
 - ✅ `▶Frac` — MATH menu entry; post-hoc conversion of the last scalar result to its fraction form (fixed 2026-04-07, closes BUG-015)
 - ✅ `▶Dec` — MATH menu entry; reverse of `▶Frac`, restores the raw decimal display of the last result
-- 📅 `round(` — binary, needs Wave 2 binary-function infrastructure
-- 📅 `min(`, `max(` — binary, Wave 2
-- 📅 `mod(` — binary, Wave 2
+- ✅ `round(x, n)` — binary, rounds x to n decimal places (engine + UI via MATH menu; added 2026-04-08, Phase B Wave 2)
+- ✅ `min(a, b)` — engine + UI via MATH menu (Wave 2)
+- ✅ `max(a, b)` — engine + UI via MATH menu (Wave 2)
+- ✅ `mod(a, b)` — engine + UI via MATH menu (returns `ERR:DIVIDE BY 0` on zero divisor; Wave 2)
+- ✅ `Comma` token + binary-function infrastructure: shunting-yard pushes a synthetic `LeftParen` for functions whose input string ends in `(`, so the matching `)` and inner commas have a clear scope marker. Unlocks future n-ary functions like `nCr(n, r)` (added 2026-04-08)
 - 📅 Sign function
 
 ### Calculus
