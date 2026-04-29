@@ -605,6 +605,35 @@ int main(int argc, char *argv[]) {
   MathStateMachine::notation    = NumberNotation::Normal;
   MathStateMachine::fixDecimals = -1;
 
+  section("Statement separator (`:`)");
+  {
+    UIController sc;
+    tux_ti83::MathStateMachine::varRegistry.fill(0.0);
+
+    // Two simple expressions chained: result is the last segment.
+    check("1+2:3+4 returns 7", eval(sc, "1+2:3+4"), "7");
+
+    // Chained store + read: A is set in the first segment, read in the
+    // second. This is the canonical TI-83 idiom.
+    check("5→A:A+1 returns 6", eval(sc, "5→A:A+1"), "6");
+    check("A persists after chained store", eval(sc, "A"), "5");
+
+    // Triple chain — verify the last value comes through.
+    check("1:2:3 returns 3", eval(sc, "1:2:3"), "3");
+
+    // Error mid-chain aborts; later segments don't run. The first
+    // store DOES commit because errors short-circuit but earlier
+    // segments have already mutated the registry.
+    check("9→B:1÷0:7→B → ERR:DIVIDE BY 0",
+          eval(sc, "9→B:1÷0:7→B"), "ERR:DIVIDE BY 0");
+    check("B was set by first segment before error",
+          eval(sc, "B"), "9");
+
+    // Stray colons are tolerated (leading/trailing).
+    check(":5 returns 5", eval(sc, ":5"), "5");
+    check("5: returns 5", eval(sc, "5:"), "5");
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

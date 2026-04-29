@@ -102,6 +102,7 @@ yet built: 2ND modifier system, ALPHA modifier system (see
 - ✅ Unified token table (single source of truth for input ↔ display)
 - ✅ Bug catalogue (BUGS.md) and improvements catalogue (IMPROVEMENTS.md)
 - ✅ Legacy `graph_ui/qml/Main.qml` audited and deleted 2026-04-07 (Phase A wrap-up)
+- ✅ Session crash logger — added 2026-04-29 (every UIController entry point appends a millisecond-timestamped event to `~/.local/state/tux-ti83/session.log` with fsync; SIGSEGV/SIGABRT/SIGFPE/SIGILL/SIGBUS handlers append a CRASH marker + libc backtrace via async-signal-safe APIs; `std::terminate` handler captures the exception's `what()`)
 - 💭 Unit tests for `core_math` (parser, evaluator, matrix ops)
 
 ## Numeric core
@@ -311,6 +312,7 @@ Engine implements more than the UI currently exposes — listed below.
 - ✅ WINDOW popup ported to the new UI (see Graphing › Window settings)
 - ✅ Matrix editor popup ported to the new UI (see Matrices)
 - ✅ Logic operator menu ported to the new UI — `LogicMenuPopup` landed 2026-04-18 (see Comparators & boolean section above for details)
+- ✅ `:` statement separator — added 2026-04-29 (`Token::Colon`; `evaluate()` splits on Colon, evaluates each segment in order, returns the last non-empty segment; errors short-circuit but earlier Sto mutations commit, matching TI-83 per-statement semantics; ALPHA + `.` inserts `:`, wired in alphaMap)
 
 ### Considering
 - 💭 Resizable window (currently fixed 720×760)

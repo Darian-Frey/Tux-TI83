@@ -50,6 +50,16 @@ Each entry uses this template:
 
 ## Fixed
 
+### BUG-019: Bare `.` in the buffer crashes the engine via uncaught `std::stod` exception
+
+- **Status:** fixed (2026-04-18, same session as IMP-021)
+- **Location:** [core_math/src/core_math.cpp](core_math/src/core_math.cpp) `evaluate()` digit-flush lambda
+- **Severity:** high (process crash, not just an error)
+- **Description:** Pre-existing latent crash. The digit-coalescing pass collected `Token::Decimal` characters into `currentNumStr` and called `std::stod(currentNumStr)` on flush. For a bare `.` (or any malformed numeric run), `std::stod` throws `std::invalid_argument`, which propagated up uncaught and aborted the process via `terminate()`. Discovered when adding `Token::Colon` (IMP-021) — the Colon split surfaced the same path more readily, but the underlying bug is older.
+- **Reproduction:** `./build/tux_ti83_cli '.'` aborts with `std::invalid_argument: stod`. In the GUI, pressing `.` then ENTER produced the same crash.
+- **Fix:** Wrapped the `std::stod` call in `try/catch`, set a `parseFailed` flag, and return `ERR:SYNTAX` from `evaluate()` if any parse failed during the pass. Bare `.` now produces `ERR:SYNTAX` (matching TI-83 behaviour) instead of crashing.
+- **Notes:** Discovered while implementing IMP-021 (`:` statement separator). Fixed transparently as part of the same change since it was blocking GUI verification of the new feature.
+
 ### BUG-001: Window popup TextField writes NaN to viewport on bad input
 - **Status:** fixed (2026-04-06, Step 4)
 - **Location:** [graph_ui/qml/Main.qml:213-228](graph_ui/qml/Main.qml#L213-L228)

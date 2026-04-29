@@ -70,7 +70,8 @@ ApplicationWindow {
         "x²":    "I",
         "7":     "O", "8":     "P", "9":    "Q",
         "4":     "T", "5":     "U", "6":    "V",
-        "1":     "Y", "2":     "Z"
+        "1":     "Y", "2":     "Z",
+        ".":     ":"
     })
 
     function armSecond() {

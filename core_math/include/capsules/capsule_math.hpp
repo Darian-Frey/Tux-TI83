@@ -126,6 +126,13 @@ enum class Token {
   // Lowest precedence (-10) so the whole LHS expression resolves
   // before the store.
   Sto,
+  // Statement separator (real TI-83 syntax: `5→A:A+1→A` chains two
+  // expressions). The evaluator splits the token stream at every
+  // Colon boundary, evaluates each segment in order, and returns
+  // the result of the final non-empty segment. Errors in any segment
+  // short-circuit — varRegistry mutations from earlier segments stay
+  // (matching TI-83 behaviour: state changes commit per-statement).
+  Colon,
   // Matrix Specific Tokens
   OpenBracket,
   CloseBracket,

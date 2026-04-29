@@ -3,21 +3,27 @@
 #include <QQmlContext>
 #include <QDebug>
 #include "ui_controller.hpp"
+#include "crash_logger.hpp"
 
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
-    
+    app.setApplicationName(QStringLiteral("tux-ti83"));
+
+    // Crash logger comes up before anything else so it captures the
+    // entire session — see graph_ui/include/crash_logger.hpp.
+    tux_ti83::CrashLogger::init();
+
     // Create the engine first
     QQmlApplicationEngine engine;
-    
+
     // Create the controller
     static tux_ti83::UIController uiController;
-    
+
     // EXPLICIT LINK: Register the controller BEFORE loading the file
     engine.rootContext()->setContextProperty("uiController", &uiController);
-    
+
     const QUrl url("qrc:/App/Main.qml");
-    
+
     QObject::connect(&engine, &QQmlApplicationEngine::warnings, [](const QList<QQmlError> &warnings) {
         for (const auto &error : warnings) {
             qDebug() << "QML Error:" << error.toString();
@@ -27,8 +33,11 @@ int main(int argc, char *argv[]) {
     engine.load(url);
 
     if (engine.rootObjects().isEmpty()) {
+        tux_ti83::CrashLogger::shutdown();
         return -1;
     }
 
-    return app.exec();
+    int rc = app.exec();
+    tux_ti83::CrashLogger::shutdown();
+    return rc;
 }

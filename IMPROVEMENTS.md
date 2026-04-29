@@ -188,6 +188,37 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-022: Crash logger with always-on session trail
+
+- **Status:** applied (2026-04-29)
+- **Location:** [graph_ui/include/crash_logger.hpp](graph_ui/include/crash_logger.hpp), [graph_ui/src/crash_logger.cpp](graph_ui/src/crash_logger.cpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/main.cpp](app/main.cpp), [CMakeLists.txt](CMakeLists.txt)
+- **Effort:** medium
+- **Description:** When the GUI crashed (BUG-019, any future regression) we had no record of what the user was doing. Reproducing was guesswork. Wanted: an always-on, on-disk trail of every action plus a crash trap that captures the signal + backtrace.
+- **Change:**
+  - New `CrashLogger` class in `graph_ui` with three public methods: `init()` (idempotent — opens the log fd, installs handlers), `logEvent(QString)` (appends a millisecond-timestamped line and `fsync`s before returning so the trail survives any subsequent crash), `shutdown()` (writes a clean-exit marker).
+  - Log location: `$XDG_STATE_HOME/tux-ti83/session.log` with a fallback to `~/.local/state/tux-ti83/session.log`. Sessions append; delimited by `=== Session start: <iso8601> ===` headers and either `=== Session end (clean) ===` or `=== CRASH: signal N ===` / `=== TERMINATE: <what> ===` markers.
+  - Signal handlers (SIGSEGV/SIGABRT/SIGFPE/SIGILL/SIGBUS) are async-signal-safe: only `write` and `backtrace_symbols_fd` are called inside them. The handler appends a CRASH marker plus a libc backtrace, then re-raises with `SIG_DFL` so a core dump still drops (subject to ulimit) and the OS exits with the conventional status.
+  - `std::set_terminate` handler — used for the BUG-019 path and any other uncaught C++ exception — has more freedom (not in a signal context) and captures the active exception's `what()` string before aborting.
+  - UIController hooks: every external entry point logs (`processInput`, `processExpression`, `evaluate`, `recallLastEntry`, `moveCursor*`, `setAngleMode`, `setNotation`, `setFixDecimals`, `updateMatrix`). Internal helpers don't log to keep the trail readable.
+  - `main.cpp` calls `CrashLogger::init()` immediately after constructing `QGuiApplication` (so we capture even early QML load errors) and `shutdown()` just before returning from `app.exec()`. The CLI/REPL binaries are unchanged — they're short-lived and a session log there would mostly be noise.
+- **Trade-offs:** `fsync` on every event slows the per-keystroke path by milliseconds at most — invisible to a human but real. Acceptable: durability is the whole point of this feature. Alternative considered: ring-buffer-in-memory + dump-on-crash. Rejected because the dump path inside a signal handler is exactly the place where you can't trust dynamic state.
+- **Notes:** Verified end-to-end: clean session writes the expected event sequence + exit marker; the BUG-019 crash repro (`./build/tux_ti83_cli '.'` before its own fix) would have terminated through the `std::terminate` handler with a captured `what(): stod` line. Future improvement: rotate or cap the log file size — currently it grows without bound across sessions.
+
+### IMP-021: `:` as a statement separator
+
+- **Status:** applied (2026-04-29)
+- **Location:** [core_math/include/capsules/capsule_math.hpp](core_math/include/capsules/capsule_math.hpp), [core_math/src/core_math.cpp](core_math/src/core_math.cpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/qml/Main.qml](app/qml/Main.qml), [tests/test_math.cpp](tests/test_math.cpp)
+- **Effort:** small
+- **Description:** With Variables A–Z + STO landed (IMP-014), the natural next step was chained statements: `5→A:A+1→A`. The `.` CalcKey already had a `:` ALPHA corner label (placeholder); wiring it kept the layout honest.
+- **Change:**
+  - Engine: added `Token::Colon`. `evaluate()` short-circuits when the input contains a Colon — splits the token stream into segments, recurses per segment, and returns the last non-empty result. Errors abort the chain immediately, but earlier Sto mutations commit (matching TI-83 per-statement semantics).
+  - Controller: registered `:` → `Token::Colon` in `kTokens` with the same display string.
+  - UI: added `"."`: `":"` to `alphaMap` so ALPHA + period inserts `:`. Period key's existing `alphaLabel: ":"` now reflects real behaviour.
+  - Tests: 8 new assertions covering simple chain, chained store + read, triple chain (last-segment-wins), error-mid-chain abort with earlier-state commit, and stray leading/trailing colons.
+  - Surfaced and fixed a pre-existing latent crash in the digit-flush pass (BUG-019) — bare `.` was throwing `std::invalid_argument` from `std::stod` and propagating out of the engine, aborting the process. Wrapped in try/catch + `parseFailed` flag returning ERR:SYNTAX.
+- **Trade-offs:** Chose recursive `evaluate()` over a flatter "preprocess into segments, run sequentially in a loop" approach because the existing function has a lot of local state and refactoring for non-recursion would have been a bigger change for no behavioural difference. The recursion depth is bounded by the number of `:` tokens in a single expression — won't blow the stack for any plausible input.
+- **Notes:** Closes the chain-of-statements gap. Natural next: the `?` and `"` ALPHA labels (Input/Disp commands and string literals) are still aspirational — they need real TI-BASIC support. Not on the immediate queue.
+
 ### IMP-020: MODE menu — Notation (Normal/Sci/Eng) + Decimal (Float/Fix N) rows
 
 - **Status:** applied (2026-04-18)

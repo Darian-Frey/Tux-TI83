@@ -15,6 +15,8 @@ target_include_directories(core_math PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/core_mat
 add_library(graph_ui
     graph_ui/src/ui_controller.cpp
     graph_ui/include/ui_controller.hpp
+    graph_ui/src/crash_logger.cpp
+    graph_ui/include/crash_logger.hpp
 )
 target_include_directories(graph_ui PUBLIC 
     ${CMAKE_CURRENT_SOURCE_DIR}/graph_ui/include 

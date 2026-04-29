@@ -1,4 +1,5 @@
 #include "ui_controller.hpp"
+#include "crash_logger.hpp"
 #include <algorithm>
 #include <cmath>
 #include <map>
@@ -130,6 +131,11 @@ constexpr TokenSpec kTokens[] = {
     // shunting-yard treats as a function-argument separator.
     {",", Token::Comma, ","},
 
+    // Statement separator (TI-83 `:` chains expressions). Inserted via
+    // ALPHA + `.` (the period CalcKey already labels its ALPHA function
+    // as `:`).
+    {":", Token::Colon, ":"},
+
     // Comparators / boolean — full set, exposed via the 2ND+MATH
     // "TEST" menu popup. The `<=` / `>=` ASCII aliases exist so the
     // CLI and keyboard typists can enter them without needing the
@@ -183,6 +189,7 @@ UIController::UIController(QObject *parent) : QObject(parent), m_activeIdx(0) {
 }
 
 void UIController::setAngleMode(int m) {
+  CrashLogger::logEvent(QStringLiteral("setAngleMode: ") + QString::number(m));
   // Clamp to the two valid values. Anything else becomes Radian — the
   // safer default, matches mathematical convention.
   AngleMode newMode = (m == 1) ? AngleMode::Degree : AngleMode::Radian;
@@ -193,6 +200,7 @@ void UIController::setAngleMode(int m) {
 }
 
 void UIController::setNotation(int n) {
+  CrashLogger::logEvent(QStringLiteral("setNotation: ") + QString::number(n));
   // Clamp to the three valid values. Anything else becomes Normal —
   // the default, matches prior behaviour.
   NumberNotation newNote =
@@ -206,6 +214,7 @@ void UIController::setNotation(int n) {
 }
 
 void UIController::setFixDecimals(int n) {
+  CrashLogger::logEvent(QStringLiteral("setFixDecimals: ") + QString::number(n));
   // -1 = Float, 0..9 = Fix N. Anything outside that range is clamped
   // to Float so the formatter never sees a nonsensical precision.
   const int clamped = (n >= 0 && n <= 9) ? n : -1;
@@ -229,6 +238,7 @@ int UIController::cursorOffset() const {
 }
 
 void UIController::moveCursorLeft() {
+  CrashLogger::logEvent(QStringLiteral("moveCursorLeft"));
   if (m_displayState != Inputting || m_cursorPos <= 0)
     return;
   --m_cursorPos;
@@ -236,6 +246,7 @@ void UIController::moveCursorLeft() {
 }
 
 void UIController::moveCursorRight() {
+  CrashLogger::logEvent(QStringLiteral("moveCursorRight"));
   if (m_displayState != Inputting)
     return;
   const int maxPos = static_cast<int>(m_functionBuffers[m_activeIdx].size());
@@ -246,6 +257,7 @@ void UIController::moveCursorRight() {
 }
 
 void UIController::moveCursorHome() {
+  CrashLogger::logEvent(QStringLiteral("moveCursorHome"));
   if (m_displayState != Inputting || m_cursorPos == 0)
     return;
   m_cursorPos = 0;
@@ -253,6 +265,7 @@ void UIController::moveCursorHome() {
 }
 
 void UIController::moveCursorEnd() {
+  CrashLogger::logEvent(QStringLiteral("moveCursorEnd"));
   if (m_displayState != Inputting)
     return;
   const int endPos = static_cast<int>(m_functionBuffers[m_activeIdx].size());
@@ -263,6 +276,7 @@ void UIController::moveCursorEnd() {
 }
 
 void UIController::recallLastEntry() {
+  CrashLogger::logEvent(QStringLiteral("recallLastEntry"));
   if (m_entryHistory.empty())
     return;
 
@@ -352,6 +366,8 @@ QString UIController::formatScalar(double value) {
 // helper that owns one concern. New input categories should be added by
 // extending the dispatch table here, not by growing the helpers.
 void UIController::processInput(const QString &input) {
+  CrashLogger::logEvent(QStringLiteral("processInput: ") + input);
+
   // Any non-recall input resets the last-entry cycle. recallLastEntry()
   // bypasses processInput, so it's safe to unconditionally reset here.
   m_recallCycleIdx = -1;
@@ -444,6 +460,8 @@ void UIController::backspace() {
 void UIController::evaluate() {
   auto &currentBuf = m_functionBuffers[m_activeIdx];
   auto &currentStr = m_displayStrings[m_activeIdx];
+
+  CrashLogger::logEvent(QStringLiteral("evaluate: ") + currentStr);
 
   // Push this entry into the recall ring buffer before any further
   // mutation. Empty buffers (ENTER on an empty line) skip the push —
@@ -669,6 +687,7 @@ QStringList UIController::tokenize(const QString &expr) {
 }
 
 bool UIController::processExpression(const QString &expr) {
+  CrashLogger::logEvent(QStringLiteral("processExpression: ") + expr);
   QStringList tokens = tokenize(expr);
   if (tokens.isEmpty() && !expr.trimmed().isEmpty())
     return false;
@@ -679,6 +698,9 @@ bool UIController::processExpression(const QString &expr) {
 
 void UIController::updateMatrix(const QString &name, int rows, int cols,
                                 const QVariantList &values) {
+  CrashLogger::logEvent(QStringLiteral("updateMatrix: ") + name +
+                        QStringLiteral(" ") + QString::number(rows) +
+                        QStringLiteral("x") + QString::number(cols));
   Matrix mat;
   mat.rows = rows;
   mat.cols = cols;

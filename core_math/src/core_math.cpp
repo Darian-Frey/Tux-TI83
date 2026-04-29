@@ -273,13 +273,50 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
   if (tokens.empty())
     return {false, 0.0, {}, false, "Empty"};
 
+  // Statement separator: split the input on Colon and evaluate each
+  // segment recursively. Return the last non-empty segment's result;
+  // errors short-circuit (earlier segments' state changes — Sto in
+  // particular — commit to the registry as they fire, matching TI-83
+  // per-statement semantics). Empty leading/trailing colons (e.g. `:5`
+  // or `5:`) are tolerated; truly empty input was already rejected
+  // above.
+  if (std::any_of(tokens.begin(), tokens.end(),
+                  [](Token t) { return t == Token::Colon; })) {
+    CalculationResult last{false, 0.0, {}, false, "Empty"};
+    std::vector<Token> segment;
+    for (Token t : tokens) {
+      if (t == Token::Colon) {
+        if (!segment.empty()) {
+          last = evaluate(segment, xValue);
+          if (!last.success)
+            return last;
+        }
+        segment.clear();
+      } else {
+        segment.push_back(t);
+      }
+    }
+    if (!segment.empty())
+      last = evaluate(segment, xValue);
+    return last;
+  }
+
   std::vector<double> numericValues;
   std::vector<Token> processedTokens;
   std::string currentNumStr = "";
+  bool parseFailed = false;
   auto flushNum = [&]() {
     if (!currentNumStr.empty()) {
-      processedTokens.push_back(Token::Num0);
-      numericValues.push_back(std::stod(currentNumStr));
+      try {
+        double v = std::stod(currentNumStr);
+        processedTokens.push_back(Token::Num0);
+        numericValues.push_back(v);
+      } catch (...) {
+        // Bare "." or other malformed numeric runs — std::stod throws
+        // invalid_argument. Flag for a graceful syntax error instead
+        // of letting the exception propagate out of the engine.
+        parseFailed = true;
+      }
       currentNumStr = "";
     }
   };
@@ -296,6 +333,8 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
     }
   }
   flushNum();
+  if (parseFailed)
+    return {false, 0.0, {}, false, "Syntax Error"};
 
   // Second preprocessing pass: Sto consumes its following VarA..VarZ
   // target and records the letter index in `storeTargets`. The evaluator
