@@ -188,6 +188,32 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-029: TRACE soft-key — graph cursor with X/Y readout
+
+- **Status:** applied (2026-05-08)
+- **Location:** [graph_ui/include/ui_controller.hpp](graph_ui/include/ui_controller.hpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/qml/Main.qml](app/qml/Main.qml), [app/qml/components/GraphCanvas.qml](app/qml/components/GraphCanvas.qml)
+- **Effort:** medium
+- **Description:** TRACE was the last no-op soft-key. Real TI-83 binds it to a movable graph cursor that displays the active function's `(x, y)` at the cursor position — useful for reading off curve values without zooming or eyeballing the grid.
+- **Change:**
+  - Controller: three new Q_PROPERTYs (`isTracing`, `traceX`, `traceY` — the latter computed live by evaluating the active function buffer at `traceX`, returning NaN if empty / non-scalar). `Q_INVOKABLE toggleTrace()` flips the flag and snaps `traceX` to viewport centre on entry. `Q_INVOKABLE traceLeft()` / `traceRight()` step by 1/100 of the viewport width — matches TI-83's sample density.
+  - Main.qml: introduced `navLeft()` / `navRight()` dispatch helpers at the root. In graph mode + tracing, ←/→ goes to the trace cursor; otherwise to the expression cursor. Both the keyboard arrow handlers and the on-screen `CURSOR` section's ←/→ CalcKeys route through these so behaviour stays consistent. TRACE soft-key wired in `SoftKeyRow` — auto-engages graph mode if pressed from the keypad, then toggles trace.
+  - GraphCanvas: drawn after the curves so the marker sits on top. Crosshair (8px arms) + 2.5px filled dot in the active function's colour. Bottom-left readout strip on a translucent shell-coloured background reads `Y<n>  X=...  Y=...` (NaN renders as `—`). Added `onTraceChanged` to `Connections` so trace movement triggers immediate repaints.
+- **Trade-offs:** Trace cursor stays on the active function until the user switches via the FunctionSelector. Real TI-83 uses ↑/↓ to walk between functions in trace mode — small follow-up that needs an on-screen ↑/↓ pair (we deliberately skipped those in IMP-023 because there were no semantics for them; trace gives them one). Coordinate readout currently uses `toFixed(4)` — a follow-up could route it through `formatScalar` so it respects the MODE Notation/Decimal settings.
+- **Notes:** Closes the soft-key reintegration. With this in, every key on the keypad does something useful.
+
+### IMP-028: ZOOM soft-key popup (ZStandard / In / Out / ZFit)
+
+- **Status:** applied (2026-05-08)
+- **Location:** [graph_ui/include/ui_controller.hpp](graph_ui/include/ui_controller.hpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/qml/components/ZoomPopup.qml](app/qml/components/ZoomPopup.qml), [app/qml/Main.qml](app/qml/Main.qml), [app/qml/qmldir](app/qml/qmldir), [CMakeLists.txt](CMakeLists.txt)
+- **Effort:** small
+- **Description:** ZOOM soft-key was the second-to-last no-op (after TRACE). Pan + scroll-wheel zoom worked, but discrete presets — go back to the default viewport, double / halve, autoscale Y — needed a menu.
+- **Change:**
+  - Controller: `Q_INVOKABLE zoomIn()` / `zoomOut()` — factor 0.5 / 2.0 around the current viewport centre, mirroring real TI-83 ZIn / ZOut. `resetViewport()` and `zoomFit()` already existed and serve as ZStandard / ZFit.
+  - New `ZoomPopup.qml` — four entries dispatching to the controller methods. Same modal/escape-to-close shape as MathMenuPopup / LogicMenuPopup.
+  - Wired the ZOOM soft-key in `SoftKeyRow`'s `onPressed` switch. Registered the popup in `qmldir` + the CMake resource list.
+- **Trade-offs:** Just the four most-used presets — TI-83's full ZOOM menu has 10+ entries (ZBox, ZSquare, ZTrig, ZInteger, ZoomStat, etc.). Adding more is mechanical; leaving them off keeps the popup focused.
+- **Notes:** TRACE is now the only no-op soft-key remaining. Closes another Phase-A reintegration gap.
+
 ### IMP-027: Graph mode — Connected / Dot drawing
 
 - **Status:** applied (2026-05-08)

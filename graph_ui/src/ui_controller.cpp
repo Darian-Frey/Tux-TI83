@@ -2,6 +2,7 @@
 #include "crash_logger.hpp"
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <map>
 
 namespace tux_ti83 {
@@ -790,6 +791,51 @@ void UIController::zoomFit() {
     m_yMax = maxVal + margin;
     emit viewportChanged();
   }
+}
+
+double UIController::traceY() const {
+  // Evaluate the currently-active function at m_traceX. NaN if the
+  // active buffer is empty or evaluation fails — QML branches on
+  // isFinite to show "Y=undefined" cleanly.
+  if (m_activeIdx < 0 ||
+      m_activeIdx >= static_cast<int>(m_functionBuffers.size()))
+    return std::numeric_limits<double>::quiet_NaN();
+  const auto &buf = m_functionBuffers[m_activeIdx];
+  if (buf.empty())
+    return std::numeric_limits<double>::quiet_NaN();
+  MathStateMachine msm;
+  CalculationResult res = msm.evaluate(buf, m_traceX);
+  if (!res.success || res.isMatrix)
+    return std::numeric_limits<double>::quiet_NaN();
+  return res.value;
+}
+
+void UIController::toggleTrace() {
+  CrashLogger::logEvent(QStringLiteral("toggleTrace"));
+  m_isTracing = !m_isTracing;
+  if (m_isTracing) {
+    // Snap the trace to the viewport centre on every entry so the
+    // user always starts from a known visible spot, even if they
+    // panned away last time.
+    m_traceX = (m_xMin + m_xMax) * 0.5;
+  }
+  emit traceChanged();
+}
+
+void UIController::traceLeft() {
+  if (!m_isTracing) return;
+  // Step by 1/100 of the viewport width — matches real TI-83 sample
+  // density and keeps the cursor within the visible curve.
+  const double step = (m_xMax - m_xMin) / 100.0;
+  m_traceX -= step;
+  emit traceChanged();
+}
+
+void UIController::traceRight() {
+  if (!m_isTracing) return;
+  const double step = (m_xMax - m_xMin) / 100.0;
+  m_traceX += step;
+  emit traceChanged();
 }
 
 void UIController::zoomIn() {

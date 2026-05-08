@@ -105,6 +105,24 @@ ApplicationWindow {
         alphaLocked = false
     }
 
+    // Arrow dispatch: in graph-mode + tracing, ←/→ moves the trace
+    // cursor along the curve. Otherwise, it moves the expression
+    // cursor (used during Inputting; no-op in Evaluated/Error). Both
+    // the keyboard handler and the on-screen CURSOR keys go through
+    // these so the behaviour stays consistent.
+    function navLeft() {
+        if (uiController.isGraphMode && uiController.isTracing)
+            uiController.traceLeft()
+        else
+            uiController.moveCursorLeft()
+    }
+    function navRight() {
+        if (uiController.isGraphMode && uiController.isTracing)
+            uiController.traceRight()
+        else
+            uiController.moveCursorRight()
+    }
+
     // Central key dispatcher. `primary` is the key's un-modified label
     // ("sin(", "7", "ENTER", "DEL", "CLEAR", …). For modifier-free presses
     // this is identical to the old inline routing — the dispatcher just
@@ -244,12 +262,29 @@ ApplicationWindow {
                 event.accepted = true
                 return
             case Qt.Key_Left:
-                uiController.moveCursorLeft()
+                root.navLeft()
                 event.accepted = true
                 return
             case Qt.Key_Right:
-                uiController.moveCursorRight()
+                root.navRight()
                 event.accepted = true
+                return
+            case Qt.Key_Up:
+                // In graph + trace mode, ↑/↓ walk between the three
+                // function slots (Y1 → Y2 → Y3 → Y1). Outside trace,
+                // these are unbound (no multi-line edit semantics).
+                if (uiController.isGraphMode && uiController.isTracing) {
+                    const ai = uiController.activeFunctionIndex
+                    uiController.setActiveFunction((ai + 2) % 3)  // up = previous
+                    event.accepted = true
+                }
+                return
+            case Qt.Key_Down:
+                if (uiController.isGraphMode && uiController.isTracing) {
+                    const ai = uiController.activeFunctionIndex
+                    uiController.setActiveFunction((ai + 1) % 3)
+                    event.accepted = true
+                }
                 return
             case Qt.Key_Home:
                 uiController.moveCursorHome()
@@ -382,6 +417,12 @@ ApplicationWindow {
                     windowPopup.open()
                 } else if (label === "ZOOM") {
                     zoomPopup.open()
+                } else if (label === "TRACE") {
+                    // TRACE only makes sense in graph mode; jump to it
+                    // automatically if we're still on the keypad.
+                    if (!uiController.isGraphMode)
+                        uiController.toggleGraphMode()
+                    uiController.toggleTrace()
                 } else if (label === "GRAPH") {
                     if (!uiController.isGraphMode)
                         uiController.toggleGraphMode()
@@ -389,7 +430,6 @@ ApplicationWindow {
                     if (uiController.isGraphMode)
                         uiController.toggleGraphMode()
                 }
-                // TRACE remains no-op until the trace cursor lands.
             }
         }
 
@@ -438,8 +478,8 @@ ApplicationWindow {
             columnSpacing: 6
 
             CalcKey { label: "HOME"; keyType: "function"; onPressed: uiController.moveCursorHome() }
-            CalcKey { label: "←";    keyType: "function"; onPressed: uiController.moveCursorLeft() }
-            CalcKey { label: "→";    keyType: "function"; onPressed: uiController.moveCursorRight() }
+            CalcKey { label: "←";    keyType: "function"; onPressed: root.navLeft() }
+            CalcKey { label: "→";    keyType: "function"; onPressed: root.navRight() }
             CalcKey { label: "END";  keyType: "function"; onPressed: uiController.moveCursorEnd() }
             // 5th column intentionally empty so the four keys span
             // most of the row width without crowding.

@@ -56,6 +56,15 @@ private:
     // sample, no connecting lines). Real TI-83 has this in the MODE
     // menu; behaviour purely affects rendering, not evaluation.
     Q_PROPERTY(int drawMode READ drawMode WRITE setDrawMode NOTIFY drawModeChanged)
+    // TRACE soft-key state. When true, the graph canvas draws a
+    // crosshair on the active function's curve at `traceX` and shows
+    // an X / Y readout. Left/Right arrow input is routed to
+    // traceLeft/traceRight while tracing — the QML dispatch layer
+    // chooses between trace movement and expression-cursor movement
+    // based on this flag + isGraphMode.
+    Q_PROPERTY(bool isTracing READ isTracing NOTIFY traceChanged)
+    Q_PROPERTY(double traceX READ traceX NOTIFY traceChanged)
+    Q_PROPERTY(double traceY READ traceY NOTIFY traceChanged)
 
 public:
     explicit UIController(QObject* parent = nullptr);
@@ -80,6 +89,12 @@ public:
     Q_INVOKABLE void toggleInsertMode();
     int drawMode() const { return m_drawMode; }
     void setDrawMode(int m);
+    bool isTracing() const { return m_isTracing; }
+    double traceX() const { return m_traceX; }
+    double traceY() const;
+    Q_INVOKABLE void toggleTrace();
+    Q_INVOKABLE void traceLeft();
+    Q_INVOKABLE void traceRight();
 
     Q_INVOKABLE void processInput(const QString& input);
     // Format a scalar result for display. Uses enough precision (10
@@ -88,7 +103,7 @@ public:
     // numbers rather than scientific notation, while keeping trailing
     // zeros trimmed. Single source of truth for result formatting —
     // the evaluator, `▶Dec`, and the test suite all route through here.
-    static QString formatScalar(double value);
+    Q_INVOKABLE static QString formatScalar(double value);
     // Tokenise a free-form expression string ("2+sin(0.5)") into the
     // sequence of input strings the controller's processInput method
     // accepts. Longest-match against the kTokens table plus a small set
@@ -147,6 +162,7 @@ signals:
     void cursorMoved();
     void insertModeChanged();
     void drawModeChanged();
+    void traceChanged();
 
 private:
     // processInput dispatches to these. Each handles one concern; the
@@ -186,6 +202,11 @@ private:
     bool m_insertMode = true;
     // 0 = Connected (default), 1 = Dot. See drawMode property above.
     int m_drawMode = 0;
+    // TRACE state. When `m_isTracing` is true the graph canvas paints
+    // a crosshair at (m_traceX, evaluated Y) on the active function.
+    // m_traceX is reset to viewport centre on every toggleTrace(true).
+    bool m_isTracing = false;
+    double m_traceX = 0.0;
 };
 
 } // namespace tux_ti83

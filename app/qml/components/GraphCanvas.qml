@@ -93,6 +93,13 @@ Rectangle {
                 }
             }
 
+            // Trace cursor + X / Y readout. Drawn AFTER the curves so
+            // the marker sits on top. Active function index picks both
+            // the curve evaluated for the readout and the colour of
+            // the marker so it visually ties to its source curve.
+            const traceActive = uiController.isTracing && uiController.isGraphMode
+            // Reserved for the post-curve marker pass below.
+
             // Function curves. Connected mode (default) draws line
             // segments between adjacent samples; Dot mode draws one
             // filled circle per sample with no connecting strokes —
@@ -122,6 +129,57 @@ Rectangle {
                     }
                     ctx.stroke()
                 }
+            }
+
+            // Trace marker + readout (drawn last so it sits on top).
+            if (traceActive) {
+                const tx = uiController.traceX
+                const ty = uiController.traceY
+                const activeIdx = uiController.activeFunctionIndex
+                const traceColour = canvas.fnColors[activeIdx % canvas.fnColors.length]
+
+                // Marker — only if traceY is finite and on-screen.
+                if (isFinite(ty)) {
+                    const m = toPx(tx, ty)
+                    // Crosshair: small vertical + horizontal stroke
+                    // through the point, plus a filled dot at the centre.
+                    ctx.strokeStyle = traceColour
+                    ctx.lineWidth = 1
+                    ctx.beginPath()
+                    ctx.moveTo(m.x, m.y - 8)
+                    ctx.lineTo(m.x, m.y + 8)
+                    ctx.moveTo(m.x - 8, m.y)
+                    ctx.lineTo(m.x + 8, m.y)
+                    ctx.stroke()
+                    ctx.fillStyle = traceColour
+                    ctx.beginPath()
+                    ctx.arc(m.x, m.y, 2.5, 0, 2 * Math.PI)
+                    ctx.fill()
+                }
+
+                // Readout — bottom-left of the canvas, on a translucent
+                // strip so the digits stay legible regardless of what
+                // the curve is doing under them.
+                // Route both numbers through the controller's
+                // formatScalar so the readout respects the user's
+                // MODE Notation (Normal/Sci/Eng) and Decimal (Float
+                // /Fix N) settings.
+                const readout = "Y" + (activeIdx + 1) +
+                                "  X=" + uiController.formatScalar(tx) +
+                                "  Y=" + (isFinite(ty)
+                                          ? uiController.formatScalar(ty)
+                                          : "—")
+                ctx.font = "11px " + Style.monoFamily
+                const textW = ctx.measureText(readout).width
+                const padX = 6, padY = 4
+                const rectW = textW + padX * 2
+                const rectH = 18
+                ctx.fillStyle = Style.bgShell
+                ctx.globalAlpha = 0.85
+                ctx.fillRect(0, height - rectH, rectW, rectH)
+                ctx.globalAlpha = 1.0
+                ctx.fillStyle = traceColour
+                ctx.fillText(readout, padX, height - padY - 1)
             }
         }
 
@@ -153,6 +211,7 @@ Rectangle {
             function onDisplayChanged() { canvas.requestPaint() }
             function onActiveFunctionIndexChanged() { canvas.requestPaint() }
             function onDrawModeChanged() { canvas.requestPaint() }
+            function onTraceChanged() { canvas.requestPaint() }
         }
     }
 }
