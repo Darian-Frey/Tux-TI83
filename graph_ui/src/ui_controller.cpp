@@ -247,6 +247,18 @@ void UIController::toggleInsertMode() {
   emit insertModeChanged();
 }
 
+void UIController::setDrawMode(int m) {
+  CrashLogger::logEvent(QStringLiteral("setDrawMode: ") + QString::number(m));
+  // Clamp to {0, 1}; anything else falls back to Connected (the
+  // safer default so a stray write doesn't strand the user with
+  // dots-only).
+  const int clamped = (m == 1) ? 1 : 0;
+  if (m_drawMode == clamped)
+    return;
+  m_drawMode = clamped;
+  emit drawModeChanged();
+}
+
 void UIController::moveCursorLeft() {
   CrashLogger::logEvent(QStringLiteral("moveCursorLeft"));
   if (m_displayState != Inputting || m_cursorPos <= 0)

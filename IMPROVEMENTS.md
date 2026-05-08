@@ -188,6 +188,16 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-026: Crash logger session-log rotation
+
+- **Status:** applied (2026-05-08)
+- **Location:** [graph_ui/src/crash_logger.cpp](graph_ui/src/crash_logger.cpp)
+- **Effort:** trivial
+- **Description:** `session.log` was append-only — a long-running setup or a crash-loop scenario could grow it without bound. Want a generous cap with one prior session retained.
+- **Change:** On `init()`, `stat()` the existing `session.log`; if it exceeds 1 MiB, atomically `rename()` it to `session.log.prev` (overwriting any older prev) before opening a fresh `session.log`. The new session header is followed by a `(rotated: prior log exceeded 1 MiB cap, moved to session.log.prev)` notice when rotation fired. Below the cap, behaviour is unchanged.
+- **Trade-offs:** Keeps only one prior session — if the user wants a longer trail, they'd need to copy `session.log.prev` aside between sessions. A larger ring (`.prev`, `.prev2`, ...) would be the obvious extension; deferred until anyone actually wants more than the immediate predecessor.
+- **Notes:** Verified end-to-end — manufactured a 1.5 MB log file, launched the GUI, confirmed `session.log.prev` carried the old contents and `session.log` opened fresh with the rotation notice on its first line.
+
 ### IMP-025: Nth-root operator (2ND + ^)
 
 - **Status:** applied (2026-04-29)

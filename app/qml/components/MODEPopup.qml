@@ -169,7 +169,9 @@ Popup {
         ModeRow {
             label: "Draw"
             options: ["Connected", "Dot"]
-            selectedIndex: 0
+            selectedIndex: uiController.drawMode
+            active: true
+            onSelected: (index) => uiController.drawMode = index
         }
         ModeRow {
             label: "Plot"

@@ -93,20 +93,35 @@ Rectangle {
                 }
             }
 
-            // Function curves
+            // Function curves. Connected mode (default) draws line
+            // segments between adjacent samples; Dot mode draws one
+            // filled circle per sample with no connecting strokes —
+            // matches TI-83 MODE → Connected/Dot.
             const multiPts = uiController.getMultiGraphPoints(600)
+            const dotMode = uiController.drawMode === 1
             for (let f = 0; f < multiPts.length; f++) {
                 const pts = multiPts[f]
                 if (!pts || pts.length === 0) continue
-                ctx.beginPath()
-                ctx.strokeStyle = canvas.fnColors[f % canvas.fnColors.length]
-                ctx.lineWidth = 2
-                for (let i = 0; i < pts.length; i++) {
-                    const p = toPx(pts[i].x, pts[i].y)
-                    if (i === 0) ctx.moveTo(p.x, p.y)
-                    else ctx.lineTo(p.x, p.y)
+                const colour = canvas.fnColors[f % canvas.fnColors.length]
+                if (dotMode) {
+                    ctx.fillStyle = colour
+                    for (let i = 0; i < pts.length; i++) {
+                        const p = toPx(pts[i].x, pts[i].y)
+                        ctx.beginPath()
+                        ctx.arc(p.x, p.y, 1.5, 0, 2 * Math.PI)
+                        ctx.fill()
+                    }
+                } else {
+                    ctx.beginPath()
+                    ctx.strokeStyle = colour
+                    ctx.lineWidth = 2
+                    for (let i = 0; i < pts.length; i++) {
+                        const p = toPx(pts[i].x, pts[i].y)
+                        if (i === 0) ctx.moveTo(p.x, p.y)
+                        else ctx.lineTo(p.x, p.y)
+                    }
+                    ctx.stroke()
                 }
-                ctx.stroke()
             }
         }
 
@@ -137,6 +152,7 @@ Rectangle {
             function onViewportChanged() { canvas.requestPaint() }
             function onDisplayChanged() { canvas.requestPaint() }
             function onActiveFunctionIndexChanged() { canvas.requestPaint() }
+            function onDrawModeChanged() { canvas.requestPaint() }
         }
     }
 }

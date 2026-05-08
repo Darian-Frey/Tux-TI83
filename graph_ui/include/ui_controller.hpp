@@ -51,6 +51,11 @@ private:
     // cursor (or appends if cursor is at the end). Toggled by
     // 2ND + DEL on a real TI-83.
     Q_PROPERTY(bool insertMode READ insertMode NOTIFY insertModeChanged)
+    // Graph-canvas draw style: 0 = Connected (line segments between
+    // adjacent samples — default), 1 = Dot (one filled circle per
+    // sample, no connecting lines). Real TI-83 has this in the MODE
+    // menu; behaviour purely affects rendering, not evaluation.
+    Q_PROPERTY(int drawMode READ drawMode WRITE setDrawMode NOTIFY drawModeChanged)
 
 public:
     explicit UIController(QObject* parent = nullptr);
@@ -73,6 +78,8 @@ public:
     int cursorOffset() const;
     bool insertMode() const { return m_insertMode; }
     Q_INVOKABLE void toggleInsertMode();
+    int drawMode() const { return m_drawMode; }
+    void setDrawMode(int m);
 
     Q_INVOKABLE void processInput(const QString& input);
     // Format a scalar result for display. Uses enough precision (10
@@ -132,6 +139,7 @@ signals:
     void fixDecimalsChanged();
     void cursorMoved();
     void insertModeChanged();
+    void drawModeChanged();
 
 private:
     // processInput dispatches to these. Each handles one concern; the
@@ -169,6 +177,8 @@ private:
     // True = splice new tokens in at the cursor (default, TI-83 INS).
     // False = replace the token at the cursor (TI-83 OVR / overwrite).
     bool m_insertMode = true;
+    // 0 = Connected (default), 1 = Dot. See drawMode property above.
+    int m_drawMode = 0;
 };
 
 } // namespace tux_ti83
