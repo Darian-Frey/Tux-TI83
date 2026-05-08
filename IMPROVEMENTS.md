@@ -188,6 +188,21 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-024: CATALOG browser (2ND + 0)
+
+- **Status:** applied (2026-04-29)
+- **Location:** [graph_ui/include/ui_controller.hpp](graph_ui/include/ui_controller.hpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/qml/components/CatalogPopup.qml](app/qml/components/CatalogPopup.qml), [app/qml/Main.qml](app/qml/Main.qml), [app/qml/qmldir](app/qml/qmldir), [CMakeLists.txt](CMakeLists.txt)
+- **Effort:** small
+- **Description:** Discoverability gap. We have ~80 insertable tokens spread across MATH, MATRX, TEST/LOGIC, and the keypad — users couldn't see the full vocabulary anywhere. Real TI-83 has CATALOG (2ND + 0) as the canonical "show me everything alphabetically" browser.
+- **Change:**
+  - New `Q_INVOKABLE QStringList catalogEntries() const` on UIController. Walks `kTokens`, dedupes display strings (ASCII aliases like `<=` / `->` share displayStrs with their Unicode siblings), and returns the result sorted case-insensitively.
+  - New `CatalogPopup.qml`: scrollable ListView fed by `catalogEntries()`, plus a search field that incrementally filters by case-insensitive substring. Click any row to insert via `processExpression` and close. Empty-state shows "no matches" when the filter excludes everything.
+  - Wired 2ND + 0 in `handleKey` (dedicated branch alongside 2ND+ENTER / 2ND+MATH / 2ND+DEL — popup triggers don't fit `secondMap`).
+  - `0` CalcKey gets a `CATALOG` 2ND corner label so the binding is visible without reading the manual.
+  - Registered the popup in `qmldir` and the CMake resource list.
+- **Trade-offs:** Cached the entries on first open (kTokens is compile-time static, so a one-shot fetch is fine and skips the cost on every keystroke). Filter recomputes on every `onTextChanged` — acceptable for ~80 entries; would memoise if the list grew an order of magnitude.
+- **Notes:** Closes another item from the "remaining 2ND variants" backlog. The popup is also a useful reference even when the user knows what they want — typing `co` and seeing `cos(`, `cosh(`, `acos(`, `acosh(` is faster than navigating multiple menus.
+
 ### IMP-023: On-screen D-pad + insert-mode toggle (2ND+DEL)
 
 - **Status:** applied (2026-04-29)

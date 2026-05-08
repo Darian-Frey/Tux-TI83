@@ -679,6 +679,26 @@ int main(int argc, char *argv[]) {
               !ic.insertMode());
   }
 
+  section("Nth root (2ND + ^)");
+  check("3ˣ√27 = 3 (cubic root)",  eval(c, "3ˣ√27"), "3");
+  check("4ˣ√16 = 2 (4th root)",    eval(c, "4ˣ√16"), "2");
+  check("2ˣ√9 = 3 (square root)",  eval(c, "2ˣ√9"),  "3");
+  check("3ˣ√-8 = -2 (odd root of negative)",
+        eval(c, "3ˣ√-8"), "-2");
+  check("xroot ASCII alias: 3 xroot 27 = 3",
+        eval(c, "3 xroot 27"), "3");
+
+  // Domain edges.
+  check("0ˣ√5 → ERR:DOMAIN (n=0 undefined)",
+        eval(c, "0ˣ√5"), "ERR:DOMAIN");
+  check("2ˣ√-9 → ERR:NONREAL ANS (even root of negative)",
+        eval(c, "2ˣ√-9"), "ERR:NONREAL ANS");
+
+  // Right-associativity: same precedence as Pow.
+  // 2 ˣ√ 3 ˣ√ 64  ==  2 ˣ√ (3rd root of 64)  ==  2 ˣ√ 4  ==  2.
+  check("2ˣ√3ˣ√64 = 2 (right-assoc)",
+        eval(c, "2ˣ√3ˣ√64"), "2");
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

@@ -47,6 +47,7 @@ int EOSPrecedence::precedence(Token t) {
   case Token::ATanh:
     return 4;
   case Token::Pow:
+  case Token::NthRoot:
     return 3;
   case Token::Mul:
   case Token::Div:
@@ -74,7 +75,11 @@ int EOSPrecedence::precedence(Token t) {
   }
 }
 
-bool EOSPrecedence::is_left_associative(Token t) { return (t != Token::Pow); }
+bool EOSPrecedence::is_left_associative(Token t) {
+  // Pow and NthRoot are the right-associative operators. Everything
+  // else is left.
+  return t != Token::Pow && t != Token::NthRoot;
+}
 bool EOSPrecedence::is_operator(Token t) {
   return precedence(t) != 0 && !is_function(t);
 }
@@ -729,6 +734,29 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
         } else {
           return {false, 0.0, {}, false, "Type Error"};
         }
+      } else if (t == Token::NthRoot) {
+        // `a NthRoot b` = b^(1/a). Scalars only. n=0 is undefined
+        // (would be division by zero); even root of negative gives
+        // ERR:NONREAL ANS — matching TI-83's real-only mode.
+        if (a.isMat || b.isMat)
+          return {false, 0.0, {}, false, "Type Error"};
+        if (a.val == 0.0)
+          return {false, 0.0, {}, false, "DOMAIN"};
+        const bool nIsInt = (a.val == std::floor(a.val));
+        const bool nIsEven = nIsInt &&
+            (static_cast<long long>(a.val) % 2 == 0);
+        if (b.val < 0.0 && nIsEven)
+          return {false, 0.0, {}, false, "NONREAL ANS"};
+        // For odd integer n on a negative b, std::pow returns NaN
+        // because of the fractional exponent — handle via the sign +
+        // |x|^(1/n) factoring.
+        double result;
+        if (b.val < 0.0 && nIsInt) {
+          result = -std::pow(-b.val, 1.0 / a.val);
+        } else {
+          result = std::pow(b.val, 1.0 / a.val);
+        }
+        stack.push({false, result, {}});
       } else if (t == Token::Equal)
         stack.push({false, std::abs(a.val - b.val) < 1e-9 ? 1.0 : 0.0, {}});
       else if (t == Token::NotEqual)

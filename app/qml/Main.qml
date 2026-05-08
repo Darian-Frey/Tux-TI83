@@ -47,6 +47,7 @@ ApplicationWindow {
         "sin(": "asin(",
         "cos(": "acos(",
         "tan(": "atan(",
+        "^":    "ˣ√",
         "x²":   "√(",
         "ln(":  "e^(",
         "(-)":  "Ans"
@@ -469,7 +470,7 @@ ApplicationWindow {
             CalcKey { label: "sin(";  keyType: "function"; secondLabel: "sin⁻¹"; alphaLabel: "E"; onPressed: root.handleKey("sin(")  }
             CalcKey { label: "cos(";  keyType: "function"; secondLabel: "cos⁻¹"; alphaLabel: "F"; onPressed: root.handleKey("cos(")  }
             CalcKey { label: "tan(";  keyType: "function"; secondLabel: "tan⁻¹"; alphaLabel: "G"; onPressed: root.handleKey("tan(")  }
-            CalcKey { label: "^";     keyType: "function"; alphaLabel: "H"; onPressed: root.handleKey("^") }
+            CalcKey { label: "^";     keyType: "function"; secondLabel: "ˣ√"; alphaLabel: "H"; onPressed: root.handleKey("^") }
 
             CalcKey { label: "√(";    keyType: "function"; onPressed: root.handleKey("√(")    }
             CalcKey { label: "ln(";   keyType: "function"; secondLabel: "eˣ"; alphaLabel: "S"; onPressed: root.handleKey("ln(")   }

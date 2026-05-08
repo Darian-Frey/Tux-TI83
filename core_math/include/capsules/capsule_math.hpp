@@ -25,6 +25,12 @@ enum class Token {
   Mul,
   Div,
   Pow,
+  // Binary infix nth-root: `n NthRoot x` returns x^(1/n). Same
+  // precedence as Pow and right-associative — `2 NthRoot 3 NthRoot 8`
+  // groups as `2 NthRoot (3 NthRoot 8)`. DOMAIN error when n is 0;
+  // NONREAL ANS for even n on a negative x. Real TI-83 binds 2ND+^
+  // to this; `xroot` works as an ASCII alias.
+  NthRoot,
   ImplicitMul,
   Sin,
   Cos,

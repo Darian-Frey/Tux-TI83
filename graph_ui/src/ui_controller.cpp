@@ -36,6 +36,10 @@ constexpr TokenSpec kTokens[] = {
     {"+", Token::Add, "+"}, {"−", Token::Sub, "−"},
     {"×", Token::Mul, "×"}, {"÷", Token::Div, "÷"},
     {"^", Token::Pow, "^"},
+    // Binary nth-root (2ND+^ on a real TI-83). `xroot` is the ASCII
+    // alias for keyboard / CLI users.
+    {"ˣ√",    Token::NthRoot, "ˣ√"},
+    {"xroot", Token::NthRoot, "ˣ√"},
 
     // ASCII aliases for the Unicode operators. Keyboard typists and the
     // CLI binary feed these directly; the QML keyboard handler also
@@ -625,7 +629,7 @@ void UIController::insertToken(const QString &input) {
                  prev == Token::Comma ||
                  prev == Token::Add || prev == Token::Sub ||
                  prev == Token::Mul || prev == Token::Div ||
-                 prev == Token::Pow ||
+                 prev == Token::Pow || prev == Token::NthRoot ||
                  EOSPrecedence::is_function(prev));
     }
     if (isUnary)
