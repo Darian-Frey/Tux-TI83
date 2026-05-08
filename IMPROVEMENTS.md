@@ -188,6 +188,18 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-030: TRACE polish — ↑/↓ cycles function, readout respects MODE
+
+- **Status:** applied (2026-05-08)
+- **Location:** [graph_ui/include/ui_controller.hpp](graph_ui/include/ui_controller.hpp), [app/qml/Main.qml](app/qml/Main.qml), [app/qml/components/GraphCanvas.qml](app/qml/components/GraphCanvas.qml)
+- **Effort:** trivial
+- **Description:** Two follow-up gaps from IMP-029 (TRACE). Real TI-83 uses ↑/↓ in trace mode to walk between function slots, and its coordinate readout respects the active number-display mode. We had neither.
+- **Change:**
+  - Made `UIController::formatScalar` `Q_INVOKABLE` so QML can call it directly. Updated `GraphCanvas` trace readout to format `traceX` / `traceY` through it — now respects Notation (Normal/Sci/Eng) and Decimal (Float/Fix N) live.
+  - Added Up/Down branches to Main.qml's keyboard handler. In graph mode + tracing, ↑ is "previous slot" and ↓ is "next slot" (modular over Y1/Y2/Y3 via `setActiveFunction`). Outside that mode, both keys stay unbound — no semantics elsewhere yet.
+- **Trade-offs:** ↑/↓ skip empty buffers? No — cycling through all three is simpler and matches real TI-83 (which lets you trace an empty function slot and just shows nothing). Empty slot in trace mode renders the marker invisible (NaN guard already in place) and the readout shows `Y=—`.
+- **Notes:** Closes the residual "TRACE works but feels incomplete" feedback. With this in, TRACE matches the TI-83's discoverability and flexibility.
+
 ### IMP-029: TRACE soft-key — graph cursor with X/Y readout
 
 - **Status:** applied (2026-05-08)

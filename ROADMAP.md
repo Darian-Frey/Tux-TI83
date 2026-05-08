@@ -225,9 +225,9 @@ Engine implements more than the UI currently exposes — listed below.
 - ✅ ZStandard, Zoom Fit (via the WINDOW popup's ZSTD/ZFIT buttons)
 - ✅ Active-function selector (`FunctionSelector` Y1/Y2/Y3 row, bound to `uiController.activeFunctionIndex`)
 - ✅ Mode toggle: `GRAPH` soft key enters graph view, `Y=` soft key returns to keypad
-- 🔜 Wire remaining soft-key actions: `ZOOM` and `TRACE` (still no-op)
-- 📅 Trace mode (cursor walks along the function, shows coordinates)
-- 📅 Tag function curves with their Y index in the canvas legend (currently inferred from result-list order — see [BUG-012](BUGS.md))
+- ✅ ZOOM soft-key — `ZoomPopup` landed 2026-05-08 (ZStandard / Zoom In / Zoom Out / ZFit, see Window settings entry below)
+- ✅ TRACE soft-key — landed 2026-05-08 (movable crosshair on the active curve, X/Y readout that respects the user's Notation/Decimal MODE settings; ←/→ steps along the curve in 1/100-of-viewport increments; ↑/↓ cycles through Y1/Y2/Y3 while tracing)
+- ✅ Tag function curves with their Y index in the canvas legend — fixed via [BUG-012](BUGS.md) on 2026-05-08; `getMultiGraphPoints()` now emits one entry per slot so colour-by-index is stable
 - 📅 Y-editor screen (visual list of Y1–Y9, Y0 with on/off toggles, styles)
 - 📅 Function on/off toggling
 - 📅 Function styles (thin, thick, dotted, shaded above/below, animate)
@@ -236,6 +236,7 @@ Engine implements more than the UI currently exposes — listed below.
 ### Window settings
 - ✅ Xmin/Xmax/Ymin/Ymax editable in the new UI's `WindowPopup` (reintegrated 2026-04-07; opened from the WINDOW soft-key)
 - ✅ ZSTANDARD and ZOOM FIT actions wired to `uiController.resetViewport()` and `zoomFit()`
+- ✅ ZOOM soft-key opens a `ZoomPopup` with ZStandard / Zoom In / Zoom Out / ZFit presets (2026-05-08)
 - 📅 Xscl/Yscl (axis tick spacing — controller doesn't track these yet)
 - 📅 Xres (graph resolution / x-step — controller doesn't track this yet)
 
@@ -306,7 +307,7 @@ Engine implements more than the UI currently exposes — listed below.
 - ✅ Cursor movement within an expression (left/right arrow editing) — added 2026-04-18 (token-level cursor in UIController; insertToken/backspace are cursor-aware; Left/Right/Home/End keyboard shortcuts; Display's TextInput binds to cursorOffset so the visual cursor tracks edits mid-expression; unary-negation disambiguation now looks at the token immediately left of the cursor rather than the tail)
 - ✅ Insert mode toggle (2nd + DEL) — added 2026-04-29 (`m_insertMode` flag on UIController; default INS splices, OVR replaces the token at the cursor and falls back to append past the end; header `OVR` badge; DEL key has an `INS` 2ND corner label; on-screen `CURSOR` section also added with HOME / ← / → / END to complement the existing keyboard shortcuts)
 - ✅ ALPHA-lock mode — added 2026-04-18 (2ND + ALPHA toggles a persistent `alphaLocked` flag in addition to the one-shot `alphaArmed`; header shows "A-LOCK" when locked; any letter keypress fires its ALPHA variant without clearing the lock; ALPHA alone or CLEAR releases it; 2ND during lock preserves the lock so 2ND+letter combos stay usable mid-typing)
-- 📅 `MODE` menu follow-ups — Notation (Normal/Sci/Eng) and Decimal (Float/Fix N) landed 2026-04-18 via `MathStateMachine::notation` + `fixDecimals` + an extended `formatScalar`. Remaining placeholder rows: Graph: Func/Par/Pol/Seq, Draw: Connected/Dot, Plot: Sequential/Simul, Complex: Real/a+bi/re^θi, Screen: Full/Horiz/G-T. Each needs a backing property + evaluator/renderer support.
+- 📅 `MODE` menu follow-ups — Notation (Normal/Sci/Eng), Decimal (Float/Fix N), and Draw (Connected/Dot) all wired now. Remaining placeholder rows: Graph: Func/Par/Pol/Seq, Plot: Sequential/Simul (needs frame-by-frame animation framework), Complex: Real/a+bi/re^θi, Screen: Full/Horiz/G-T. Each needs a backing property + evaluator/renderer support.
 - 📅 `CATALOG` browser (alphabetical list of every command)
 - 📅 Mode indicator in the header (currently hardcoded "NORMAL  DEG")
 - ✅ WINDOW popup ported to the new UI (see Graphing › Window settings)
