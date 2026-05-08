@@ -12,6 +12,7 @@
 
 #include <execinfo.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace tux_ti83 {
@@ -148,6 +149,29 @@ void CrashLogger::init() {
     QDir().mkpath(dir);
     g_logPath = dir + "/session.log";
 
+    // Rotation: if the existing log has grown past the cap, move it
+    // aside to session.log.prev (overwriting any older prev). Keeps
+    // one prior session worth of trail without growing the file
+    // unboundedly. The cap is generous enough that a typical session
+    // sits well under it; only long-running or crash-loop scenarios
+    // trigger a rotation.
+    constexpr off_t kRotateCapBytes = 1 * 1024 * 1024;  // 1 MiB
+    bool rotated = false;
+    {
+        struct stat st;
+        QByteArray pathBytes = g_logPath.toLocal8Bit();
+        if (::stat(pathBytes.constData(), &st) == 0 &&
+            st.st_size > kRotateCapBytes) {
+            QString prevPath = g_logPath + ".prev";
+            QByteArray prevBytes = prevPath.toLocal8Bit();
+            // ::rename replaces the destination atomically on Linux.
+            if (::rename(pathBytes.constData(),
+                         prevBytes.constData()) == 0) {
+                rotated = true;
+            }
+        }
+    }
+
     int fd = ::open(g_logPath.toLocal8Bit().constData(),
                     O_WRONLY | O_CREAT | O_APPEND, 0644);
     if (fd < 0) {
@@ -160,6 +184,10 @@ void CrashLogger::init() {
 
     logEvent(QString("=== Session start: %1 ===")
              .arg(QDateTime::currentDateTime().toString(Qt::ISODate)));
+    if (rotated)
+        logEvent(QStringLiteral(
+            "(rotated: prior log exceeded 1 MiB cap, "
+            "moved to session.log.prev)"));
 
     // Install crash handlers. SIGSEGV / SIGABRT / SIGFPE / SIGILL /
     // SIGBUS cover the usual abnormal-termination cases. We let

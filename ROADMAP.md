@@ -302,7 +302,7 @@ Engine implements more than the UI currently exposes — listed below.
 ### Planned
 
 - ✅ ALPHA letter bindings — added 2026-04-18 (handleKey's alphaMap routes ALPHA + primary-key to the matching VarA..VarZ token, mirroring the on-key alphaLabel annotations)
-- 📅 Remaining 2ND variants (CATALOG, nth-root, etc. — TEST menu and insert-mode toggle now done)
+- 📅 Remaining 2ND variants — TEST menu, insert-mode toggle, CATALOG (2ND+0), and nth-root (2ND+^) all now done. Outstanding: 2ND+`(` / `)` for `{` / `}` lists, EE / scientific exponent entry, and a few catalog-only variants.
 - ✅ Cursor movement within an expression (left/right arrow editing) — added 2026-04-18 (token-level cursor in UIController; insertToken/backspace are cursor-aware; Left/Right/Home/End keyboard shortcuts; Display's TextInput binds to cursorOffset so the visual cursor tracks edits mid-expression; unary-negation disambiguation now looks at the token immediately left of the cursor rather than the tail)
 - ✅ Insert mode toggle (2nd + DEL) — added 2026-04-29 (`m_insertMode` flag on UIController; default INS splices, OVR replaces the token at the cursor and falls back to append past the end; header `OVR` badge; DEL key has an `INS` 2ND corner label; on-screen `CURSOR` section also added with HOME / ← / → / END to complement the existing keyboard shortcuts)
 - ✅ ALPHA-lock mode — added 2026-04-18 (2ND + ALPHA toggles a persistent `alphaLocked` flag in addition to the one-shot `alphaArmed`; header shows "A-LOCK" when locked; any letter keypress fires its ALPHA variant without clearing the lock; ALPHA alone or CLEAR releases it; 2ND during lock preserves the lock so 2ND+letter combos stay usable mid-typing)

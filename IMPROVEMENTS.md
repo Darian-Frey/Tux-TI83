@@ -188,6 +188,21 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-025: Nth-root operator (2ND + ^)
+
+- **Status:** applied (2026-04-29)
+- **Location:** [core_math/include/capsules/capsule_math.hpp](core_math/include/capsules/capsule_math.hpp), [core_math/src/core_math.cpp](core_math/src/core_math.cpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/qml/Main.qml](app/qml/Main.qml), [tests/test_math.cpp](tests/test_math.cpp)
+- **Effort:** small
+- **Description:** Real TI-83 binds 2ND+^ to a binary nth-root operator (`n ˣ√ x`). We had `√(` for square roots only — anything else needed `x^(1/n)`. Awkward to type and easy to mis-parenthesise.
+- **Change:**
+  - Engine: added `Token::NthRoot`, sharing precedence (3) and right-associativity with `Pow`. Evaluator pops two scalars, returns `b^(1/a)`. Domain checks: `n=0 → DOMAIN`; even integer root of negative `→ NONREAL ANS`. Odd integer root of negative is real and computed via `-|b|^(1/n)` to avoid `pow`'s NaN-on-fractional-negative path.
+  - kTokens: `ˣ√` (Unicode) plus `xroot` ASCII alias.
+  - Main.qml: `secondMap["^"] = "ˣ√"` and the `^` CalcKey grew a `ˣ√` 2ND corner label.
+  - Unary-context heuristic in `insertToken` now recognises `NthRoot` as a position where `-` means unary negation, so `3ˣ√-8` parses as `3 NthRoot (-8)` rather than `3 NthRoot - 8` (stray binary minus). Caught and fixed during test runs.
+  - Tests: 8 new assertions covering happy-path roots, ASCII alias, n=0 DOMAIN, even-root-of-negative NONREAL, odd-root-of-negative real, and right-associative chaining.
+- **Trade-offs:** Could have made it a function (`xroot(n, x)`) rather than infix, which would have skipped the precedence + unary-heuristic plumbing. Rejected because TI-83 users expect the infix form and it's also more readable for the canonical `n ˣ√ x` shape.
+- **Notes:** Closes another 2ND-variant gap. Outstanding on the same backlog: EE (scientific exponent entry), `{`/`}` for lists (needs list type), and a few catalog-only variants.
+
 ### IMP-024: CATALOG browser (2ND + 0)
 
 - **Status:** applied (2026-04-29)
