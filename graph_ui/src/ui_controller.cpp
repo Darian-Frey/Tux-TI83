@@ -237,6 +237,12 @@ int UIController::cursorOffset() const {
   return offset;
 }
 
+void UIController::toggleInsertMode() {
+  CrashLogger::logEvent(QStringLiteral("toggleInsertMode"));
+  m_insertMode = !m_insertMode;
+  emit insertModeChanged();
+}
+
 void UIController::moveCursorLeft() {
   CrashLogger::logEvent(QStringLiteral("moveCursorLeft"));
   if (m_displayState != Inputting || m_cursorPos <= 0)
@@ -626,10 +632,18 @@ void UIController::insertToken(const QString &input) {
       tokenToInsert = Token::Neg;
   }
 
-  // Cursor-aware insertion: splice the new token at m_cursorPos and
-  // advance the cursor past it. Rebuild the display string from the
-  // full buffer since mid-expression inserts shift everything right.
-  currentBuf.insert(currentBuf.begin() + m_cursorPos, tokenToInsert);
+  // Cursor-aware insertion. In insert mode (default) splice the new
+  // token at m_cursorPos and advance the cursor past it; mid-expression
+  // inserts shift everything right. In overwrite mode, if the cursor
+  // is on an existing token, replace it; if at the end, fall back to
+  // append (matches TI-83 OVR behaviour at the tail).
+  const bool atEnd =
+      m_cursorPos >= static_cast<int>(currentBuf.size());
+  if (m_insertMode || atEnd) {
+    currentBuf.insert(currentBuf.begin() + m_cursorPos, tokenToInsert);
+  } else {
+    currentBuf[m_cursorPos] = tokenToInsert;
+  }
   ++m_cursorPos;
   currentStr = "";
   const auto &rev = tokenToSpec();
@@ -694,6 +708,27 @@ bool UIController::processExpression(const QString &expr) {
   for (const QString &t : tokens)
     processInput(t);
   return true;
+}
+
+QStringList UIController::catalogEntries() const {
+  // Walk kTokens, collect insertable display strings, deduplicate (the
+  // ASCII aliases like "->" and "<=" share displayStr with their
+  // Unicode siblings), and sort alphabetically. Results returned to
+  // QML for the CATALOG popup; clicks feed the displayStr back through
+  // processExpression so the tokeniser handles dispatch uniformly.
+  QStringList out;
+  out.reserve(static_cast<qsizetype>(sizeof(kTokens) / sizeof(kTokens[0])));
+  for (const auto &spec : kTokens) {
+    out.append(QString::fromUtf8(spec.displayStr));
+  }
+  out.removeDuplicates();
+  // Case-insensitive alphabetical sort so `Ans` lands near `abs(`
+  // rather than at the top of the list.
+  std::sort(out.begin(), out.end(),
+            [](const QString &a, const QString &b) {
+              return QString::compare(a, b, Qt::CaseInsensitive) < 0;
+            });
+  return out;
 }
 
 void UIController::updateMatrix(const QString &name, int rows, int cols,

@@ -634,6 +634,51 @@ int main(int argc, char *argv[]) {
     check("5: returns 5", eval(sc, "5:"), "5");
   }
 
+  section("Insert vs. overwrite mode (2ND + DEL)");
+  {
+    UIController ic;
+
+    // Default insert mode: typing "1+2" produces "1+2" (3 tokens).
+    ic.processInput(QStringLiteral("CLEAR"));
+    ic.processExpression("1+2");
+    check("default insert mode: display is 1+2",
+          ic.currentDisplay(), "1+2");
+
+    // Move cursor to between 1 and +; toggle to overwrite; type 9.
+    // The + at the cursor position should be replaced, giving 192.
+    ic.moveCursorLeft();          // cursor between + and 2
+    ic.moveCursorLeft();          // cursor between 1 and +
+    ic.toggleInsertMode();
+    ic.processInput(QStringLiteral("9"));
+    check("overwrite mid-expression: + replaced with 9 → 192",
+          ic.currentDisplay(), "192");
+
+    // Continued overwrite at the next position replaces the 2.
+    ic.processInput(QStringLiteral("0"));
+    check("overwrite continues: 2 replaced with 0 → 190",
+          ic.currentDisplay(), "190");
+
+    // Typing past the end falls back to append (matches TI-83 OVR
+    // behaviour at the tail).
+    ic.processInput(QStringLiteral("8"));
+    check("overwrite past end appends → 1908",
+          ic.currentDisplay(), "1908");
+
+    // Toggle back to insert mode; new tokens splice in.
+    ic.toggleInsertMode();
+    ic.moveCursorHome();
+    ic.processInput(QStringLiteral("7"));
+    check("back to insert: 7 prepended → 71908",
+          ic.currentDisplay(), "71908");
+
+    // insertMode is exposed as a Q_PROPERTY — verify it round-trips.
+    checkTrue("insertMode reads as true after toggle-back",
+              ic.insertMode());
+    ic.toggleInsertMode();
+    checkTrue("insertMode reads as false after second toggle",
+              !ic.insertMode());
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

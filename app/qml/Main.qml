@@ -128,6 +128,19 @@ ApplicationWindow {
                 logicMenuPopup.open()
                 return
             }
+            // 2ND + DEL toggles insert / overwrite mode (TI-83 INS).
+            // Controller method, not a token insertion.
+            if (primary === "DEL") {
+                uiController.toggleInsertMode()
+                return
+            }
+            // 2ND + 0 opens the alphabetical CATALOG browser. Popup
+            // trigger, not a token insertion — same shape as the
+            // other special cases above.
+            if (primary === "0") {
+                catalogPopup.open()
+                return
+            }
             if (secondMap.hasOwnProperty(primary)) {
                 uiController.processExpression(secondMap[primary])
                 return
@@ -318,6 +331,19 @@ ApplicationWindow {
                 font.weight: Font.Bold
             }
 
+            // Overwrite-mode badge (TI-83 OVR). Visible only when the
+            // controller's insertMode is false — INS is the default
+            // and doesn't need its own badge.
+            Text {
+                visible: !uiController.insertMode
+                text: "OVR"
+                color: Style.armedBadge2nd
+                font.family: Style.monoFamily
+                font.pixelSize: Style.headerBrandPixelSize
+                font.letterSpacing: Style.headerBrandPixelSize * 0.10
+                font.weight: Font.Bold
+            }
+
             Text {
                 // Notation slot is a placeholder ("NORMAL") until the
                 // Sci/Eng modes are wired; angle slot binds to the live
@@ -388,13 +414,34 @@ ApplicationWindow {
 
             CalcKey { label: "2ND";   keyType: "second";  armed: root.secondArmed; onPressed: root.armSecond() }
             CalcKey { label: "MODE";  keyType: "control"; onPressed: { root.clearModifiers(); modePopup.open() } }
-            CalcKey { label: "⌫";     keyType: "control"; onPressed: root.handleKey("DEL") }
+            CalcKey { label: "⌫";     keyType: "control"; secondLabel: "INS"; onPressed: root.handleKey("DEL") }
             CalcKey { label: "ALPHA"; keyType: "control"; armed: root.alphaArmed || root.alphaLocked; onPressed: root.armAlpha() }
             CalcKey { label: "CLEAR"; keyType: "control"; onPressed: { root.clearModifiers(); uiController.processInput("CLEAR") } }
             // Note: corner labels intentionally omitted from CONTROL row
             // — the TI-83 equivalents (QUIT, INS, A-LOCK, RESET) aren't
             // wired yet. Labelling them would advertise behaviour the
             // keys don't deliver.
+        }
+
+        // ── CURSOR section ──────────────────────────────
+        // On-screen complement to the Left/Right/Home/End keyboard
+        // shortcuts. ↑ / ↓ are intentionally omitted — we don't have
+        // multi-line edit semantics, and 2ND+ENTER already covers
+        // history recall.
+        SectionHeader { label: "CURSOR" }
+        GridLayout {
+            Layout.fillWidth: true
+            columns: 5
+            rowSpacing: 6
+            columnSpacing: 6
+
+            CalcKey { label: "HOME"; keyType: "function"; onPressed: uiController.moveCursorHome() }
+            CalcKey { label: "←";    keyType: "function"; onPressed: uiController.moveCursorLeft() }
+            CalcKey { label: "→";    keyType: "function"; onPressed: uiController.moveCursorRight() }
+            CalcKey { label: "END";  keyType: "function"; onPressed: uiController.moveCursorEnd() }
+            // 5th column intentionally empty so the four keys span
+            // most of the row width without crowding.
+            Item { Layout.fillWidth: true }
         }
 
         // ── 5. SCIENTIFIC section ───────────────────────
@@ -488,7 +535,7 @@ ApplicationWindow {
             CalcKey { label: "+";  keyType: "operator"; alphaLabel: "\""; onPressed: root.handleKey("+") }
 
             // Row 5
-            CalcKey { label: "0";   keyType: "numeric"; onPressed: root.handleKey("0") }
+            CalcKey { label: "0";   keyType: "numeric"; secondLabel: "CATALOG"; onPressed: root.handleKey("0") }
             CalcKey { label: ".";   keyType: "numeric"; alphaLabel: ":"; onPressed: root.handleKey(".") }
             // (-) routes through handleKey when 2ND is armed (→ Ans).
             // ALPHA label "?" is aspirational — not a real token — so
@@ -551,5 +598,9 @@ ApplicationWindow {
 
     LogicMenuPopup {
         id: logicMenuPopup
+    }
+
+    CatalogPopup {
+        id: catalogPopup
     }
 }

@@ -188,6 +188,22 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-023: On-screen D-pad + insert-mode toggle (2ND+DEL)
+
+- **Status:** applied (2026-04-29)
+- **Location:** [graph_ui/include/ui_controller.hpp](graph_ui/include/ui_controller.hpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/qml/Main.qml](app/qml/Main.qml), [tests/test_math.cpp](tests/test_math.cpp)
+- **Effort:** small
+- **Description:** Cursor movement (IMP-017) was keyboard-only — mouse / touch users had no way to navigate mid-expression. And there was no overwrite mode: typing always inserted, even when the user wanted to fix a single token without shifting everything right.
+- **Change:**
+  - New `CURSOR` section in Main.qml between CONTROL and SCIENTIFIC: `HOME · ← · → · END` mapped to the existing `moveCursor*` Q_INVOKABLEs. ↑/↓ omitted — no multi-line semantics, and 2ND+ENTER already covers history recall.
+  - Insert-mode state on UIController: `m_insertMode` (default true) + Q_PROPERTY (NOTIFY) + `Q_INVOKABLE toggleInsertMode()`. `insertToken` checks the flag — true (or cursor at end) splices, false replaces the token at the cursor.
+  - 2ND + DEL toggles insert/overwrite via a dedicated branch in `handleKey` (next to the existing 2ND+ENTER and 2ND+MATH special cases — controller-method calls don't fit `secondMap`).
+  - DEL CalcKey gets a `INS` 2ND corner label so the toggle is discoverable.
+  - Header `OVR` badge (amber, same style as the `2ND` / `α` badges) appears when insertMode is false.
+  - Tests: 8 new assertions covering default-insert, mid-expression overwrite, continued overwrite, overwrite-past-end fallback to append, toggle-back-to-insert prepend, and the Q_PROPERTY round-trip. 202/202 passing.
+- **Trade-offs:** Cursor section adds ~50px of vertical layout; the `fillHeight` spacer in NUMERIC absorbed it without the window needing to grow. Could have shoehorned arrows into the existing CONTROL row but it would have meant rearranging keys users have already learned.
+- **Notes:** Closes the keyboard-only gap from IMP-017. No on-screen ↑/↓ yet — natural follow-up if/when multi-line editing or a forward-history feature lands.
+
 ### IMP-022: Crash logger with always-on session trail
 
 - **Status:** applied (2026-04-29)

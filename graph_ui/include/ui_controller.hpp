@@ -45,6 +45,12 @@ private:
     // display TextInput needs char positions — this getter walks the
     // buffer up to the cursor and sums the displayStr lengths.
     Q_PROPERTY(int cursorOffset READ cursorOffset NOTIFY cursorMoved)
+    // Insert vs. overwrite mode for mid-expression edits. Default true
+    // (insert — splice the new token in, push everything right). When
+    // false, typing a new token replaces the one currently at the
+    // cursor (or appends if cursor is at the end). Toggled by
+    // 2ND + DEL on a real TI-83.
+    Q_PROPERTY(bool insertMode READ insertMode NOTIFY insertModeChanged)
 
 public:
     explicit UIController(QObject* parent = nullptr);
@@ -65,6 +71,8 @@ public:
     int fixDecimals() const { return MathStateMachine::fixDecimals; }
     void setFixDecimals(int n);
     int cursorOffset() const;
+    bool insertMode() const { return m_insertMode; }
+    Q_INVOKABLE void toggleInsertMode();
 
     Q_INVOKABLE void processInput(const QString& input);
     // Format a scalar result for display. Uses enough precision (10
@@ -84,6 +92,12 @@ public:
     // Returns true on full success, false if tokenisation failed.
     // Note: does not call ENTER — caller decides whether to evaluate.
     Q_INVOKABLE bool processExpression(const QString& expr);
+    // CATALOG list: alphabetically-sorted display strings of every
+    // insertable token in `kTokens`. Used by `CatalogPopup` (2ND + 0)
+    // to populate its scrollable list. Each entry is the display
+    // string itself — clicking feeds the same string back through
+    // `processExpression` so insertion uses the unified token table.
+    Q_INVOKABLE QStringList catalogEntries() const;
     Q_INVOKABLE void setActiveFunction(int index) { m_activeIdx = index; emit activeFunctionIndexChanged(); }
     Q_INVOKABLE void toggleGraphMode() { m_isGraphMode = !m_isGraphMode; emit graphModeChanged(); }
     Q_INVOKABLE void resetViewport() { m_xMin = -10; m_xMax = 10; m_yMin = -10; m_yMax = 10; emit viewportChanged(); }
@@ -117,6 +131,7 @@ signals:
     void notationChanged();
     void fixDecimalsChanged();
     void cursorMoved();
+    void insertModeChanged();
 
 private:
     // processInput dispatches to these. Each handles one concern; the
@@ -151,6 +166,9 @@ private:
     // end on recall. Edit operations keep it consistent with the
     // buffer — inserting pushes it forward, backspace pulls it back.
     int m_cursorPos = 0;
+    // True = splice new tokens in at the cursor (default, TI-83 INS).
+    // False = replace the token at the cursor (TI-83 OVR / overwrite).
+    bool m_insertMode = true;
 };
 
 } // namespace tux_ti83
