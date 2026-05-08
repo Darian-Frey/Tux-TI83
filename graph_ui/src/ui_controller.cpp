@@ -792,22 +792,59 @@ void UIController::zoomFit() {
   }
 }
 
+void UIController::zoomIn() {
+  CrashLogger::logEvent(QStringLiteral("zoomIn"));
+  // Halve both axes around the viewport centre: curve appears bigger.
+  const double cx = (m_xMin + m_xMax) * 0.5;
+  const double cy = (m_yMin + m_yMax) * 0.5;
+  const double rx = (m_xMax - m_xMin) * 0.5;
+  const double ry = (m_yMax - m_yMin) * 0.5;
+  m_xMin = cx - rx * 0.5;
+  m_xMax = cx + rx * 0.5;
+  m_yMin = cy - ry * 0.5;
+  m_yMax = cy + ry * 0.5;
+  emit viewportChanged();
+}
+
+void UIController::zoomOut() {
+  CrashLogger::logEvent(QStringLiteral("zoomOut"));
+  // Double both axes around the viewport centre: curve appears smaller.
+  const double cx = (m_xMin + m_xMax) * 0.5;
+  const double cy = (m_yMin + m_yMax) * 0.5;
+  const double rx = (m_xMax - m_xMin) * 0.5;
+  const double ry = (m_yMax - m_yMin) * 0.5;
+  m_xMin = cx - rx * 2.0;
+  m_xMax = cx + rx * 2.0;
+  m_yMin = cy - ry * 2.0;
+  m_yMax = cy + ry * 2.0;
+  emit viewportChanged();
+}
+
 QVariantList UIController::getMultiGraphPoints(int resolution) {
+  // BUG-012 fix: always emit one entry per Y slot (Y1 / Y2 / Y3),
+  // using an empty inner list for buffers that have no expression.
+  // The QML canvas colours curves by their index in the returned
+  // list; before this fix, an empty leading slot compacted the list
+  // and shifted later curves into earlier slots' colours (e.g. Y1
+  // empty + Y3=X² produced a green-coded parabola rendered in Y1's
+  // blue). Preserving slot index → colour mapping is the cleanest
+  // fix; QML doesn't need to know about empty slots, it just gets
+  // an empty array and skips it.
   QVariantList allFunctions;
   double step = (m_xMax - m_xMin) / resolution;
   MathStateMachine msm;
   for (size_t f = 0; f < m_functionBuffers.size(); ++f) {
-    if (m_functionBuffers[f].empty())
-      continue;
     QVariantList points;
-    for (int i = 0; i <= resolution; ++i) {
-      double x = m_xMin + (i * step);
-      CalculationResult res = msm.evaluate(m_functionBuffers[f], x);
-      if (res.success && !res.isMatrix) {
-        QVariantMap pt;
-        pt["x"] = x;
-        pt["y"] = res.value;
-        points.append(pt);
+    if (!m_functionBuffers[f].empty()) {
+      for (int i = 0; i <= resolution; ++i) {
+        double x = m_xMin + (i * step);
+        CalculationResult res = msm.evaluate(m_functionBuffers[f], x);
+        if (res.success && !res.isMatrix) {
+          QVariantMap pt;
+          pt["x"] = x;
+          pt["y"] = res.value;
+          points.append(pt);
+        }
       }
     }
     allFunctions.append(QVariant::fromValue(points));

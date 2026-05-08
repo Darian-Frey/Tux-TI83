@@ -122,6 +122,13 @@ public:
     Q_INVOKABLE void moveCursorHome();
     Q_INVOKABLE void moveCursorEnd();
     Q_INVOKABLE void zoomFit();
+    // Convenience zooms for the ZOOM popup. Both keep the viewport
+    // centre fixed and scale x and y by the same factor — `zoomIn`
+    // halves each axis (curve appears bigger), `zoomOut` doubles it.
+    // The existing free-form `zoom(...)` is more flexible but takes
+    // pixel coordinates; these wrap it for the menu's preset use.
+    Q_INVOKABLE void zoomIn();
+    Q_INVOKABLE void zoomOut();
     Q_INVOKABLE void updateMatrix(const QString& name, int rows, int cols, const QVariantList& values);
     Q_INVOKABLE QVariantList getMultiGraphPoints(int resolution);
     Q_INVOKABLE void pan(double dx, double dy, double vw, double vh);

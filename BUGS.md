@@ -23,32 +23,21 @@ Each entry uses this template:
 
 ## Open
 
-### BUG-012: Graph curve colours can shift when some Y slots are empty
-- **Status:** open
-- **Found:** 2026-04-07 (Phase A — graph mode reintegration)
-- **Location:** [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp) `getMultiGraphPoints()` (the `continue` on empty buffers) and [app/qml/components/GraphCanvas.qml](app/qml/components/GraphCanvas.qml) (the `fnColors[f % length]` indexing)
-- **Severity:** low (cosmetic / confusing, not incorrect math)
-- **Description:** `getMultiGraphPoints()` skips empty function buffers
-  with a `continue`, so the returned list is compacted. The QML canvas
-  iterates the result and uses the result index for colour selection.
-  As a result, if Y1 is empty and Y3 is defined, Y3's curve renders in
-  Y1's colour (blue), making it impossible to tell which function is
-  which when slots are non-contiguous.
-- **Reproduction:** Set Y1 empty, set Y3 to `X^2`, switch to graph mode.
-  The parabola renders in Y1's blue colour even though it's stored in
-  Y3.
-- **Notes:** Fix has two reasonable shapes:
-  1. Make `getMultiGraphPoints()` return a fixed-length list with empty
-     entries for empty buffers, preserving function index. (Small
-     controller change.)
-  2. Have `getMultiGraphPoints()` return tagged points
-     (`{index, points}` pairs) so QML knows which Y is which.
-  Option 1 is the smaller change. Pre-existing in the legacy UI; not a
-  regression introduced by the reintegration.
+(none)
 
 ---
 
 ## Fixed
+
+### BUG-012: Graph curve colours can shift when some Y slots are empty
+
+- **Status:** fixed (2026-05-08)
+- **Location:** [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp) `getMultiGraphPoints()`
+- **Severity:** low (cosmetic / confusing, not incorrect math)
+- **Description:** `getMultiGraphPoints()` skipped empty function buffers with a `continue`, so the returned list was compacted. The QML canvas iterates the result and uses the result index for colour selection — meaning Y3 with Y1 empty would land at result index 0 and render in Y1's blue.
+- **Reproduction (was):** Y1 empty, Y3 = `X^2`, switch to graph mode → parabola in Y1's blue.
+- **Fix:** Removed the `continue` — `getMultiGraphPoints()` now always emits one inner list per Y slot, using an empty list for slots with no expression. The QML canvas already skipped empty inner lists with `if (!pts || pts.length === 0) continue`, so the visual change is just that `f` is now the slot index (0=Y1, 1=Y2, 2=Y3) and the colour-by-index mapping is stable.
+- **Notes:** Pre-existing from the legacy UI. Verified end-to-end — Y1 empty + Y2=`X^2` + Y3=`X^3` now renders Y2 in red and Y3 in green (Y1's blue stays unused).
 
 ### BUG-019: Bare `.` in the buffer crashes the engine via uncaught `std::stod` exception
 

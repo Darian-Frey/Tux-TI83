@@ -188,6 +188,19 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-027: Graph mode — Connected / Dot drawing
+
+- **Status:** applied (2026-05-08)
+- **Location:** [graph_ui/include/ui_controller.hpp](graph_ui/include/ui_controller.hpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/qml/components/MODEPopup.qml](app/qml/components/MODEPopup.qml), [app/qml/components/GraphCanvas.qml](app/qml/components/GraphCanvas.qml)
+- **Effort:** small
+- **Description:** Another greyed MODE row activated. Connected (default) draws line segments between adjacent samples; Dot draws a single filled circle per sample with no connecting strokes — useful for noisy / discontinuous functions where the connected interpolation lies.
+- **Change:**
+  - Controller: `drawMode` Q_PROPERTY (int, 0=Connected default / 1=Dot) with WRITE+NOTIFY. Setter clamps to {0,1} so a stray value can't strand the user with no rendering.
+  - MODEPopup: flipped the `Draw` row from greyed placeholder to live binding against `uiController.drawMode`.
+  - GraphCanvas: branches at the per-curve render — Connected unchanged (existing path); Dot uses `ctx.arc()` at radius 1.5px per sample. Added `onDrawModeChanged` to the controller `Connections` block so toggling the mode immediately repaints.
+- **Trade-offs:** Dot radius (1.5px) chosen to be visible without dominating the grid; could grow it for high-DPI later. No engine impact — purely a rendering split.
+- **Notes:** Closes another MODE placeholder. Plot row (Sequential/Simul) is the next obvious one but only meaningful with frame-by-frame animation, which we don't have — deferred until that lands.
+
 ### IMP-026: Crash logger session-log rotation
 
 - **Status:** applied (2026-05-08)

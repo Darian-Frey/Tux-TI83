@@ -380,6 +380,8 @@ ApplicationWindow {
             onPressed: function(label) {
                 if (label === "WINDOW") {
                     windowPopup.open()
+                } else if (label === "ZOOM") {
+                    zoomPopup.open()
                 } else if (label === "GRAPH") {
                     if (!uiController.isGraphMode)
                         uiController.toggleGraphMode()
@@ -387,8 +389,7 @@ ApplicationWindow {
                     if (uiController.isGraphMode)
                         uiController.toggleGraphMode()
                 }
-                // TODO: ZOOM and TRACE remain no-op until those features
-                // land (zoom menu, trace cursor, etc.)
+                // TRACE remains no-op until the trace cursor lands.
             }
         }
 
@@ -603,5 +604,9 @@ ApplicationWindow {
 
     CatalogPopup {
         id: catalogPopup
+    }
+
+    ZoomPopup {
+        id: zoomPopup
     }
 }
