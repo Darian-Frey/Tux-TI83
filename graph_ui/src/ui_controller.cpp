@@ -276,6 +276,13 @@ void UIController::saveState() const {
   mode["drawMode"]    = m_drawMode;
   root["mode"] = mode;
 
+  // TBLSET (TABLE mode settings — separate object since they're
+  // logically distinct from MODE).
+  QJsonObject table;
+  table["tblStart"] = m_tblStart;
+  table["tblStep"]  = m_tblStep;
+  root["table"] = table;
+
   QFile f(resolveStateFilePath());
   if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
     return;
@@ -344,6 +351,15 @@ void UIController::loadState() {
   }
   if (mode.contains("drawMode"))
     m_drawMode = (mode["drawMode"].toInt() == 1) ? 1 : 0;
+
+  // TBLSET restore. Step must be non-zero — guard against bad data.
+  QJsonObject table = root.value("table").toObject();
+  if (table.contains("tblStart"))
+    m_tblStart = table["tblStart"].toDouble();
+  if (table.contains("tblStep")) {
+    double s = table["tblStep"].toDouble(1.0);
+    m_tblStep = (s != 0.0) ? s : 1.0;
+  }
 
   // Viewport.
   QJsonObject viewport = root.value("viewport").toObject();
@@ -1060,6 +1076,30 @@ void UIController::zoomOut() {
   m_yMin = cy - ry * 2.0;
   m_yMax = cy + ry * 2.0;
   emit viewportChanged();
+}
+
+QVariantList UIController::getTableRows(int count, double xStart) {
+  // Build `count` rows starting at xStart, stepping by m_tblStep.
+  // Each row evaluates Y1/Y2/Y3 at that X; non-scalar / failed
+  // results are omitted from the row (QML treats missing keys as
+  // "—"). Skipped for empty buffers to keep the table sparse — the
+  // user sees blank cells where no expression exists.
+  QVariantList rows;
+  MathStateMachine msm;
+  for (int i = 0; i < count; ++i) {
+    const double x = xStart + i * m_tblStep;
+    QVariantMap row;
+    row["x"] = x;
+    for (size_t f = 0; f < m_functionBuffers.size(); ++f) {
+      const auto &buf = m_functionBuffers[f];
+      if (buf.empty()) continue;
+      CalculationResult res = msm.evaluate(buf, x);
+      if (!res.success || res.isMatrix) continue;
+      row[QString("y%1").arg(f + 1)] = res.value;
+    }
+    rows.append(row);
+  }
+  return rows;
 }
 
 QVariantList UIController::getMultiGraphPoints(int resolution) {

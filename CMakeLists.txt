@@ -68,4 +68,6 @@ qt_add_resources(tux_ti83 "app_qml"
         "app/qml/components/LogicMenuPopup.qml"
         "app/qml/components/CatalogPopup.qml"
         "app/qml/components/ZoomPopup.qml"
+        "app/qml/components/TableView.qml"
+        "app/qml/components/TblSetPopup.qml"
 )

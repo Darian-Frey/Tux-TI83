@@ -164,6 +164,22 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-035: TABLE view (2ND + GRAPH) + TBLSET popup (2ND + WINDOW)
+
+- **Status:** applied (2026-05-23)
+- **Location:** [graph_ui/include/ui_controller.hpp](graph_ui/include/ui_controller.hpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/qml/components/TableView.qml](app/qml/components/TableView.qml), [app/qml/components/TblSetPopup.qml](app/qml/components/TblSetPopup.qml), [app/qml/Main.qml](app/qml/Main.qml), [app/qml/qmldir](app/qml/qmldir), [CMakeLists.txt](CMakeLists.txt)
+- **Effort:** medium
+- **Description:** TABLE mode (the X / Y1 / Y2 / Y3 tabular function view) is a TI-83 fixture that we had no equivalent for. With three function slots and a usable graph mode in place, a stepwise numeric view of the same data was the obvious next gap.
+- **Change:**
+  - Controller: three Q_PROPERTYs — `isTableMode` (mirrors `isGraphMode`, mutually exclusive), `tblStart`, `tblStep`. `Q_INVOKABLE toggleTableMode()` flips between table and keypad and clears `isGraphMode` so the two pages never coexist. `Q_INVOKABLE QVariantList getTableRows(int count, double xStart)` evaluates Y1/Y2/Y3 at each X for the requested window — empty / non-scalar / errored cells just get omitted from the row map so the QML can render them as `—`.
+  - New `TableView.qml`: header row (`X | Y1 | Y2 | Y3`) + 14 data rows refreshed whenever the table settings, any function buffer, the active slot, or a MODE setting changes. Numbers route through `uiController.formatScalar` so Sci/Fix2/Eng settings still apply. Footer hint shows the current TblStart/ΔTbl and how to scroll / open TBLSET.
+  - New `TblSetPopup.qml`: two numeric fields (TblStart, ΔTbl) with the same `Number.isFinite` guard pattern as WindowPopup, plus a zero-rejection on ΔTbl since a zero step would loop forever.
+  - Main.qml: StackLayout grew a third page (table). SoftKeyRow handler now branches on `root.secondArmed` — 2ND+GRAPH → toggleTableMode, 2ND+WINDOW → TBLSET popup. Up/Down keyboard handler gained a table-mode branch that nudges the TableView's `scrollOffsetSteps` by ±1 (taking precedence over the existing trace/cursor roles when in table mode).
+  - Persistence: state.json schema gained a `"table"` object with `tblStart` and `tblStep`. Restore guards against zero step (falls back to 1) so a corrupt state file can't strand the table renderer.
+  - Y= soft-key now also leaves TABLE mode (previously only left graph mode).
+- **Trade-offs:** Fixed visible-row count (14) — could grow with the window height, but the simple constant keeps the renderer trivial. Header always shows X/Y1/Y2/Y3 columns even if some slots are empty, which trades a slightly busier header for column-alignment stability when slots toggle on/off mid-session.
+- **Notes:** Closes the biggest remaining "calculator feature gap" — every primary soft-key + its 2ND companion now does something. Outstanding 2ND-soft-key combos: 2ND+ZOOM (MEMORY), 2ND+TRACE (CALC).
+
 ### IMP-034: Header MODE indicator becomes dynamic
 
 - **Status:** applied (2026-05-23)

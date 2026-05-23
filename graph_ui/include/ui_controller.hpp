@@ -28,6 +28,13 @@ private:
     Q_PROPERTY(QStringList history READ history NOTIFY historyChanged)
     Q_PROPERTY(int activeFunctionIndex READ activeFunctionIndex NOTIFY activeFunctionIndexChanged)
     Q_PROPERTY(bool isGraphMode MEMBER m_isGraphMode NOTIFY graphModeChanged)
+    // TABLE mode — 2ND+GRAPH on real TI-83. Replaces the keypad page
+    // in the main StackLayout with a scrollable table of Y(X) values.
+    // Mutually exclusive with isGraphMode.
+    Q_PROPERTY(bool isTableMode MEMBER m_isTableMode NOTIFY tableModeChanged)
+    // TblStart / ΔTbl from TBLSET. Defaults match TI-83: start 0, step 1.
+    Q_PROPERTY(double tblStart MEMBER m_tblStart NOTIFY tableSettingsChanged)
+    Q_PROPERTY(double tblStep  MEMBER m_tblStep  NOTIFY tableSettingsChanged)
     Q_PROPERTY(DisplayState displayState READ displayState NOTIFY displayStateChanged)
     Q_PROPERTY(QString displayExpression READ displayExpression NOTIFY displayStateChanged)
     // Angle mode: 0 = Radian, 1 = Degree. Mirrors
@@ -121,7 +128,30 @@ public:
     // `processExpression` so insertion uses the unified token table.
     Q_INVOKABLE QStringList catalogEntries() const;
     Q_INVOKABLE void setActiveFunction(int index) { m_activeIdx = index; emit activeFunctionIndexChanged(); }
-    Q_INVOKABLE void toggleGraphMode() { m_isGraphMode = !m_isGraphMode; emit graphModeChanged(); }
+    Q_INVOKABLE void toggleGraphMode() {
+        m_isGraphMode = !m_isGraphMode;
+        // Mutually exclusive with TABLE mode.
+        if (m_isGraphMode && m_isTableMode) {
+            m_isTableMode = false;
+            emit tableModeChanged();
+        }
+        emit graphModeChanged();
+    }
+    Q_INVOKABLE void toggleTableMode() {
+        m_isTableMode = !m_isTableMode;
+        if (m_isTableMode && m_isGraphMode) {
+            m_isGraphMode = false;
+            emit graphModeChanged();
+        }
+        emit tableModeChanged();
+    }
+    // Returns `count` table rows starting at X = xStart, stepping by
+    // tblStep. Each row is a QVariantMap with keys "x" plus optional
+    // "y1" / "y2" / "y3" (omitted when the function buffer is empty
+    // or evaluates to a non-scalar / error). Called by TableView.qml
+    // to populate the visible window — separate from getMultiGraphPoints
+    // because the table needs explicit X stepping (not viewport-derived).
+    Q_INVOKABLE QVariantList getTableRows(int count, double xStart);
     Q_INVOKABLE void resetViewport() { m_xMin = -10; m_xMax = 10; m_yMin = -10; m_yMax = 10; emit viewportChanged(); }
     // Last-entry recall (2ND+ENTER on a real TI-83). Each successful or
     // failed ENTER with a non-empty buffer pushes the token stream into
@@ -164,6 +194,8 @@ signals:
     void activeFunctionIndexChanged();
     void viewportChanged();
     void graphModeChanged();
+    void tableModeChanged();
+    void tableSettingsChanged();
     void displayStateChanged();
     void angleModeChanged();
     void notationChanged();
@@ -190,6 +222,9 @@ private:
     QStringList m_history;
     int m_activeIdx;
     bool m_isGraphMode = false;
+    bool m_isTableMode = false;
+    double m_tblStart = 0.0;
+    double m_tblStep  = 1.0;
     double m_xMin = -10, m_xMax = 10, m_yMin = -10, m_yMax = 10;
     DisplayState m_displayState = Inputting;
     QString m_displayExpression;

@@ -13,3 +13,5 @@ MODEPopup 1.0 components/MODEPopup.qml
 LogicMenuPopup 1.0 components/LogicMenuPopup.qml
 CatalogPopup 1.0 components/CatalogPopup.qml
 ZoomPopup 1.0 components/ZoomPopup.qml
+TableView 1.0 components/TableView.qml
+TblSetPopup 1.0 components/TblSetPopup.qml

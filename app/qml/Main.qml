@@ -271,9 +271,14 @@ ApplicationWindow {
                 event.accepted = true
                 return
             case Qt.Key_Up:
-                // In graph + trace mode, ↑/↓ walk between the three
-                // function slots (Y1 → Y2 → Y3 → Y1). Outside trace,
-                // these are unbound (no multi-line edit semantics).
+                // ↑ has two contextual roles:
+                //   - graph + trace: cycle to previous function slot
+                //   - table mode: scroll the visible window up by 1 step
+                if (uiController.isTableMode) {
+                    tableView.scrollOffsetSteps -= 1
+                    event.accepted = true
+                    return
+                }
                 if (uiController.isGraphMode && uiController.isTracing) {
                     const ai = uiController.activeFunctionIndex
                     uiController.setActiveFunction((ai + 2) % 3)  // up = previous
@@ -281,6 +286,11 @@ ApplicationWindow {
                 }
                 return
             case Qt.Key_Down:
+                if (uiController.isTableMode) {
+                    tableView.scrollOffsetSteps += 1
+                    event.accepted = true
+                    return
+                }
                 if (uiController.isGraphMode && uiController.isTracing) {
                     const ai = uiController.activeFunctionIndex
                     uiController.setActiveFunction((ai + 1) % 3)
@@ -426,6 +436,23 @@ ApplicationWindow {
         // ── 3. Soft-key row ─────────────────────────────
         SoftKeyRow {
             onPressed: function(label) {
+                // 2ND + soft-key opens the TI-83 "blue" variants.
+                // Currently wired: 2ND+WINDOW = TBLSET, 2ND+GRAPH = TABLE.
+                // (2ND+ZOOM = MEMORY, 2ND+TRACE = CALC are still no-ops.)
+                if (root.secondArmed) {
+                    root.secondArmed = false
+                    if (label === "WINDOW") {
+                        tblSetPopup.open()
+                        return
+                    }
+                    if (label === "GRAPH") {
+                        if (!uiController.isTableMode)
+                            uiController.toggleTableMode()
+                        return
+                    }
+                    // 2ND+<unmapped> falls through to primary action.
+                }
+
                 if (label === "WINDOW") {
                     windowPopup.open()
                 } else if (label === "ZOOM") {
@@ -440,20 +467,26 @@ ApplicationWindow {
                     if (!uiController.isGraphMode)
                         uiController.toggleGraphMode()
                 } else if (label === "Y=") {
+                    // Return to keypad from any graph/table mode.
                     if (uiController.isGraphMode)
                         uiController.toggleGraphMode()
+                    if (uiController.isTableMode)
+                        uiController.toggleTableMode()
                 }
             }
         }
 
-        // ── Mode switcher: keypad ↔ graph ────────────────
+        // ── Mode switcher: keypad ↔ graph ↔ table ────────
         // The bottom half of the calculator column swaps between the
-        // keypad sections (page 0) and the graph canvas (page 1).
-        // Toggled by the GRAPH / Y= soft keys above.
+        // keypad sections (page 0), the graph canvas (page 1), and
+        // the table view (page 2). Toggled by GRAPH / 2ND+GRAPH /
+        // Y= in the soft-key row above.
         StackLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            currentIndex: uiController.isGraphMode ? 1 : 0
+            currentIndex: uiController.isTableMode ? 2
+                        : uiController.isGraphMode ? 1
+                        : 0
 
             // ── Page 0: keypad (CONTROL / SCIENTIFIC / NUMERIC) ──
             ColumnLayout {
@@ -625,6 +658,9 @@ ApplicationWindow {
 
             // ── Page 1: graph canvas ─────────────────────
             GraphCanvas { }
+
+            // ── Page 2: table view ───────────────────────
+            TableView { id: tableView }
         }
             }
         }
@@ -663,5 +699,9 @@ ApplicationWindow {
 
     ZoomPopup {
         id: zoomPopup
+    }
+
+    TblSetPopup {
+        id: tblSetPopup
     }
 }
