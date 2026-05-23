@@ -174,9 +174,10 @@ Engine implements more than the UI currently exposes — listed below.
 - ✅ `STO→` store-to-variable — added 2026-04-18 (`Token::Sto`, lowest precedence, preprocessing consumes the target `VarA..VarZ` and records its index; accessible via the MATH menu `→ (STO)` entry, keyboard `|`, or ASCII `->`; error paths don't mutate the registry)
 - ✅ `Ans` (last answer) — auto-populated after every successful ENTER via `MathStateMachine::lastResult`; `Token::Ans` pushes the stored scalar or matrix onto the operand stack; NUMERIC row 4 col 4 CalcKey inserts it into the expression (added 2026-04-07)
 - ✅ Last-entry recall (2nd + ENTER cycles backwards through history) — added 2026-04-18 (10-deep ring buffer in UIController; each non-empty ENTER pushes the raw token stream; recallLastEntry walks back one step per call and clamps at the oldest entry; any non-recall input resets the cycle; errors get stored too so typos can be fixed)
-- 📅 `Y-VARS` store/recall (functions, window vars, statistics, etc.)
-- 📅 Memory management menu (`MEM`): list/delete/clear by category
-- 💭 Persistent storage across runs (save calculator state to disk)
+- ✅ `Y-VARS` recall — `Y1` / `Y2` / `Y3` reference the corresponding function buffer; recursively evaluated at the current X with cycle detection (`ERR:RECURSION` on self-ref or mutual cycles), see [IMP-036](IMPROVEMENTS.md). Bare form only — `Y1(3)` parses as `Y1*3` (deferred).
+- 📅 `Y-VARS` store + window/stat variants (Y1=expr from the home screen, RegEq, statistical variables) — only the recall form of Y_n is wired so far.
+- ✅ Memory management — factory RESET button in the MODE popup clears every persisted + in-memory piece of state and removes state.json; see [IMP-038](IMPROVEMENTS.md). Full TI-83 MEM menu (list/delete by category) still pending.
+- ✅ Persistent storage across runs — session state (scalars, matrices, Y= buffers, viewport, MODE, TBLSET) is saved to `~/.local/state/tux-ti83/state.json` on clean exit and reloaded on launch; see [IMP-033](IMPROVEMENTS.md). Save-on-clean-exit only for now — periodic timer save would protect against crashes (follow-up).
 - 💭 `DelVar` for explicit variable deletion
 
 ## Matrices
@@ -241,8 +242,9 @@ Engine implements more than the UI currently exposes — listed below.
 - 📅 Xres (graph resolution / x-step — controller doesn't track this yet)
 
 ### Tables
-- 📅 `TABLE` view — function values for a sequence of x's
-- 📅 `TBLSET` (start, step, auto/ask)
+
+- ✅ `TABLE` view — function values for a sequence of x's, opened via 2ND+GRAPH; scrollable X | Y1 | Y2 | Y3 with ↑/↓ stepping; see [IMP-035](IMPROVEMENTS.md)
+- ✅ `TBLSET` (start, step) — popup opened via 2ND+WINDOW; auto/ask not yet implemented (currently auto-only)
 
 ### Zoom menu (full TI-83 set)
 - ✅ ZStandard, ZoomFit
@@ -309,7 +311,7 @@ Engine implements more than the UI currently exposes — listed below.
 - ✅ ALPHA-lock mode — added 2026-04-18 (2ND + ALPHA toggles a persistent `alphaLocked` flag in addition to the one-shot `alphaArmed`; header shows "A-LOCK" when locked; any letter keypress fires its ALPHA variant without clearing the lock; ALPHA alone or CLEAR releases it; 2ND during lock preserves the lock so 2ND+letter combos stay usable mid-typing)
 - 📅 `MODE` menu follow-ups — Notation (Normal/Sci/Eng), Decimal (Float/Fix N), and Draw (Connected/Dot) all wired now. Remaining placeholder rows: Graph: Func/Par/Pol/Seq, Plot: Sequential/Simul (needs frame-by-frame animation framework), Complex: Real/a+bi/re^θi, Screen: Full/Horiz/G-T. Each needs a backing property + evaluator/renderer support.
 - 📅 `CATALOG` browser (alphabetical list of every command)
-- 📅 Mode indicator in the header (currently hardcoded "NORMAL  DEG")
+- ✅ Mode indicator in the header — dynamic, binds to `notation` / `fixDecimals` / `angleMode`. Renders e.g. `NORMAL  RAD` (defaults) or `SCI  FIX 2  DEG`; see [IMP-034](IMPROVEMENTS.md).
 - ✅ WINDOW popup ported to the new UI (see Graphing › Window settings)
 - ✅ Matrix editor popup ported to the new UI (see Matrices)
 - ✅ Logic operator menu ported to the new UI — `LogicMenuPopup` landed 2026-04-18 (see Comparators & boolean section above for details)
