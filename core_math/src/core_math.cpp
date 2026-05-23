@@ -50,6 +50,7 @@ int EOSPrecedence::precedence(Token t) {
   case Token::NthRoot:
     return 3;
   case Token::Mul:
+  case Token::ImplicitMul:
   case Token::Div:
   case Token::Neg: // Same as Mul/Div so −3*4 = (−3)*4 = −12 but −3^2 = −(3^2) = −9.
     return 2;
@@ -345,9 +346,9 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
   // target and records the letter index in `storeTargets`. The evaluator
   // reads this in source order as each Sto fires, so the sidebar layout
   // mirrors `numericValues` for Num0.
-  std::vector<Token> finalTokens;
+  std::vector<Token> stoTokens;
   std::vector<int> storeTargets;
-  finalTokens.reserve(processedTokens.size());
+  stoTokens.reserve(processedTokens.size());
   for (size_t i = 0; i < processedTokens.size(); ++i) {
     if (processedTokens[i] == Token::Sto) {
       if (i + 1 >= processedTokens.size() ||
@@ -356,11 +357,51 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
         return {false, 0.0, {}, false, "Syntax Error"};
       storeTargets.push_back(
           (int)processedTokens[i + 1] - (int)Token::VarA);
-      finalTokens.push_back(Token::Sto);
+      stoTokens.push_back(Token::Sto);
       ++i;  // skip the target Var — already consumed.
     } else {
-      finalTokens.push_back(processedTokens[i]);
+      stoTokens.push_back(processedTokens[i]);
     }
+  }
+
+  // Third preprocessing pass: insert ImplicitMul between juxtaposed
+  // value-like tokens so `2π`, `2(3+4)`, `(3)(4)`, `2sin(x)`, `5X`
+  // all work without an explicit `×`. IMP-005.
+  //
+  // `valueLikeEnd`: the previous token produces a value that can be
+  // the LHS of a multiplication. `valueLikeStart`: the current token
+  // begins something that can be the RHS. When both hold, we inject.
+  auto valueLikeEnd = [](Token t) {
+    return t == Token::Num0 ||
+           t == Token::Pi || t == Token::E || t == Token::Ans ||
+           t == Token::RightParen || t == Token::Fact ||
+           (t >= Token::VarA && t <= Token::VarZ) ||
+           (t >= Token::MatA && t <= Token::MatJ);
+  };
+  auto valueLikeStart = [](Token t) {
+    return t == Token::Num0 ||
+           t == Token::Pi || t == Token::E || t == Token::Ans ||
+           t == Token::LeftParen ||
+           (t >= Token::VarA && t <= Token::VarZ) ||
+           (t >= Token::MatA && t <= Token::MatJ) ||
+           EOSPrecedence::is_function(t);
+  };
+  std::vector<Token> finalTokens;
+  finalTokens.reserve(stoTokens.size() * 2);
+  for (size_t i = 0; i < stoTokens.size(); ++i) {
+    if (i > 0 && valueLikeEnd(stoTokens[i - 1]) &&
+        valueLikeStart(stoTokens[i])) {
+      // Neg is treated as a function by is_function (for shunting-yard
+      // unary handling), but `2-3` should never become `2 ImplicitMul
+      // (Neg 3)` — the Sub-vs-Neg disambiguation lives in the UI's
+      // insertToken, so by the time we see Neg here the user did
+      // intend a unary minus. Still skip injection on Neg to keep
+      // `2-3` → `2 - 3` rather than `2 * (-3)`. The latter is
+      // numerically identical here but loses source structure.
+      if (stoTokens[i] != Token::Neg)
+        finalTokens.push_back(Token::ImplicitMul);
+    }
+    finalTokens.push_back(stoTokens[i]);
   }
 
   std::vector<std::pair<Token, double>> rpn;
@@ -692,7 +733,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
           stack.push({false, a.val - b.val, {}});
         else
           return {false, 0.0, {}, false, "Type Error"};
-      } else if (t == Token::Mul) {
+      } else if (t == Token::Mul || t == Token::ImplicitMul) {
         if (a.isMat && b.isMat) {
           // BUG-011 fix: matrixMul silently returned an empty Matrix when
           // a.cols != b.rows. Now we check the conformability rule here

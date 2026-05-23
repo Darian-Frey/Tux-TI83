@@ -160,33 +160,34 @@ Each entry uses this template:
 - **Notes:** Worth doing before adding negative literals or scientific
   notation, both of which would extend this code path.
 
-### IMP-005: `Token::ImplicitMul` declared but never generated or handled
-- **Status:** suggested
-- **Found:** 2026-04-06 (post-Step 6 spot-check)
-- **Location:** [core_math/include/capsules/capsule_math.hpp:27](core_math/include/capsules/capsule_math.hpp#L27) (declared); never referenced in `core_math.cpp`
-- **Effort:** medium
-- **Description:** `ImplicitMul` is in the `Token` enum but the input
-  pre-pass never synthesises it (e.g., between a number and a variable
-  in `2x`), and the evaluator has no case for it. It's currently a
-  dead enum value.
-- **Proposal:** Either delete it (if implicit multiplication isn't
-  planned), or implement it: post-process the token stream after
-  parsing, walking adjacent pairs and inserting `ImplicitMul` between
-  juxtaposed pairs like `(Num, VarX)`, `(RightParen, LeftParen)`,
-  `(VarX, LeftParen)`, `(Pi, Num)`, etc. Then add a case in the
-  operator-handling branch that treats it as a high-precedence
-  multiplication.
-- **Trade-offs:** Implementing it makes the calculator feel more
-  natural (`2π` works without an explicit `*`) but adds complexity to
-  the token-stream rewrite pass. Real TI-83 supports it for specific
-  pairings.
-- **Notes:** If we keep it as a planned feature, log it on
-  [ROADMAP.md](ROADMAP.md) as a numeric-core item. If we don't, delete
-  the enum value.
-
 ---
 
 ## Applied
+
+### IMP-032: Dedicated `!` and `STO▸` keys on the GUI
+
+- **Status:** applied (2026-05-09)
+- **Location:** [app/qml/Main.qml](app/qml/Main.qml)
+- **Effort:** trivial
+- **Description:** Factorial and the STO assignment arrow were both menu-only — `!` lived under MATH, `→` under MATH → STO. Users testing implicit multiplication couldn't find either without scrolling. Real TI-83 has a dedicated STO▸ key and `!` accessible as 2ND+÷ (the PRB menu) — both more discoverable than our menus.
+- **Change:**
+  - Added `"÷": "!"` to `secondMap` and a `secondLabel: "!"` corner label on the ÷ CalcKey. 2ND+÷ now inserts `!` directly. Matches the TI-83 PRB-menu convention.
+  - The empty 5th slot of the CURSOR section now holds a `STO▸` CalcKey wired to `processExpression("→")`. STO doesn't have a natural 2ND home on the existing layout, so it gets its own key — one click away, out of the main flow.
+- **Trade-offs:** STO living in the CURSOR section is layout pragmatism, not semantics. The alternative (rearrange the keypad to free a numeric-grid slot) would have shuffled keys users have already learned. Acceptable for now; a future Y-editor or keypad redesign could move it.
+- **Notes:** Closes the UX gap surfaced when verifying IMP-031 (implicit multiplication).
+
+### IMP-031: Implicit multiplication by juxtaposition
+
+- **Status:** applied (2026-05-09) — closes IMP-005 (originally suggested 2026-04-06).
+- **Location:** [core_math/include/capsules/capsule_math.hpp](core_math/include/capsules/capsule_math.hpp), [core_math/src/core_math.cpp](core_math/src/core_math.cpp), [tests/test_math.cpp](tests/test_math.cpp)
+- **Effort:** small
+- **Description:** `Token::ImplicitMul` has been in the enum since the early days but never generated or handled — `2π`, `2(3+4)`, `(3)(4)`, `2sin(x)`, `5X` all returned ERR:SYNTAX. Real TI-83 supports implicit multiplication for these juxtapositions, and not having it was a genuine annoyance.
+- **Change:**
+  - Added `Token::ImplicitMul` to the precedence table (same as Mul/Div — 2) and to the binary-op evaluator branch (`t == Token::Mul || t == Token::ImplicitMul`). Behaviourally identical to Mul on the eval side; separate token so the source structure stays inspectable.
+  - New third preprocessing pass in `evaluate()` walks the token stream after digit-flush and Sto-target consumption, injecting `ImplicitMul` whenever a "value-like-end" token (Num0, Pi, E, Ans, RightParen, Fact, VarA..Z, MatA..J) is immediately followed by a "value-like-start" (the same set plus LeftParen and any function token). Deliberately skips injection when the next token is `Neg` so `2-3` stays as subtraction rather than `2 * (-3)` — the Sub-vs-Neg disambiguation happens earlier in `UIController::insertToken` and is authoritative.
+  - 11 new regression tests: `2π`, `2(3+4)`, `(3)(4)`, `(1+2)(3+4)`, `2sin(0)`, `3!2`, chained `2π3`, `π^2`, variable juxtaposition `5A` and `2A+3A`, plus a `2-3 → -1` regression guard. 221/221 passing.
+- **Trade-offs:** Chose Mul-equal precedence rather than the TI-83's slightly-higher-than-Mul precedence for implicit (which would make `1/2X` → `1/(2X)`). Equal precedence gives `1/2X` → `X/2`, which matches the explicit equivalent `1/2*X` and is less surprising for new users. Parens cover the other reading.
+- **Notes:** Closes IMP-005, which has sat in Suggested since 2026-04-06. Surfaced a discoverability gap (`!` and `STO▸` were menu-only) that IMP-032 closed in the same session.
 
 ### IMP-030: TRACE polish — ↑/↓ cycles function, readout respects MODE
 

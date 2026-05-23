@@ -31,6 +31,11 @@ enum class Token {
   // NONREAL ANS for even n on a negative x. Real TI-83 binds 2ND+^
   // to this; `xroot` works as an ASCII alias.
   NthRoot,
+  // Implicit multiplication — never typed directly by the user.
+  // A preprocessing pass in `evaluate()` synthesises this between
+  // juxtaposed value-like tokens (`2π`, `2(3)`, `(3)(4)`, `2sin(x)`,
+  // `5X`). Same precedence + behaviour as Mul on the eval side;
+  // separate token so the source structure stays inspectable.
   ImplicitMul,
   Sin,
   Cos,

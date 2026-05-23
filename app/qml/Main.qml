@@ -50,6 +50,7 @@ ApplicationWindow {
         "^":    "ˣ√",
         "x²":   "√(",
         "ln(":  "e^(",
+        "÷":    "!",      // factorial — matches TI-83 PRB convention
         "(-)":  "Ans"
     })
 
@@ -481,9 +482,11 @@ ApplicationWindow {
             CalcKey { label: "←";    keyType: "function"; onPressed: root.navLeft() }
             CalcKey { label: "→";    keyType: "function"; onPressed: root.navRight() }
             CalcKey { label: "END";  keyType: "function"; onPressed: uiController.moveCursorEnd() }
-            // 5th column intentionally empty so the four keys span
-            // most of the row width without crowding.
-            Item { Layout.fillWidth: true }
+            // STO▸ doesn't have a natural 2ND home on the existing
+            // keypad, so it lives in the 5th CURSOR slot — out of the
+            // way but always one click away (matches the spirit of the
+            // dedicated key on real TI-83 hardware).
+            CalcKey { label: "STO▸"; keyType: "function"; onPressed: uiController.processExpression("→") }
         }
 
         // ── 5. SCIENTIFIC section ───────────────────────
@@ -533,7 +536,7 @@ ApplicationWindow {
             CalcKey { label: ")";  keyType: "function"; alphaLabel: "L"; onPressed: root.handleKey(")") }
             CalcKey { label: ",";  keyType: "function"; alphaLabel: "J"; onPressed: root.handleKey(",") }
             CalcKey { label: "X";  keyType: "function"; onPressed: root.handleKey("X") }
-            CalcKey { label: "÷";  keyType: "operator"; alphaLabel: "M"; onPressed: root.handleKey("÷") }
+            CalcKey { label: "÷";  keyType: "operator"; secondLabel: "!"; alphaLabel: "M"; onPressed: root.handleKey("÷") }
 
             // Row 2
             CalcKey { label: "7";  keyType: "numeric"; alphaLabel: "O"; onPressed: root.handleKey("7") }

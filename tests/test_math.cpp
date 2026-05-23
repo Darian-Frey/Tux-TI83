@@ -699,6 +699,32 @@ int main(int argc, char *argv[]) {
   check("2ˣ√3ˣ√64 = 2 (right-assoc)",
         eval(c, "2ˣ√3ˣ√64"), "2");
 
+  section("Implicit multiplication by juxtaposition (IMP-005)");
+  check("2π = 2 × π",
+        eval(c, "2π"), UIController::formatScalar(2.0 * M_PI));
+  check("2(3+4) = 14",     eval(c, "2(3+4)"),     "14");
+  check("(3)(4) = 12",     eval(c, "(3)(4)"),     "12");
+  check("(1+2)(3+4) = 21", eval(c, "(1+2)(3+4)"), "21");
+  check("2sin(0) = 0",     eval(c, "2sin(0)"),    "0");
+  check("3!2 = 12 (factorial juxtaposed with number)",
+        eval(c, "3!2"), "12");
+  check("2π3 = 6π (chained juxtaposition)",
+        eval(c, "2π3"), UIController::formatScalar(6.0 * M_PI));
+  check("π² = π × π",
+        eval(c, "π^2"), UIController::formatScalar(M_PI * M_PI));
+
+  // Variable juxtaposition: 5A with A = 4 should give 20.
+  tux_ti83::MathStateMachine::varRegistry.fill(0.0);
+  evalChained(c, "4→A");
+  check("5A with A=4 = 20",
+        eval(c, "5A"), "20");
+  check("2A+3A = 20 (mixed juxtaposition + binary)",
+        eval(c, "2A+3A"), "20");
+
+  // Regression: 2-3 must still parse as subtraction, not 2*(-3).
+  check("2-3 stays as subtraction → -1",
+        eval(c, "2-3"), "-1");
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

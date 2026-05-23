@@ -114,9 +114,9 @@ yet built: 2ND modifier system, ALPHA modifier system (see
 - ✅ Parentheses, decimal point, π
 - ✅ Order of operations
 - ✅ Unary negation `(-)` — `Token::Neg` with precedence 2 and `is_function` semantics; the on-screen `(-)` CalcKey sends `"neg"` while the `−` key and keyboard `-` still send binary Sub (fixed 2026-04-07, closes BUG-014)
-- 📅 `x²` shortcut key
-- 📅 `nthroot(`
-- 📅 Implicit multiplication by juxtaposition (`2(3)`, `2π`) — see [IMP-005](IMPROVEMENTS.md) for the dead `Token::ImplicitMul`
+- ✅ `x²` shortcut key — wired in NUMERIC row 3 as "^ then 2" (Phase A); also `√` via 2ND+x²
+- ✅ `nthroot(` — landed 2026-04-29 as binary infix `ˣ√` (2ND+^), see [IMP-025](IMPROVEMENTS.md)
+- ✅ Implicit multiplication by juxtaposition (`2(3)`, `2π`) — landed 2026-05-09 as a preprocessing pass that injects `Token::ImplicitMul` between value-like token pairs, see [IMP-031](IMPROVEMENTS.md) (closes IMP-005)
 
 ### Transcendental
 - ✅ `sin`, `cos`, `tan` (engine + UI keys in SCIENTIFIC section)
