@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <map>
+#include <set>
 #include <stack>
 #include <string>
 
@@ -13,6 +14,7 @@ AngleMode MathStateMachine::angleMode = AngleMode::Radian;
 NumberNotation MathStateMachine::notation = NumberNotation::Normal;
 int MathStateMachine::fixDecimals = -1;  // -1 = Float (no fix)
 CalculationResult MathStateMachine::lastResult{true, 0.0, {}, false, ""};
+std::function<std::vector<Token>(int)> MathStateMachine::yLookup;
 
 int EOSPrecedence::precedence(Token t) {
   switch (t) {
@@ -371,19 +373,24 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
   // `valueLikeEnd`: the previous token produces a value that can be
   // the LHS of a multiplication. `valueLikeStart`: the current token
   // begins something that can be the RHS. When both hold, we inject.
-  auto valueLikeEnd = [](Token t) {
+  auto isYn = [](Token t) {
+    return t == Token::Y1 || t == Token::Y2 || t == Token::Y3;
+  };
+  auto valueLikeEnd = [&isYn](Token t) {
     return t == Token::Num0 ||
            t == Token::Pi || t == Token::E || t == Token::Ans ||
            t == Token::RightParen || t == Token::Fact ||
            (t >= Token::VarA && t <= Token::VarZ) ||
-           (t >= Token::MatA && t <= Token::MatJ);
+           (t >= Token::MatA && t <= Token::MatJ) ||
+           isYn(t);
   };
-  auto valueLikeStart = [](Token t) {
+  auto valueLikeStart = [&isYn](Token t) {
     return t == Token::Num0 ||
            t == Token::Pi || t == Token::E || t == Token::Ans ||
            t == Token::LeftParen ||
            (t >= Token::VarA && t <= Token::VarZ) ||
            (t >= Token::MatA && t <= Token::MatJ) ||
+           isYn(t) ||
            EOSPrecedence::is_function(t);
   };
   std::vector<Token> finalTokens;
@@ -412,7 +419,8 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
       rpn.push_back({t, numericValues[numIdx++]});
     else if ((t >= Token::MatA && t <= Token::MatJ) ||
              (t >= Token::VarA && t <= Token::VarZ) ||
-             t == Token::Pi || t == Token::E || t == Token::Ans)
+             t == Token::Pi || t == Token::E || t == Token::Ans ||
+             t == Token::Y1 || t == Token::Y2 || t == Token::Y3)
       rpn.push_back({t, 0.0});
     else if (t == Token::Fact) {
       // Unary postfix. Its operand is already in rpn ahead of this,
@@ -509,6 +517,36 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
       // Recall the last successful evaluation result. Defaults to the
       // scalar 0 on first use (matches TI-83 power-on state).
       stack.push({lastResult.isMatrix, lastResult.value, lastResult.matrixValue});
+    } else if (t == Token::Y1 || t == Token::Y2 || t == Token::Y3) {
+      // Y-VARS — recursively evaluate the referenced function buffer
+      // at the current xValue. Cycle guard via a static thread_local
+      // set keyed by Y-index: any attempt to re-enter a Y_n already
+      // mid-evaluation returns "Recursion". An empty referenced
+      // buffer (or null yLookup) silently evaluates to 0 — matches
+      // TI-83 behaviour of an empty function slot.
+      const int yIdx = (t == Token::Y1) ? 0
+                     : (t == Token::Y2) ? 1
+                                        : 2;
+      static thread_local std::set<int> activeYn;
+      if (activeYn.count(yIdx))
+        return {false, 0.0, {}, false, "Recursion"};
+      if (!yLookup) {
+        stack.push({false, 0.0, {}});
+        continue;
+      }
+      std::vector<Token> buf = yLookup(yIdx);
+      if (buf.empty()) {
+        stack.push({false, 0.0, {}});
+        continue;
+      }
+      activeYn.insert(yIdx);
+      MathStateMachine sub;
+      CalculationResult subRes = sub.evaluate(buf, xValue);
+      activeYn.erase(yIdx);
+      if (!subRes.success) return subRes;
+      if (subRes.isMatrix)
+        return {false, 0.0, {}, false, "Type Error"};
+      stack.push({false, subRes.value, {}});
     } else if (t == Token::Sto) {
       // Write the top-of-stack value into varRegistry[target] and push
       // it back so the display reflects the stored value. Scalar only —

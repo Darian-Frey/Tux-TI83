@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <functional>
 #include <map>
 #include <string>
 #include <vector>
@@ -161,7 +162,16 @@ enum class Token {
   // Last-answer recall. Populated by the controller after any successful
   // ENTER; retrieved by the evaluator when it sees this token and pushed
   // onto the operand stack (scalar or matrix, per lastResult.isMatrix).
-  Ans
+  Ans,
+  // Y-VARS — references to the user-defined function buffers Y1/Y2/Y3.
+  // When evaluated, the engine recursively evaluates the referenced
+  // buffer at the current xValue. Bare form only (Y1 alone uses
+  // current X); explicit-argument form `Y1(3)` is not supported in
+  // v1 — it parses as `Y1 * 3` via the existing implicit-mul rule.
+  // Self-reference and cross-Y cycles return "Recursion".
+  Y1,
+  Y2,
+  Y3
 };
 
 struct Matrix {
@@ -242,5 +252,12 @@ public:
   // after every successful ENTER and recalled via Token::Ans. Matches
   // a TI-83's `Ans` behaviour — errors don't overwrite it.
   static CalculationResult lastResult;
+
+  // Y-VARS lookup. The UI controller sets this on construction to a
+  // lambda that returns m_functionBuffers[idx] (idx ∈ {0,1,2} for
+  // Y1/Y2/Y3). Stays null in headless contexts (CLI/REPL/tests) —
+  // the evaluator then treats every Y_n as 0, matching the TI-83
+  // behaviour of an empty function slot.
+  static std::function<std::vector<Token>(int)> yLookup;
 };
 } // namespace tux_ti83

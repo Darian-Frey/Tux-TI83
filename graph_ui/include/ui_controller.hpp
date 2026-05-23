@@ -167,6 +167,14 @@ public:
     // (~/.local/state/tux-ti83/state.json on most Linux desktops).
     Q_INVOKABLE void saveState() const;
     Q_INVOKABLE void loadState();
+    // Factory reset — clears every piece of session and persisted
+    // state (scalars A..Z, matrices [A]/[B]/[C], function buffers
+    // Y1/Y2/Y3, history, entry-recall ring, viewport, MODE settings,
+    // TBLSET) and removes state.json so the next launch starts truly
+    // clean. Lasting state goes away; ephemeral state (current display,
+    // arming flags) likewise resets. No confirmation prompt — the
+    // trigger is a deliberate click in the MODE popup.
+    Q_INVOKABLE void resetAll();
     // Token-level cursor movement. Left/Right step by one token
     // (matches TI-83 behaviour: `sin(` is one visual step, not four);
     // Home/End jump to the extremes. All four are no-ops outside

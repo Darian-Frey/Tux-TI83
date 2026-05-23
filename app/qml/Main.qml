@@ -35,6 +35,15 @@ ApplicationWindow {
     // is active" for the next keypress. After a key fires its ALPHA
     // variant, alphaArmed is cleared but alphaLocked stays.
     property bool alphaLocked: false
+    // One-keystroke lookahead for `Y` so the keyboard can type the
+    // multi-char Y1/Y2/Y3 tokens directly. The `Y` keystroke is
+    // inserted immediately (so the user sees their keystroke); if
+    // the next keystroke is 1/2/3 we backspace the Y and re-insert
+    // the fused Y1/Y2/Y3 token. Anything else just clears the flag
+    // and the previously-inserted Y stays as a plain VarY token.
+    // Cleared by cursor moves / CLEAR / ENTER so the fuse doesn't
+    // fire across edits the user didn't intend to chain.
+    property bool pendingY: false
     // Derived "ALPHA is in effect for the next keypress" flag. CalcKeys
     // that bypass handleKey (MATH, MATRX, x², (-)) need this explicit
     // combination — checking only alphaArmed would miss lock mode.
@@ -233,6 +242,25 @@ ApplicationWindow {
             if (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))
                 return
 
+            // Y lookahead — the previous keystroke inserted a visible
+            // VarY and set pendingY. If THIS keystroke is 1/2/3, we
+            // backspace the Y and re-insert the fused Y1/Y2/Y3 token.
+            // Anything else just clears the flag and leaves the Y as
+            // a plain VarY.
+            if (root.pendingY) {
+                root.pendingY = false
+                const text = event.text
+                if (text === "1" || text === "2" || text === "3") {
+                    uiController.processInput("DEL")
+                    root.handleKey("Y" + text)
+                    event.accepted = true
+                    return
+                }
+                // Fall through — the Y was already inserted on the
+                // previous keystroke; continue processing this new
+                // event normally.
+            }
+
             // Modifier-arming shortcuts
             if (event.key === Qt.Key_Tab) {
                 root.armAlpha()
@@ -250,23 +278,28 @@ ApplicationWindow {
             case Qt.Key_Return:
             case Qt.Key_Enter:
             case Qt.Key_Equal:
+                root.pendingY = false
                 root.handleKey("ENTER")
                 event.accepted = true
                 return
             case Qt.Key_Backspace:
+                root.pendingY = false
                 root.handleKey("DEL")
                 event.accepted = true
                 return
             case Qt.Key_Escape:
+                root.pendingY = false
                 root.clearModifiers()
                 root.handleKey("CLEAR")
                 event.accepted = true
                 return
             case Qt.Key_Left:
+                root.pendingY = false
                 root.navLeft()
                 event.accepted = true
                 return
             case Qt.Key_Right:
+                root.pendingY = false
                 root.navRight()
                 event.accepted = true
                 return
@@ -310,9 +343,23 @@ ApplicationWindow {
             // Printable characters routed by event.text. Using text
             // (not key code) keeps the mapping layout-agnostic — Shift,
             // numpad, and non-US layouts all just work.
-            if (event.text.length === 0)
+            if (event.text.length === 0) {
+                // Modifier-only event (Shift, Ctrl release, etc.) —
+                // don't let it disturb the pending-Y state.
                 return
+            }
             const ch = event.text.charAt(0)
+
+            // First Y: insert it now (visible feedback) and arm the
+            // lookahead. The next keystroke handler at the top will
+            // either fuse (digit 1/2/3) or clear the flag.
+            if (ch === "Y") {
+                root.handleKey("Y")
+                root.pendingY = true
+                event.accepted = true
+                return
+            }
+
             const map = {
                 "0": "0", "1": "1", "2": "2", "3": "3", "4": "4",
                 "5": "5", "6": "6", "7": "7", "8": "8", "9": "9",
@@ -322,7 +369,21 @@ ApplicationWindow {
                 "s": "sin(", "c": "cos(", "t": "tan(",
                 "l": "log(", "n": "ln(", "r": "√(", "p": "π",
                 "!": "!",
-                "|": "→"  // STO assignment arrow — Shift-\\ on US layout.
+                "|": "→",  // STO assignment arrow — Shift-\\ on US layout.
+                // Uppercase letters → single-letter variable tokens.
+                // Lowercase is reserved for the function shortcuts
+                // above (s/c/t/l/n/r/p), so users type SHIFT+letter
+                // when they actually want a variable. Y1/Y2/Y3 still
+                // need CATALOG (2ND+0) since they're multi-char tokens
+                // and the keyboard handler is single-char.
+                "A": "A", "B": "B", "C": "C", "D": "D", "E": "E",
+                "F": "F", "G": "G", "H": "H", "I": "I", "J": "J",
+                "K": "K", "L": "L", "M": "M", "N": "N", "O": "O",
+                "P": "P", "Q": "Q", "R": "R", "S": "S", "T": "T",
+                // "Y" is handled by the pendingY lookahead above so
+                // a `Y` followed by `1`/`2`/`3` fuses into the
+                // multi-char Y1/Y2/Y3 token.
+                "U": "U", "V": "V", "W": "W", "X": "X", "Z": "Z"
             }
             if (map.hasOwnProperty(ch)) {
                 root.handleKey(map[ch])

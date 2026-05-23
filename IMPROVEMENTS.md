@@ -164,6 +164,45 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-038: Factory RESET button + MODE popup height fix
+
+- **Status:** applied (2026-05-23)
+- **Location:** [graph_ui/include/ui_controller.hpp](graph_ui/include/ui_controller.hpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/qml/components/MODEPopup.qml](app/qml/components/MODEPopup.qml)
+- **Effort:** small
+- **Description:** No way to reset the calculator. State accumulated across sessions could put the user in a confused configuration with no recourse short of deleting `state.json` manually. Real TI-83 has a MEM menu with a reset option; surfaced when the user's session-spanning state showed unexpected results.
+- **Change:**
+  - New `Q_INVOKABLE UIController::resetAll()`. Clears scalars A..Z, matrix registry, function buffers Y1/Y2/Y3, display strings, history, entry-recall ring, cursor position, display state, viewport (back to `-10..10`), MODE settings (Radian / Normal / Float / Connected), insert mode, trace state, and TBLSET (start=0, step=1). Also removes the `state.json` file so a subsequent restart starts truly clean. Emits every change signal in one pass so QML bindings refresh in lockstep.
+  - Added a `RESET` button (control-style colouring) to MODEPopup, sitting above DONE. Bumped the popup's height from 420→500 to fit the new row — the original DONE button had been clipped off the bottom.
+- **Trade-offs:** No confirmation prompt. Adding one would be a few lines but the deliberate-click-in-MODE-popup gesture is intentional enough; a one-stray-tap risk is low. CLEAR doesn't auto-reset because that would be very disruptive (CLEAR is high-frequency).
+- **Notes:** Pairs with IMP-037 (keyboard letters) — together they unblock the typical "I want to test something with a clean slate" workflow.
+
+### IMP-037: Uppercase keyboard letters + `Y1`/`Y2`/`Y3` keyboard fuse
+
+- **Status:** applied (2026-05-23)
+- **Location:** [app/qml/Main.qml](app/qml/Main.qml) (keyboard handler)
+- **Effort:** small
+- **Description:** Two related keyboard gaps. (1) Uppercase letters fell through the keymap unmapped, so typing `A`, `B`, `X`, `Y` did nothing — variables were menu-only. (2) After fixing (1), typing `Y1` on the keyboard inserted `VarY` then `Num1`, which with implicit-mul evaluated as `Y * 1 = 0` rather than the Y-VAR token introduced in IMP-036.
+- **Change:**
+  - Added uppercase `A`–`Z` to the keyboard keymap (each → the single-letter token input). Lowercase remains reserved for the function shortcuts (`s` → `sin(`, etc.) so users press SHIFT+letter for a variable, lowercase for a function.
+  - One-keystroke lookahead for `Y`: the first `Y` keystroke is inserted immediately (visible feedback — the display shows `Y` and the cursor advances) and arms a `pendingY` flag at the root. If the very next keystroke is `1`/`2`/`3`, the handler backspaces the just-inserted `Y` and re-inserts the fused `Y1`/`Y2`/`Y3` token in its place. Any other keystroke just clears the flag — the `Y` stays as a plain `VarY`. ENTER, CLEAR, backspace, and cursor moves also clear `pendingY` so the fuse only fires on the immediate next keystroke.
+- **Trade-offs:** The earlier deferred-insert version had no visual feedback after typing `Y` — user couldn't tell if their keystroke registered. Switched to optimistic-insert + rewrite for the visible-feedback win. Edge case: if the user types `Y`, moves the cursor away, then types `1` somewhere else, no fuse fires (the cursor-move clears the flag) — that's the right call.
+- **Notes:** Y1/Y2/Y3 via keyboard now matches the on-screen CATALOG path. Other multi-char tokens (sin(, cos(, etc.) already had single-char keyboard shortcuts so they don't need this treatment.
+
+### IMP-036: Y-VARS recall — Y1/Y2/Y3 referenced from another expression
+
+- **Status:** applied (2026-05-23)
+- **Location:** [core_math/include/capsules/capsule_math.hpp](core_math/include/capsules/capsule_math.hpp), [core_math/src/core_math.cpp](core_math/src/core_math.cpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [tests/test_math.cpp](tests/test_math.cpp)
+- **Effort:** medium
+- **Description:** TI-83 lets you compose functions: define `Y1 = X^2`, then write `Y2 = Y1+10` and Y2 is automatically `X² + 10`. Our function slots existed as buffers but couldn't reference each other — the parser didn't know `Y1` was a thing.
+- **Change:**
+  - Engine: three new leaf tokens `Token::Y1` / `Y2` / `Y3`. When the evaluator hits one, it recursively evaluates the referenced buffer at the current `xValue`. The lookup goes through a `static std::function<std::vector<Token>(int)> MathStateMachine::yLookup` that UIController populates on construction with a lambda returning `m_functionBuffers[idx]`.
+  - Cycle detection via a `static thread_local std::set<int>` keyed by Y-index. Inserts on recursion entry, erases on return. Self-reference (`Y1 = Y1+1`) or mutual cycles (`Y1=Y2`, `Y2=Y1`) return the `"Recursion"` error string, which UIController maps to the TI-83-style `ERR:RECURSION` display label.
+  - Empty referenced buffer evaluates to `0` (matches TI-83 behaviour for an empty Y slot). Non-scalar (matrix) result from a Y-VAR returns a Type Error.
+  - kTokens entries for `Y1`/`Y2`/`Y3`. Implicit-mul preprocessor's value-like classifier extended so `2Y1`, `Y1(3)` (= Y1*3 in v1) tokenise correctly.
+  - Tests: 6 new assertions covering cross-slot reference (`Y1+1` from Y2 with Y1=5), X-threading through Y-VAR lookups, self-reference detection, mutual-cycle detection, empty-target → 0. 228/228 passing.
+- **Trade-offs:** v1 only supports the **bare** form. `Y1(3)` parses as `Y1 * 3` via implicit-mul, not as an X override. Real TI-83 supports both interpretations; ours doesn't yet. The fix would be to promote Y_n to function-like tokens with optional argument syntax — bigger change, deferred.
+- **Notes:** Pairs naturally with TABLE view (IMP-035) — you can now define Y1 and Y2 = `Y1+10` and watch them side by side. In our model, the active slot's buffer is the one being evaluated, so referencing Y1 from inside Y1's own buffer is genuine self-recursion — to query Y1's value from REPL, switch to Y2 first or use a different slot.
+
 ### IMP-035: TABLE view (2ND + GRAPH) + TBLSET popup (2ND + WINDOW)
 
 - **Status:** applied (2026-05-23)

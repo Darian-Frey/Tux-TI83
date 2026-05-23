@@ -27,8 +27,10 @@ Popup {
     // The Decimal row has 11 segments (Float, 0..9). 340px was fine for
     // ≤4-option rows but squeezed each segment to ~28px here — bumped
     // to 420 so "Float" and the single-digit segments both breathe.
+    // Height bumped a second time (was 420) to fit the RESET button
+    // added below the option rows — DONE was clipped off the bottom.
     width: 420
-    height: 420
+    height: 500
     padding: 14
 
     x: (parent.width - width) / 2
@@ -190,6 +192,20 @@ Popup {
         }
 
         Item { Layout.fillHeight: true }
+
+        // Factory reset — wipes scalars / matrices / Y= buffers /
+        // history / MODE / viewport and removes the state.json so
+        // the next launch starts truly clean. Red CLEAR colour to
+        // signal "destructive"; no confirmation prompt since you
+        // had to deliberately open MODE first.
+        CalcKey {
+            label: "RESET"
+            keyType: "control"
+            onPressed: {
+                uiController.resetAll()
+                root.close()
+            }
+        }
 
         CalcKey {
             label: "DONE"

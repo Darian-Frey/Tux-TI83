@@ -725,6 +725,60 @@ int main(int argc, char *argv[]) {
   check("2-3 stays as subtraction → -1",
         eval(c, "2-3"), "-1");
 
+  section("Y-VARS recall (IMP-036)");
+  {
+    UIController yc;
+    // Reset varRegistry so any A..Z used inside Y_n bodies start at 0.
+    tux_ti83::MathStateMachine::varRegistry.fill(0.0);
+
+    // Populate Y1 = 5 by switching to slot 0 and evaluating. eval()
+    // CLEARs the active slot first, so we're safe even if a previous
+    // section left state behind.
+    yc.setActiveFunction(0);
+    check("Y1 := 5", eval(yc, "5"), "5");
+
+    // Cross-slot reference: while active = Y2, evaluating Y1+1 should
+    // look up Y1's stored buffer and return 6.
+    yc.setActiveFunction(1);
+    check("Y1+1 in Y2 with Y1=5 → 6",
+          eval(yc, "Y1+1"), "6");
+
+    // X parameter threads through Y-VAR lookups.
+    yc.setActiveFunction(0);
+    check("Y1 := X+2", eval(yc, "X+2"), "2");  // X reads from registry; A..Z all 0
+    yc.setActiveFunction(1);
+    eval(yc, "3→X");                            // store 3 in X (registry)
+    check("Y1 in Y2 with X=3, Y1=X+2 → 5",
+          eval(yc, "Y1"), "5");
+
+    // Self-reference: Y1 = Y1+1 (the buffer references itself). Detect
+    // via the cycle guard.
+    yc.setActiveFunction(0);
+    check("Y1+1 in Y1 → ERR:RECURSION (self)",
+          eval(yc, "Y1+1"), "ERR:RECURSION");
+
+    // Empty target: Y3 wasn't written, so Y3 acts as 0.
+    yc.setActiveFunction(1);
+    check("Y3+5 with Y3 empty → 5",
+          eval(yc, "Y3+5"), "5");
+
+    // Mutual cycle Y1=Y2, Y2=Y1. Build the buffers via
+    // processExpression (no eval, so no recursion fires during setup),
+    // then trigger evaluation from one side and verify the guard
+    // catches the loop two hops deep.
+    UIController cc;
+    cc.setActiveFunction(0);
+    cc.processInput(QStringLiteral("CLEAR"));
+    cc.processExpression(QStringLiteral("Y2"));
+    cc.setActiveFunction(1);
+    cc.processInput(QStringLiteral("CLEAR"));
+    cc.processExpression(QStringLiteral("Y1"));
+    cc.setActiveFunction(0);
+    cc.processInput(QStringLiteral("ENTER"));
+    check("Y1=Y2, Y2=Y1 → ERR:RECURSION (mutual cycle)",
+          cc.currentDisplay(), "ERR:RECURSION");
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

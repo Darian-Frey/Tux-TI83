@@ -93,6 +93,14 @@ constexpr TokenSpec kTokens[] = {
     // Last-answer recall
     {"Ans", Token::Ans, "Ans"},
 
+    // Y-VARS — bare references to the user's function buffers. Bare
+    // form only in v1 (Y1 alone uses the current xValue);
+    // `Y1(3)` parses as `Y1 * 3` via implicit-mul, not as an X
+    // override (TI-83 semantics are richer here — see IMP-036 notes).
+    {"Y1", Token::Y1, "Y1"},
+    {"Y2", Token::Y2, "Y2"},
+    {"Y3", Token::Y3, "Y3"},
+
     // Functions — inputs include the opening paren, so the buffer
     // always has just the function token (no separate LeftParen).
     // The shunting-yard pushes a synthetic LeftParen for all of these,
@@ -220,6 +228,17 @@ UIController::UIController(QObject *parent) : QObject(parent), m_activeIdx(0) {
   // too) stay isolated from whatever the user's GUI session left
   // behind on disk. Tests in particular need a deterministic
   // default-zero registry.
+
+  // Y-VARS engine hookup. The math engine knows nothing about which
+  // function buffer is which slot; this lambda answers that question.
+  // Last-constructed controller wins (the static is process-global),
+  // which is fine since production has exactly one and tests run
+  // sequentially with one live instance at a time.
+  MathStateMachine::yLookup = [this](int idx) -> std::vector<Token> {
+    if (idx < 0 || idx >= static_cast<int>(m_functionBuffers.size()))
+      return {};
+    return m_functionBuffers[idx];
+  };
 }
 
 void UIController::saveState() const {
@@ -392,6 +411,60 @@ void UIController::loadState() {
   emit activeFunctionIndexChanged();
 
   CrashLogger::logEvent(QStringLiteral("loadState ok"));
+}
+
+void UIController::resetAll() {
+  CrashLogger::logEvent(QStringLiteral("resetAll"));
+
+  // Engine-side statics.
+  MathStateMachine::varRegistry.fill(0.0);
+  MathStateMachine::matrixRegistry.clear();
+  MathStateMachine::lastResult = {true, 0.0, {}, false, ""};
+  MathStateMachine::angleMode    = AngleMode::Radian;
+  MathStateMachine::notation     = NumberNotation::Normal;
+  MathStateMachine::fixDecimals  = -1;
+
+  // Controller-owned state.
+  for (auto &buf : m_functionBuffers) buf.clear();
+  for (auto &s   : m_displayStrings)  s.clear();
+  m_history.clear();
+  m_entryHistory.clear();
+  m_recallCycleIdx = -1;
+  m_cursorPos = 0;
+  m_displayState = Inputting;
+  m_displayExpression.clear();
+  m_activeIdx = 0;
+  m_isGraphMode = false;
+  m_isTableMode = false;
+  m_drawMode = 0;
+  m_insertMode = true;
+  m_isTracing = false;
+  m_traceX = 0.0;
+  m_xMin = -10; m_xMax = 10; m_yMin = -10; m_yMax = 10;
+  m_tblStart = 0.0;
+  m_tblStep  = 1.0;
+
+  // Remove the on-disk state file so a subsequent restart starts
+  // truly clean — otherwise loadState would restore whatever was
+  // there on next launch.
+  QFile::remove(resolveStateFilePath());
+
+  // Fire every change signal so all QML bindings refresh in one pass.
+  emit displayChanged();
+  emit historyChanged();
+  emit activeFunctionIndexChanged();
+  emit viewportChanged();
+  emit graphModeChanged();
+  emit tableModeChanged();
+  emit tableSettingsChanged();
+  emit displayStateChanged();
+  emit angleModeChanged();
+  emit notationChanged();
+  emit fixDecimalsChanged();
+  emit cursorMoved();
+  emit insertModeChanged();
+  emit drawModeChanged();
+  emit traceChanged();
 }
 
 void UIController::setAngleMode(int m) {
@@ -754,6 +827,8 @@ void UIController::evaluate() {
       currentStr = "ERR:UNDEFINED";
     else if (msg == "SINGULAR MAT")
       currentStr = "ERR:SINGULAR MAT";
+    else if (msg == "Recursion")
+      currentStr = "ERR:RECURSION";
     else
       currentStr = "ERR:SYNTAX";
     m_displayState = Error;
