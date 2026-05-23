@@ -1,5 +1,11 @@
 #include "ui_controller.hpp"
 #include "crash_logger.hpp"
+#include <QDir>
+#include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QStandardPaths>
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -188,9 +194,188 @@ const std::map<int, const TokenSpec *> &tokenToSpec() {
 
 } // anonymous namespace
 
+namespace {
+// Resolve the on-disk state file. Mirrors the crash logger's
+// directory choice so admin tools can find everything under one path.
+QString resolveStateFilePath() {
+  QString stateHome = qEnvironmentVariable("XDG_STATE_HOME");
+  QString dir = !stateHome.isEmpty()
+                  ? stateHome + "/tux-ti83"
+                  : QDir::homePath() + "/.local/state/tux-ti83";
+  QDir().mkpath(dir);
+  return dir + "/state.json";
+}
+
+// Schema version. Bump when the JSON layout changes incompatibly so
+// older state files are detected and skipped rather than misread.
+constexpr int kStateSchemaVersion = 1;
+} // namespace
+
 UIController::UIController(QObject *parent) : QObject(parent), m_activeIdx(0) {
   m_functionBuffers.resize(3);
   m_displayStrings.resize(3, "");
+  // Note: persisted state is NOT auto-loaded here. The GUI's
+  // main.cpp calls loadState() explicitly post-construction so the
+  // CLI / REPL / test binaries (which all instantiate a controller
+  // too) stay isolated from whatever the user's GUI session left
+  // behind on disk. Tests in particular need a deterministic
+  // default-zero registry.
+}
+
+void UIController::saveState() const {
+  QJsonObject root;
+  root["version"] = kStateSchemaVersion;
+
+  // Scalars A..Z — 26-element array of doubles.
+  QJsonArray scalars;
+  for (double v : MathStateMachine::varRegistry)
+    scalars.append(v);
+  root["scalars"] = scalars;
+
+  // Matrices [A]/[B]/[C] — only persist the ones the user has touched.
+  QJsonObject matrices;
+  auto persistMatrix = [&matrices](const QString &name, Token tok) {
+    auto it = MathStateMachine::matrixRegistry.find(tok);
+    if (it == MathStateMachine::matrixRegistry.end()) return;
+    const Matrix &m = it->second;
+    QJsonObject mo;
+    mo["rows"] = m.rows;
+    mo["cols"] = m.cols;
+    QJsonArray data;
+    for (double v : m.data) data.append(v);
+    mo["data"] = data;
+    matrices[name] = mo;
+  };
+  persistMatrix("A", Token::MatA);
+  persistMatrix("B", Token::MatB);
+  persistMatrix("C", Token::MatC);
+  root["matrices"] = matrices;
+
+  // Function buffers Y1/Y2/Y3 as their display strings. Round-trips
+  // through processExpression on load.
+  QJsonArray functions;
+  for (const auto &str : m_displayStrings) functions.append(str);
+  root["functions"] = functions;
+
+  // Active function slot index.
+  root["activeFunction"] = m_activeIdx;
+
+  // Viewport.
+  QJsonObject viewport;
+  viewport["xMin"] = m_xMin;
+  viewport["xMax"] = m_xMax;
+  viewport["yMin"] = m_yMin;
+  viewport["yMax"] = m_yMax;
+  root["viewport"] = viewport;
+
+  // MODE settings.
+  QJsonObject mode;
+  mode["angle"]       = static_cast<int>(MathStateMachine::angleMode);
+  mode["notation"]    = static_cast<int>(MathStateMachine::notation);
+  mode["fixDecimals"] = MathStateMachine::fixDecimals;
+  mode["drawMode"]    = m_drawMode;
+  root["mode"] = mode;
+
+  QFile f(resolveStateFilePath());
+  if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
+    return;
+  f.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+  f.close();
+  CrashLogger::logEvent(QStringLiteral("saveState ok"));
+}
+
+void UIController::loadState() {
+  QFile f(resolveStateFilePath());
+  if (!f.exists() || !f.open(QIODevice::ReadOnly))
+    return;
+  QJsonParseError err;
+  QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &err);
+  f.close();
+  if (err.error != QJsonParseError::NoError || !doc.isObject()) {
+    CrashLogger::logEvent(QStringLiteral("loadState skipped: parse error"));
+    return;
+  }
+  QJsonObject root = doc.object();
+  // Version mismatch: skip, leave defaults. Future migrations would
+  // branch here.
+  if (root.value("version").toInt() != kStateSchemaVersion) {
+    CrashLogger::logEvent(QStringLiteral("loadState skipped: version mismatch"));
+    return;
+  }
+
+  // Scalars.
+  QJsonArray scalars = root.value("scalars").toArray();
+  for (int i = 0; i < scalars.size() && i < 26; ++i)
+    MathStateMachine::varRegistry[static_cast<size_t>(i)] = scalars[i].toDouble();
+
+  // Matrices.
+  QJsonObject matrices = root.value("matrices").toObject();
+  auto restoreMatrix = [&matrices](const QString &name, Token tok) {
+    if (!matrices.contains(name)) return;
+    QJsonObject mo = matrices.value(name).toObject();
+    Matrix m;
+    m.rows = mo.value("rows").toInt();
+    m.cols = mo.value("cols").toInt();
+    QJsonArray data = mo.value("data").toArray();
+    m.data.reserve(static_cast<size_t>(data.size()));
+    for (auto v : data) m.data.push_back(v.toDouble());
+    MathStateMachine::matrixRegistry[tok] = m;
+  };
+  restoreMatrix("A", Token::MatA);
+  restoreMatrix("B", Token::MatB);
+  restoreMatrix("C", Token::MatC);
+
+  // MODE — apply before function buffers so any side effects use
+  // the right format settings.
+  QJsonObject mode = root.value("mode").toObject();
+  if (mode.contains("angle"))
+    MathStateMachine::angleMode =
+        (mode["angle"].toInt() == 1) ? AngleMode::Degree : AngleMode::Radian;
+  if (mode.contains("notation")) {
+    int n = mode["notation"].toInt();
+    MathStateMachine::notation =
+        (n == 1) ? NumberNotation::Sci :
+        (n == 2) ? NumberNotation::Eng :
+                   NumberNotation::Normal;
+  }
+  if (mode.contains("fixDecimals")) {
+    int n = mode["fixDecimals"].toInt(-1);
+    MathStateMachine::fixDecimals = (n >= 0 && n <= 9) ? n : -1;
+  }
+  if (mode.contains("drawMode"))
+    m_drawMode = (mode["drawMode"].toInt() == 1) ? 1 : 0;
+
+  // Viewport.
+  QJsonObject viewport = root.value("viewport").toObject();
+  if (viewport.contains("xMin")) m_xMin = viewport["xMin"].toDouble();
+  if (viewport.contains("xMax")) m_xMax = viewport["xMax"].toDouble();
+  if (viewport.contains("yMin")) m_yMin = viewport["yMin"].toDouble();
+  if (viewport.contains("yMax")) m_yMax = viewport["yMax"].toDouble();
+
+  // Function buffers — replay the display strings through
+  // processExpression so the tokeniser handles dispatch. Each slot
+  // is processed independently, with the active slot set first so
+  // insertions land in the right buffer.
+  QJsonArray functions = root.value("functions").toArray();
+  const int saved_active = root.value("activeFunction").toInt(0);
+  for (int slot = 0; slot < functions.size() && slot < 3; ++slot) {
+    QString expr = functions[slot].toString();
+    if (expr.isEmpty()) continue;
+    m_activeIdx = slot;
+    processExpression(expr);
+  }
+  m_activeIdx = (saved_active >= 0 && saved_active < 3) ? saved_active : 0;
+
+  // Fire the change signals so any QML bindings refresh.
+  emit angleModeChanged();
+  emit notationChanged();
+  emit fixDecimalsChanged();
+  emit drawModeChanged();
+  emit viewportChanged();
+  emit displayChanged();
+  emit activeFunctionIndexChanged();
+
+  CrashLogger::logEvent(QStringLiteral("loadState ok"));
 }
 
 void UIController::setAngleMode(int m) {
@@ -607,6 +792,17 @@ void UIController::insertToken(const QString &input) {
 
   auto &currentBuf = m_functionBuffers[m_activeIdx];
   auto &currentStr = m_displayStrings[m_activeIdx];
+
+  // Defensive clamp: m_cursorPos is a single value across all three
+  // function slots, so a slot switch (via setActiveFunction, recall,
+  // loadState, etc.) can leave the cursor past the new slot's length.
+  // Inserting at a past-end position is undefined for std::vector and
+  // crashed on the loadState path (Y1 cursor at 1 → switch to empty
+  // Y2 → insert at begin()+1 → SIGSEGV). Clamp keeps the cursor
+  // valid; the user-facing effect is "switching slots puts the cursor
+  // at the end of the new buffer."
+  if (m_cursorPos > static_cast<int>(currentBuf.size()))
+    m_cursorPos = static_cast<int>(currentBuf.size());
 
   // State-machine reset: if a stale EVALUATED/ERROR result is on screen,
   // clear it before appending the new token. Implements the spec rule

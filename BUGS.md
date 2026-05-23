@@ -29,6 +29,16 @@ Each entry uses this template:
 
 ## Fixed
 
+### BUG-020: Cross-slot cursor position causes vector out-of-bounds insertion
+
+- **Status:** fixed (2026-05-23, same session as IMP-033)
+- **Location:** [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp) `insertToken()`
+- **Severity:** high (SIGSEGV; user-reproducible)
+- **Description:** `m_cursorPos` is a single value shared across all three function slots (Y1/Y2/Y3). Any time the active slot switched — via `setActiveFunction`, `recallLastEntry`, or (newly) `loadState` — the cursor was left pointing into the previous slot's range. If the new slot's buffer was shorter (or empty), the next `insertToken` call did `currentBuf.insert(currentBuf.begin() + m_cursorPos, ...)` where `m_cursorPos > buf.size()` — past-end iterator, undefined behaviour. Manifested as a segfault on the first relaunch with persistent state (loaded Y1="0" → cursor at 1 → switched to empty Y2 → `begin()+1` on a zero-element vector → SIGSEGV).
+- **Reproduction (was):** With persisted state where slot N had non-empty content and slot N+1 was empty, restoring Y= buffers during `loadState` crashed mid-replay. Also potentially triggerable in normal use by switching from a long Y1 to an empty Y2 then typing — though the `atEnd` branch usually shielded the explicit-typing case since it was the first thing the user did after switching.
+- **Fix:** Defensive clamp at the top of `insertToken`: `if (m_cursorPos > buf.size()) m_cursorPos = buf.size();`. User-facing effect is "switching slots puts the cursor at the end of the new buffer", matching what real TI-83 hardware does.
+- **Notes:** Surfaced by IMP-033 (persistent state). Latent in earlier code but unlikely to trigger in interactive use because the `atEnd` shortcut handled most switch-then-type flows correctly; only a switch with `m_cursorPos > 0` AND a strictly-shorter-than-cursor new buffer exposes the UB.
+
 ### BUG-012: Graph curve colours can shift when some Y slots are empty
 
 - **Status:** fixed (2026-05-08)

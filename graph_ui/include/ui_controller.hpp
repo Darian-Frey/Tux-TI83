@@ -128,6 +128,15 @@ public:
     // a 10-deep ring buffer; successive calls walk back through it.
     // Any non-recall processInput resets the cycle.
     Q_INVOKABLE void recallLastEntry();
+    // Persist + restore everything that should outlive the process —
+    // scalar variables A..Z, matrices [A]/[B]/[C], function buffers
+    // Y1..Y3, viewport, MODE settings (angle/notation/decimal/draw),
+    // and the active function slot. Session-scoped state (history,
+    // entry-recall ring, insertMode, tracing) deliberately omitted.
+    // State file lives at $XDG_STATE_HOME/tux-ti83/state.json
+    // (~/.local/state/tux-ti83/state.json on most Linux desktops).
+    Q_INVOKABLE void saveState() const;
+    Q_INVOKABLE void loadState();
     // Token-level cursor movement. Left/Right step by one token
     // (matches TI-83 behaviour: `sin(` is one visual step, not four);
     // Home/End jump to the extremes. All four are no-ops outside

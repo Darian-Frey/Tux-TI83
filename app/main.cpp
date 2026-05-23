@@ -19,6 +19,12 @@ int main(int argc, char *argv[]) {
     // Create the controller
     static tux_ti83::UIController uiController;
 
+    // Restore previous session's variables / matrices / Y= buffers /
+    // MODE settings / viewport. Bails silently if no state file
+    // exists (first run) or it fails to parse — leaves the controller
+    // in default state in that case.
+    uiController.loadState();
+
     // EXPLICIT LINK: Register the controller BEFORE loading the file
     engine.rootContext()->setContextProperty("uiController", &uiController);
 
@@ -38,6 +44,9 @@ int main(int argc, char *argv[]) {
     }
 
     int rc = app.exec();
+    // Persist before the crash logger shuts down so a saveState
+    // failure still gets logged.
+    uiController.saveState();
     tux_ti83::CrashLogger::shutdown();
     return rc;
 }

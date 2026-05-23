@@ -382,11 +382,23 @@ ApplicationWindow {
             }
 
             Text {
-                // Notation slot is a placeholder ("NORMAL") until the
-                // Sci/Eng modes are wired; angle slot binds to the live
-                // controller property so flipping the MODE popup updates
-                // the badge immediately.
-                text: "NORMAL  " + (uiController.angleMode === 1 ? "DEG" : "RAD")
+                // Compact MODE indicator. Three segments, separated by
+                // two spaces, all bound to live controller properties:
+                //   - Notation:  NORMAL / SCI / ENG
+                //   - Decimal:   "" if Float, otherwise "FIX N"
+                //   - Angle:     RAD / DEG
+                // Anything at its default just contributes its label; a
+                // changed Decimal adds an extra "FIX N" segment so the
+                // indicator widens to show non-default state.
+                text: {
+                    const n = uiController.notation
+                    const fx = uiController.fixDecimals
+                    const a = uiController.angleMode
+                    const notation = (n === 1) ? "SCI" : (n === 2) ? "ENG" : "NORMAL"
+                    const angle = (a === 1) ? "DEG" : "RAD"
+                    const fixSeg = (fx >= 0) ? ("  FIX " + fx) : ""
+                    return notation + fixSeg + "  " + angle
+                }
                 color: Style.textMuted
                 font.family: Style.monoFamily
                 font.pixelSize: Style.headerBrandPixelSize

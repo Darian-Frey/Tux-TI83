@@ -164,6 +164,31 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-034: Header MODE indicator becomes dynamic
+
+- **Status:** applied (2026-05-23)
+- **Location:** [app/qml/Main.qml](app/qml/Main.qml) (header strip Text element)
+- **Effort:** trivial
+- **Description:** The header text was `"NORMAL  " + (angleMode === 1 ? "DEG" : "RAD")` — Notation/Decimal MODE settings (IMP-020) were live in the engine and the popup but never reflected in the header. Set Notation to Sci, evaluate something, see `5.00E+00` in the history but `NORMAL` still in the header — confusing.
+- **Change:** Replaced the static prefix with a computed expression bound to `uiController.notation` / `fixDecimals` / `angleMode`. Format: `<NOTATION>[  FIX N]  <ANGLE>` — Notation always present, Fix segment only when non-Float, Angle always present. Examples: `NORMAL  RAD` (defaults), `SCI  FIX 2  DEG` (a Sci+Fix2+Degree session), `ENG  FIX 4  RAD`.
+- **Trade-offs:** Header widens when Fix is on — gives the indicator visual variability that matches the state. Could have packed the indicator into a fixed-width fielded layout but the simple text concat is cleaner and the variability is itself informative (a wider indicator = non-default mode active).
+- **Notes:** Surfaced while verifying IMP-033 — saved Sci+Fix2 came back correctly but the header lied. Closes a small but real "you can't trust what you see" gap.
+
+### IMP-033: Persistent state across runs
+
+- **Status:** applied (2026-05-23)
+- **Location:** [graph_ui/include/ui_controller.hpp](graph_ui/include/ui_controller.hpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/main.cpp](app/main.cpp)
+- **Effort:** medium
+- **Description:** Quitting the GUI erased every variable, matrix, Y= buffer, MODE setting, and viewport. Real TI-83 keeps everything across power-cycles — this was the biggest "wait, where did my work go?" gap.
+- **Change:**
+  - Two new `Q_INVOKABLE` methods on `UIController` — `saveState() const` and `loadState()` — wired by `main.cpp` post-construction (load) and just before `app.exec()` returns (save). Both use a single JSON file at `$XDG_STATE_HOME/tux-ti83/state.json` (or `~/.local/state/tux-ti83/state.json` fallback), sharing the same dir as `session.log` so admin tools find everything in one place.
+  - Schema (version 1): `scalars` (26 doubles A..Z), `matrices` (only persisted slots A/B/C), `functions` (3 display strings for Y1/Y2/Y3), `activeFunction` (int), `viewport` (xMin/xMax/yMin/yMax), `mode` (angle/notation/fixDecimals/drawMode).
+  - Session-scoped state — history, entry-recall ring buffer, insertMode, tracing — deliberately omitted; users don't expect those to survive a restart.
+  - Loading function buffers replays each display string through `processExpression`, so tokenisation goes through the same path as live typing. MODE settings restored first so any side effects use the right format. Signals (`angleModeChanged`, `notationChanged`, `viewportChanged`, etc.) fired at the end so QML bindings refresh.
+  - Auto-load deliberately **not** wired into the UIController constructor — the CLI / REPL / test binaries instantiate a controller too, and we don't want the GUI's persistent state polluting their default-zero starting point. Explicit `uiController.loadState()` in `main.cpp` is GUI-only.
+- **Trade-offs:** Save fires on clean exit only — a crash loses state since the last clean close. Acceptable for first pass; an obvious follow-up is periodic save-on-change. Schema versioning means future migrations are straightforward; v1 files will be rejected gracefully (skip, default state) if/when the schema bumps.
+- **Notes:** Surfaced and closed [BUG-020](BUGS.md) (cross-slot cursor SIGSEGV) during testing. Also motivated IMP-034 (dynamic header) once the round-trip exposed the static "NORMAL" lie.
+
 ### IMP-032: Dedicated `!` and `STO▸` keys on the GUI
 
 - **Status:** applied (2026-05-09)
