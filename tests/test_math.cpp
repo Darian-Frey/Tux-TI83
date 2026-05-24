@@ -841,6 +841,52 @@ int main(int argc, char *argv[]) {
           cc.currentDisplay(), "ERR:RECURSION");
   }
 
+  section("Number base (IMP-043)");
+  {
+    using tux_ti83::NumberBase;
+    // Dec is the historic default — exercise it explicitly so the
+    // expectation is documented next to the alternatives.
+    MathStateMachine::numberBase = NumberBase::Dec;
+    check("Dec: 255 → \"255\"",
+          UIController::formatScalar(255.0), "255");
+
+    // Hex / Oct / Bin: positive integers render with prefix + uppercase
+    // hex (binary/octal have no case ambiguity).
+    MathStateMachine::numberBase = NumberBase::Hex;
+    check("Hex: 0 → 0x0",       UIController::formatScalar(0.0),    "0x0");
+    check("Hex: 255 → 0xFF",    UIController::formatScalar(255.0),  "0xFF");
+    check("Hex: 4096 → 0x1000", UIController::formatScalar(4096.0), "0x1000");
+
+    MathStateMachine::numberBase = NumberBase::Oct;
+    check("Oct: 8 → 0o10",      UIController::formatScalar(8.0),    "0o10");
+    check("Oct: 63 → 0o77",     UIController::formatScalar(63.0),   "0o77");
+
+    MathStateMachine::numberBase = NumberBase::Bin;
+    check("Bin: 5 → 0b101",     UIController::formatScalar(5.0),    "0b101");
+    check("Bin: 10 → 0b1010",   UIController::formatScalar(10.0),   "0b1010");
+
+    // Negatives carry a leading minus rather than two's complement
+    // padding — easier to read for typical calculator use.
+    MathStateMachine::numberBase = NumberBase::Hex;
+    check("Hex: -255 → -0xFF",  UIController::formatScalar(-255.0), "-0xFF");
+
+    // Non-integers fall back to the active Notation/Decimal formatter
+    // (Normal + Float in this test environment).
+    MathStateMachine::notation   = NumberNotation::Normal;
+    MathStateMachine::fixDecimals = -1;
+    check("Hex: 1.5 falls back to decimal",
+          UIController::formatScalar(1.5), "1.5");
+    check("Hex: 1÷3 falls back to decimal",
+          eval(c, "1÷3"), UIController::formatScalar(1.0 / 3.0));
+
+    // Integer results from the engine route through the same formatter
+    // — end-to-end check that `2^8` displays as 0x100 when in Hex mode.
+    check("Hex: 2^8 → 0x100", eval(c, "2^8"), "0x100");
+
+    // Restore defaults so subsequent assertions see Dec.
+    MathStateMachine::numberBase = NumberBase::Dec;
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

@@ -164,6 +164,21 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-043: DEC/HEX/OCT/BIN base conversion
+
+- **Status:** applied (2026-05-24) — closes the "Base conversion" entry in ROADMAP Number systems.
+- **Location:** [core_math/include/capsules/capsule_math.hpp](core_math/include/capsules/capsule_math.hpp), [core_math/src/core_math.cpp](core_math/src/core_math.cpp), [graph_ui/include/ui_controller.hpp](graph_ui/include/ui_controller.hpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/qml/components/MODEPopup.qml](app/qml/components/MODEPopup.qml), [tests/test_math.cpp](tests/test_math.cpp)
+- **Effort:** trivial
+- **Description:** Adds a Base row to the MODE popup with Dec / Hex / Oct / Bin segments. The selection drives a new formatter branch that renders integer-valued scalars in the chosen base with sign + prefix (`0xFF`, `0o77`, `0b1010`, `-0xFF`). Non-integer values, NaN, ±inf, and magnitudes outside int64 range fall back to the existing Notation/Decimal formatter so the rest of the calculator continues to work in non-Dec modes.
+- **Change:**
+  - Engine: `enum class NumberBase { Dec, Hex, Oct, Bin }` + `MathStateMachine::numberBase` static (initial value `Dec`). The engine itself is format-agnostic — only `UIController::formatScalar` consults the static.
+  - Formatter: new branch ahead of the Notation/Decimal path. Guards on `std::isfinite(value)`, `value == std::floor(value)`, and int64 range; if any guard fails the branch is skipped and the existing Normal/Sci/Eng path runs unchanged. Magnitude is taken via the standard `-(iv+1)+1` trick so `INT64_MIN` doesn't overflow during negation. Uppercase hex per common convention.
+  - QML: new `numberBase` Q_PROPERTY with getter/setter/signal and a one-line Base row in `MODEPopup`. Pattern mirrors the existing Angle/Notation/Decimal rows.
+  - Persistence: `mode["numberBase"]` field in `state.json`. `loadState`, `resetAll`, and the QML binding all kept in sync.
+  - 12 new regression tests covering Dec passthrough, positive/zero/larger values in each base, negatives with sign prefix, non-integer fallback, and an end-to-end `2^8 → 0x100` check. 255/255 passing.
+- **Trade-offs:** Sign-prefix style (`-0xFF`) is chosen over two's-complement padding for readability on a calculator — a 16-digit `0xFFFFFFFFFFFFFFFF` representation of `-1` would be technically more "bitwise" but harder to read at a glance. Bitwise programming use-cases that want the padded form aren't a TI-83 use case anyway.
+- **Notes:** Engine has no Hex/Oct/Bin *input* literal yet — this is display-side only. Adding `0xFF` parsing as a literal would be an independent follow-up if a future user wanted to type hex.
+
 ### IMP-042: `Y1(arg)` explicit-argument form for Y-VARS
 
 - **Status:** applied (2026-05-24) — closes the v1 limitation noted in IMP-036.

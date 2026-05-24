@@ -163,6 +163,15 @@ Popup {
                 uiController.fixDecimals = (index === 0) ? -1 : (index - 1)
             }
         }
+        // Base: Dec / Hex / Oct / Bin — wired. Affects formatScalar for
+        // integer-valued results; non-integers always render in decimal.
+        ModeRow {
+            label: "Base"
+            options: ["Dec", "Hex", "Oct", "Bin"]
+            selectedIndex: uiController.numberBase
+            active: true
+            onSelected: (index) => uiController.numberBase = index
+        }
         ModeRow {
             label: "Graph"
             options: ["Func", "Par", "Pol", "Seq"]

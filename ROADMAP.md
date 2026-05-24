@@ -156,7 +156,7 @@ yet built: 2ND modifier system, ALPHA modifier system (see
 
 ### Number systems
 - 💭 Complex numbers (a+bi mode, polar form, conjugate, real/imag parts)
-- 💭 Base conversion (DEC/HEX/OCT/BIN — TI-83 Plus's BASE app)
+- ✅ Base conversion (DEC/HEX/OCT/BIN) — MODE-popup row; integer results display in the selected base, non-integers fall back to decimal (IMP-043, 2026-05-24)
 
 ## Comparators & boolean
 

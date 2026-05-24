@@ -46,6 +46,12 @@ private:
     // `fixDecimals`: -1 = Float, 0..9 = Fix N.
     Q_PROPERTY(int notation READ notation WRITE setNotation NOTIFY notationChanged)
     Q_PROPERTY(int fixDecimals READ fixDecimals WRITE setFixDecimals NOTIFY fixDecimalsChanged)
+    // Integer display base: 0 = Dec, 1 = Hex, 2 = Oct, 3 = Bin. Mirrors
+    // MathStateMachine::numberBase. Non-Dec modes only affect scalars
+    // that are exact integers in int64 range — everything else (floats,
+    // out-of-range values, NaN, ±inf) falls back through to the
+    // existing Notation/Decimal formatter.
+    Q_PROPERTY(int numberBase READ numberBase WRITE setNumberBase NOTIFY numberBaseChanged)
     // Cursor position within the current expression, expressed as a
     // character offset into the rendered display string. The backing
     // state is token-level (m_cursorPos, 0..buf.size()), but the
@@ -91,6 +97,10 @@ public:
     void setNotation(int n);
     int fixDecimals() const { return MathStateMachine::fixDecimals; }
     void setFixDecimals(int n);
+    int numberBase() const {
+        return static_cast<int>(MathStateMachine::numberBase);
+    }
+    void setNumberBase(int b);
     int cursorOffset() const;
     bool insertMode() const { return m_insertMode; }
     Q_INVOKABLE void toggleInsertMode();
@@ -222,6 +232,7 @@ signals:
     void angleModeChanged();
     void notationChanged();
     void fixDecimalsChanged();
+    void numberBaseChanged();
     void cursorMoved();
     void insertModeChanged();
     void drawModeChanged();

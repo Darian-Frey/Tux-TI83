@@ -242,6 +242,15 @@ enum class AngleMode { Radian, Degree };
 // UIController::formatScalar so the engine stays format-agnostic.
 enum class NumberNotation { Normal, Sci, Eng };
 
+// Integer display base for scalar results. Dec is the default and the
+// only mode that displays non-integers; Hex/Oct/Bin truncate to int64
+// and render the magnitude in their respective bases with a sign
+// prefix (`0xFF`, `0o77`, `0b1010`, `-0xFF`). Non-integer values, NaN,
+// infinities, and magnitudes outside int64 range fall back to the
+// active Notation/Decimal formatter regardless of base. Interpretation
+// lives in UIController::formatScalar.
+enum class NumberBase { Dec, Hex, Oct, Bin };
+
 class MathStateMachine {
 public:
   CalculationResult evaluate(const std::vector<Token> &graph,
@@ -265,6 +274,11 @@ public:
   // the Float mode (default); 0..9 fixes that many decimal places.
   static NumberNotation notation;
   static int fixDecimals;
+
+  // Integer display base. Read by UIController::formatScalar; Dec
+  // preserves the historic Notation/Decimal behaviour, Hex/Oct/Bin
+  // switch integer-valued scalars to base 16/8/2 with sign + prefix.
+  static NumberBase numberBase;
 
   // Last successful evaluation result. Updated by the UI controller
   // after every successful ENTER and recalled via Token::Ans. Matches

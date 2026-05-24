@@ -13,6 +13,7 @@ std::array<double, 26> MathStateMachine::varRegistry{};
 AngleMode MathStateMachine::angleMode = AngleMode::Radian;
 NumberNotation MathStateMachine::notation = NumberNotation::Normal;
 int MathStateMachine::fixDecimals = -1;  // -1 = Float (no fix)
+NumberBase MathStateMachine::numberBase = NumberBase::Dec;
 CalculationResult MathStateMachine::lastResult{true, 0.0, {}, false, ""};
 std::function<std::vector<Token>(int)> MathStateMachine::yLookup;
 

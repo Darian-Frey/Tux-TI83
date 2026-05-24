@@ -294,6 +294,7 @@ void UIController::saveState() const {
   mode["angle"]       = static_cast<int>(MathStateMachine::angleMode);
   mode["notation"]    = static_cast<int>(MathStateMachine::notation);
   mode["fixDecimals"] = MathStateMachine::fixDecimals;
+  mode["numberBase"]  = static_cast<int>(MathStateMachine::numberBase);
   mode["drawMode"]    = m_drawMode;
   root["mode"] = mode;
 
@@ -370,6 +371,14 @@ void UIController::loadState() {
     int n = mode["fixDecimals"].toInt(-1);
     MathStateMachine::fixDecimals = (n >= 0 && n <= 9) ? n : -1;
   }
+  if (mode.contains("numberBase")) {
+    int b = mode["numberBase"].toInt(0);
+    MathStateMachine::numberBase =
+        (b == 1) ? NumberBase::Hex :
+        (b == 2) ? NumberBase::Oct :
+        (b == 3) ? NumberBase::Bin :
+                   NumberBase::Dec;
+  }
   if (mode.contains("drawMode"))
     m_drawMode = (mode["drawMode"].toInt() == 1) ? 1 : 0;
 
@@ -416,6 +425,7 @@ void UIController::loadState() {
   emit angleModeChanged();
   emit notationChanged();
   emit fixDecimalsChanged();
+  emit numberBaseChanged();
   emit drawModeChanged();
   emit viewportChanged();
   emit displayChanged();
@@ -435,6 +445,7 @@ void UIController::resetAll() {
   MathStateMachine::angleMode    = AngleMode::Radian;
   MathStateMachine::notation     = NumberNotation::Normal;
   MathStateMachine::fixDecimals  = -1;
+  MathStateMachine::numberBase   = NumberBase::Dec;
 
   // Controller-owned state.
   for (auto &buf : m_functionBuffers) buf.clear();
@@ -473,6 +484,7 @@ void UIController::resetAll() {
   emit angleModeChanged();
   emit notationChanged();
   emit fixDecimalsChanged();
+  emit numberBaseChanged();
   emit cursorMoved();
   emit insertModeChanged();
   emit drawModeChanged();
@@ -513,6 +525,21 @@ void UIController::setFixDecimals(int n) {
     return;
   MathStateMachine::fixDecimals = clamped;
   emit fixDecimalsChanged();
+}
+
+void UIController::setNumberBase(int b) {
+  CrashLogger::logEvent(QStringLiteral("setNumberBase: ") + QString::number(b));
+  // Clamp to the four valid values. Anything else becomes Dec — the
+  // safe default that preserves the historic non-integer behaviour.
+  NumberBase newBase =
+      (b == 1) ? NumberBase::Hex :
+      (b == 2) ? NumberBase::Oct :
+      (b == 3) ? NumberBase::Bin :
+                 NumberBase::Dec;
+  if (MathStateMachine::numberBase == newBase)
+    return;
+  MathStateMachine::numberBase = newBase;
+  emit numberBaseChanged();
 }
 
 int UIController::cursorOffset() const {
@@ -631,6 +658,34 @@ QString UIController::currentDisplay() const {
 QString UIController::formatScalar(double value) {
   const auto notation = MathStateMachine::notation;
   const int fixN = MathStateMachine::fixDecimals;  // -1 = Float
+
+  // Integer-base formatting. Only kicks in when the value is finite,
+  // an exact integer, and fits in int64. Everything else falls back
+  // through to the Notation/Decimal formatter so floats, overflowing
+  // values, NaN, and ±inf still display sensibly.
+  const auto base = MathStateMachine::numberBase;
+  if (base != NumberBase::Dec && std::isfinite(value) &&
+      value == std::floor(value) &&
+      value >= -9.2233720368547748e18 &&
+      value <=  9.2233720368547748e18) {
+    const long long iv = static_cast<long long>(value);
+    const unsigned long long mag =
+        (iv < 0) ? static_cast<unsigned long long>(-(iv + 1)) + 1ULL
+                 : static_cast<unsigned long long>(iv);
+    QString digits;
+    QString prefix;
+    if (base == NumberBase::Hex) {
+      digits = QString::number(mag, 16).toUpper();
+      prefix = "0x";
+    } else if (base == NumberBase::Oct) {
+      digits = QString::number(mag, 8);
+      prefix = "0o";
+    } else {
+      digits = QString::number(mag, 2);
+      prefix = "0b";
+    }
+    return (iv < 0 ? QStringLiteral("-") : QString()) + prefix + digits;
+  }
 
   // Normal + Float: the historical default — 'g' at precision 10
   // trims trailing zeros and keeps integer-like values (10!,
