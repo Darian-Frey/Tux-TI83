@@ -41,6 +41,10 @@ int EOSPrecedence::precedence(Token t) {
   case Token::Y1Call:
   case Token::Y2Call:
   case Token::Y3Call:
+  case Token::FnIntCall:
+  case Token::NDerivCall:
+  case Token::SumCall:
+  case Token::ProdCall:
   case Token::Round:
   case Token::Min:
   case Token::Max:
@@ -107,6 +111,8 @@ bool EOSPrecedence::is_function(Token t) {
           t == Token::IPart || t == Token::FPart ||
           t == Token::Exp || t == Token::Sgn ||
           t == Token::Y1Call || t == Token::Y2Call || t == Token::Y3Call ||
+          t == Token::FnIntCall || t == Token::NDerivCall ||
+          t == Token::SumCall || t == Token::ProdCall ||
           t == Token::Sinh || t == Token::Cosh || t == Token::Tanh ||
           t == Token::ASinh || t == Token::ACosh || t == Token::ATanh ||
           is_binary_function(t));
@@ -129,6 +135,8 @@ bool EOSPrecedence::has_built_in_paren(Token t) {
           t == Token::Abs || t == Token::Int || t == Token::IPart ||
           t == Token::FPart || t == Token::Exp || t == Token::Sgn ||
           t == Token::Y1Call || t == Token::Y2Call || t == Token::Y3Call ||
+          t == Token::FnIntCall || t == Token::NDerivCall ||
+          t == Token::SumCall || t == Token::ProdCall ||
           t == Token::Det || t == Token::Transpose ||
           t == Token::Rref ||
           t == Token::Round || t == Token::Min ||
@@ -284,10 +292,245 @@ std::string matrixInverse(const Matrix &a, Matrix &result) {
   return "";
 }
 
+// --- DEFERRED-EVALUATION FRAMEWORK ---
+//
+// fnInt/nDeriv/sum/prod each take an unevaluated expression as their
+// first argument. The shunting-yard evaluates everything eagerly, so to
+// keep argument 1 unevaluated we run a preprocessing pass over the raw
+// source tokens that:
+//   - finds each surface-level FnInt/NDeriv/Sum/Prod token,
+//   - locates the matching `)`,
+//   - splits the parenthesised contents by top-level commas,
+//   - recursively rewrites every argument (so nested calls resolve too),
+//   - captures argument 0 (the deferred expression) and argument 1 (the
+//     bound variable, which must be a single VarA..VarZ token) into a
+//     thread-local side table keyed by a sequential index `K`,
+//   - emits a synthetic *Call token followed by the eager argument
+//     subexpressions, comma-separated, with `K` encoded as raw digit
+//     tokens as the final argument. The shunting-yard then treats the
+//     synthetic call exactly like any built-in-paren function: it pops
+//     its arguments off the operand stack (top = K, then bounds in
+//     source order) and consults the side table.
+//
+// The side table is `thread_local` and shared across nested
+// `evaluate()` invocations via a depth-counter RAII guard — Y-VARS
+// recursion (which calls back into `evaluate()` with a different token
+// buffer) inherits the parent's table, and the deferred-call evaluator
+// branches likewise re-enter `evaluate()` on the captured expression
+// without losing track of which K corresponds to which call. The
+// outermost `evaluate()` clears the table on entry and exit.
+
+namespace {
+
+struct DeferredCall {
+  std::vector<Token> expr;  // raw (pre-flush) tokens — recursive evaluate() handles its own digit flush
+  int varIdx;               // 0..25 for VarA..VarZ
+};
+
+static thread_local std::vector<DeferredCall> g_deferred;
+static thread_local int g_evalDepth = 0;
+
+struct EvalGuard {
+  bool outermost;
+  EvalGuard() {
+    outermost = (g_evalDepth == 0);
+    if (outermost) g_deferred.clear();
+    ++g_evalDepth;
+  }
+  ~EvalGuard() {
+    --g_evalDepth;
+    if (outermost) g_deferred.clear();
+  }
+};
+
+// Paren-scope tracking treats every built-in-paren function token
+// (sin(, abs(, round(, fnInt(, ...) as opening a +1 depth, matching the
+// synthetic LeftParen the shunting-yard pushes for those tokens. Without
+// this, `nDeriv(sin(X), X, 0)` would consume the `)` from `sin(X)` as
+// nDeriv's closer, and the outer rewrite would fail with bogus arg
+// counts. The surface-level deferred-call tokens get an explicit branch
+// because they're rewritten out before shunting-yard sees them and so
+// don't appear in `has_built_in_paren`, but they still open a scope on
+// the source side.
+bool opensParenScope(Token t) {
+  return t == Token::LeftParen ||
+         t == Token::FnInt || t == Token::NDeriv ||
+         t == Token::Sum   || t == Token::Prod   ||
+         EOSPrecedence::has_built_in_paren(t);
+}
+
+std::vector<std::vector<Token>> splitByComma(const std::vector<Token> &tokens,
+                                              int lo, int hi) {
+  std::vector<std::vector<Token>> parts;
+  std::vector<Token> current;
+  int depth = 0;
+  for (int i = lo; i < hi; ++i) {
+    Token t = tokens[i];
+    if (opensParenScope(t)) ++depth;
+    else if (t == Token::RightParen) --depth;
+    if (depth == 0 && t == Token::Comma) {
+      parts.push_back(std::move(current));
+      current.clear();
+    } else {
+      current.push_back(t);
+    }
+  }
+  parts.push_back(std::move(current));
+  return parts;
+}
+
+// Emit the digits of a non-negative integer as Num0..Num9 tokens.
+void appendIntTokens(std::vector<Token> &out, int K) {
+  std::string s = std::to_string(K);
+  for (char c : s)
+    out.push_back(static_cast<Token>(static_cast<int>(Token::Num0) + (c - '0')));
+}
+
+std::vector<Token> rewriteDeferredCalls(const std::vector<Token> &tokens,
+                                        bool &ok);
+
+// Rewrite the contents of one call's argument list. Each argument is
+// recursively passed through `rewriteDeferredCalls` so nested deferred
+// calls inside any argument get resolved.
+std::vector<std::vector<Token>> rewriteArgs(
+    const std::vector<std::vector<Token>> &args, bool &ok) {
+  std::vector<std::vector<Token>> result;
+  result.reserve(args.size());
+  for (auto &a : args) {
+    auto r = rewriteDeferredCalls(a, ok);
+    if (!ok) return {};
+    result.push_back(std::move(r));
+  }
+  return result;
+}
+
+std::vector<Token> rewriteDeferredCalls(const std::vector<Token> &tokens,
+                                        bool &ok) {
+  std::vector<Token> out;
+  out.reserve(tokens.size());
+  for (size_t i = 0; i < tokens.size(); ++i) {
+    Token t = tokens[i];
+    const bool isDeferred = (t == Token::FnInt || t == Token::NDeriv ||
+                              t == Token::Sum   || t == Token::Prod);
+    if (!isDeferred) {
+      out.push_back(t);
+      continue;
+    }
+    // Source form is `Func(`: a built-in-paren function, so the user
+    // never types a separate LeftParen. The kTokens input string
+    // "fnInt(" landed Token::FnInt — and the shunting-yard would push
+    // a synthetic LeftParen at that point. The user's actual `)` then
+    // closes the call. Locate that closing `)`: it is the matching
+    // RightParen to a *virtual* LeftParen positioned right after our
+    // token. Equivalently, scan forward tracking depth, starting at
+    // depth 1 immediately after Token::FnInt.
+    int depth = 1;  // FnInt/NDeriv/Sum/Prod's built-in paren is already open
+    int rParen = -1;
+    for (size_t j = i + 1; j < tokens.size(); ++j) {
+      if (opensParenScope(tokens[j])) ++depth;
+      else if (tokens[j] == Token::RightParen) {
+        --depth;
+        if (depth == 0) { rParen = static_cast<int>(j); break; }
+      }
+    }
+    if (rParen < 0) { ok = false; return out; }
+
+    // Split the contents (i+1 .. rParen) by top-level commas.
+    auto args = splitByComma(tokens, static_cast<int>(i) + 1, rParen);
+
+    // Argument count gate. fnInt/sum/prod want exactly 4; nDeriv
+    // accepts 3 (default h) or 4 (explicit h).
+    if (t == Token::NDeriv) {
+      if (args.size() < 3 || args.size() > 4) { ok = false; return out; }
+    } else {
+      if (args.size() != 4) { ok = false; return out; }
+    }
+
+    // Recursively rewrite every argument so nested deferred calls
+    // (inside the deferred expression or the eager bounds) resolve.
+    auto rArgs = rewriteArgs(args, ok);
+    if (!ok) return out;
+
+    // arg1 must be a single VarA..VarZ token after recursion.
+    if (rArgs[1].size() != 1 ||
+        rArgs[1][0] < Token::VarA || rArgs[1][0] > Token::VarZ) {
+      ok = false; return out;
+    }
+    const int varIdx = static_cast<int>(rArgs[1][0]) -
+                       static_cast<int>(Token::VarA);
+
+    // Allocate the side-table slot. The slot's index `K` will be
+    // emitted into the stream as the synthetic call's final operand;
+    // the evaluator pops K and indexes into g_deferred.
+    const int K = static_cast<int>(g_deferred.size());
+    g_deferred.push_back({std::move(rArgs[0]), varIdx});
+
+    // Emit synthetic call. The *Call token has has_built_in_paren=true
+    // so the shunting-yard pushes a synthetic LeftParen for us — we
+    // only emit the comma-separated arguments and the closing `)`.
+    Token callTok = (t == Token::FnInt)  ? Token::FnIntCall :
+                    (t == Token::NDeriv) ? Token::NDerivCall :
+                    (t == Token::Sum)    ? Token::SumCall :
+                                           Token::ProdCall;
+    out.push_back(callTok);
+
+    auto emitArg = [&](const std::vector<Token> &arg) {
+      for (auto x : arg) out.push_back(x);
+    };
+
+    if (t == Token::FnInt || t == Token::Sum || t == Token::Prod) {
+      // lower, upper, K.
+      emitArg(rArgs[2]);
+      out.push_back(Token::Comma);
+      emitArg(rArgs[3]);
+      out.push_back(Token::Comma);
+    } else {
+      // nDeriv: point, h (default 0.001 if omitted), K.
+      emitArg(rArgs[2]);
+      out.push_back(Token::Comma);
+      if (rArgs.size() == 4) {
+        emitArg(rArgs[3]);
+      } else {
+        out.push_back(Token::Num0);
+        out.push_back(Token::Decimal);
+        out.push_back(Token::Num0);
+        out.push_back(Token::Num0);
+        out.push_back(Token::Num1);
+      }
+      out.push_back(Token::Comma);
+    }
+    appendIntTokens(out, K);
+    out.push_back(Token::RightParen);
+
+    i = rParen;  // continue past the original `)`
+  }
+  return out;
+}
+
+} // namespace
+
 // --- CORE EVALUATOR ---
 
-CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
+CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
                                              double xValue) {
+  // RAII guard: at the outermost evaluate() entry, clears the deferred
+  // table; nested calls (Y-VARS recursion, deferred-call handlers
+  // recursing on their captured expression) inherit and append. The
+  // table is cleared again on the outermost exit so no state leaks
+  // between top-level evaluations.
+  EvalGuard depthGuard;
+
+  // Rewrite deferred calls out of the source token stream before any
+  // other preprocessing. The output stream contains no surface-level
+  // FnInt/NDeriv/Sum/Prod tokens; their synthetic *Call replacements
+  // flow through digit-flush / Sto / Y_n / implicit-mul / shunting-yard
+  // exactly like any other built-in-paren function.
+  bool rewriteOk = true;
+  std::vector<Token> rewritten = rewriteDeferredCalls(tokensIn, rewriteOk);
+  if (!rewriteOk)
+    return {false, 0.0, {}, false, "Syntax Error"};
+  const std::vector<Token> &tokens = rewritten;
+
   if (tokens.empty())
     return {false, 0.0, {}, false, "Empty"};
 
@@ -619,6 +862,118 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
       if (subRes.isMatrix)
         return {false, 0.0, {}, false, "Type Error"};
       stack.push({false, subRes.value, {}});
+    } else if (t == Token::FnIntCall || t == Token::NDerivCall ||
+               t == Token::SumCall   || t == Token::ProdCall) {
+      // Deferred-evaluation calculus call. The three operands on the
+      // stack are (top → bottom): K (side-table index), second-bound,
+      // first-bound. Bound interpretation:
+      //   FnIntCall  → first=lower, second=upper
+      //   NDerivCall → first=point, second=h
+      //   Sum/Prod   → first=start, second=end
+      if (stack.size() < 3)
+        return {false, 0.0, {}, false, "Error"};
+      Operand kOp = stack.top(); stack.pop();
+      Operand bOp = stack.top(); stack.pop();
+      Operand aOp = stack.top(); stack.pop();
+      if (kOp.isMat || bOp.isMat || aOp.isMat)
+        return {false, 0.0, {}, false, "Type Error"};
+      const int K = static_cast<int>(std::llround(kOp.val));
+      if (K < 0 || K >= static_cast<int>(g_deferred.size()))
+        return {false, 0.0, {}, false, "Error"};
+      const std::vector<Token> &expr = g_deferred[K].expr;
+      const int vIdx = g_deferred[K].varIdx;
+      const int xIdx = static_cast<int>(Token::VarX) -
+                       static_cast<int>(Token::VarA);
+
+      // Sampler: evaluate `expr` with the bound variable set to `v`.
+      // When the bound variable is X we also pass `v` as the recursive
+      // call's xValue so graph-mode X resolution sees the loop value;
+      // for other letters the registry write is enough. The previous
+      // varRegistry value is restored after every sample so callers
+      // outside the loop see no side effect. The underlying engine
+      // error string is captured so the handler can propagate it
+      // verbatim (e.g. Recursion / DIVIDE BY 0) — losing it to a
+      // generic "Error" was masking real failures behind ERR:SYNTAX.
+      std::string sampleErr;
+      auto sample = [&](double v, bool &okSamp) -> double {
+        double prev = varRegistry[vIdx];
+        varRegistry[vIdx] = v;
+        MathStateMachine sub;
+        CalculationResult r = sub.evaluate(expr, (vIdx == xIdx) ? v : xValue);
+        varRegistry[vIdx] = prev;
+        if (!r.success) { okSamp = false; sampleErr = r.error_message; return 0.0; }
+        if (r.isMatrix)  { okSamp = false; sampleErr = "Type Error"; return 0.0; }
+        okSamp = true;
+        return r.value;
+      };
+      auto sampleFail = [&]() {
+        return CalculationResult{false, 0.0, {}, false, sampleErr};
+      };
+
+      double result = 0.0;
+      bool okSamp = true;
+
+      if (t == Token::FnIntCall) {
+        double a = aOp.val, b = bOp.val;
+        if (a == b) {
+          result = 0.0;
+        } else {
+          bool flipSign = false;
+          if (a > b) { std::swap(a, b); flipSign = true; }
+          const int N = 100;  // even — composite Simpson's needs even subintervals
+          const double h = (b - a) / N;
+          double f0 = sample(a, okSamp); if (!okSamp) return sampleFail();
+          double fN = sample(b, okSamp); if (!okSamp) return sampleFail();
+          double acc = f0 + fN;
+          for (int i = 1; i < N; ++i) {
+            double xi = a + i * h;
+            double vi = sample(xi, okSamp);
+            if (!okSamp) return sampleFail();
+            acc += (i % 2 == 1) ? 4.0 * vi : 2.0 * vi;
+          }
+          result = (h / 3.0) * acc;
+          if (flipSign) result = -result;
+        }
+      } else if (t == Token::NDerivCall) {
+        const double xPt = aOp.val;
+        const double h = bOp.val;
+        if (h == 0.0)
+          return {false, 0.0, {}, false, "DOMAIN"};
+        double fp = sample(xPt + h, okSamp); if (!okSamp) return sampleFail();
+        double fm = sample(xPt - h, okSamp); if (!okSamp) return sampleFail();
+        result = (fp - fm) / (2.0 * h);
+      } else {
+        // sum / prod — integer iteration, inclusive. TI-83 convention
+        // floors fractional bounds; an empty range (start > end)
+        // returns the identity element (0 for sum, 1 for prod). Cap
+        // the iteration count so a runaway `sum(X, X, 1, 1e12)` can't
+        // wedge the engine.
+        const long long start = static_cast<long long>(std::floor(aOp.val));
+        const long long end   = static_cast<long long>(std::floor(bOp.val));
+        const long long span  = (end >= start) ? (end - start + 1) : 0;
+        constexpr long long kIterCap = 100000;
+        if (span > kIterCap)
+          return {false, 0.0, {}, false, "DOMAIN"};
+        if (t == Token::SumCall) {
+          double acc = 0.0;
+          for (long long k = start; k <= end; ++k) {
+            double v = sample(static_cast<double>(k), okSamp);
+            if (!okSamp) return sampleFail();
+            acc += v;
+          }
+          result = acc;
+        } else {
+          double acc = 1.0;
+          for (long long k = start; k <= end; ++k) {
+            double v = sample(static_cast<double>(k), okSamp);
+            if (!okSamp) return sampleFail();
+            acc *= v;
+          }
+          result = acc;
+        }
+      }
+
+      stack.push({false, result, {}});
     } else if (t == Token::Sto) {
       // Write the top-of-stack value into varRegistry[target] and push
       // it back so the display reflects the stored value. Scalar only —

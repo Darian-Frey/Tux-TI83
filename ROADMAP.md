@@ -148,9 +148,10 @@ yet built: 2ND modifier system, ALPHA modifier system (see
 - ✅ `UIController::formatScalar(double)` helper — centralised display formatting at 10-significant-digit precision, used by `evaluate`, `▶Dec`, and the test suite. Fixes an implicit bug where results ≥ 10⁶ displayed as scientific notation by default (`10! = 3628800` now renders as the integer, not `3.6288e+06`).
 
 ### Calculus
-- 📅 Numeric integration `fnInt(`
-- 📅 Numeric derivative `nDeriv(`
-- 📅 `sum(`, `prod(`, `seq(` over a range
+- ✅ Numeric integration `fnInt(expr, var, a, b)` — composite Simpson's rule, N=100 subintervals; nested calls supported via thread-local deferred side-table (IMP-044, 2026-05-25)
+- ✅ Numeric derivative `nDeriv(expr, var, x [, h])` — symmetric finite difference, default h=0.001 (IMP-044, 2026-05-25)
+- ✅ `sum(expr, var, start, end)` / `prod(expr, var, start, end)` — 4-arg form; integer iteration with 100k-call cap. Deviates from TI-83's list-based `sum(seq(...))` syntax pending Phase C lists (IMP-044, 2026-05-25)
+- 📅 `seq(expr, var, start, end[, step])` — needs Phase C lists (returns a list); deferred until list infrastructure lands
 - 💭 Equation solver (Solver app)
 - 💭 Symbolic operations (well beyond original TI-83 scope)
 

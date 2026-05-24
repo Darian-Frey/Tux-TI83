@@ -841,6 +841,114 @@ int main(int argc, char *argv[]) {
           cc.currentDisplay(), "ERR:RECURSION");
   }
 
+  section("Calculus: fnInt / nDeriv / sum / prod (IMP-044)");
+  {
+    // fnInt — definite integral via composite Simpson's rule. N=100,
+    // so closed-form polynomials converge to within the formatter's
+    // visible precision; trig integrals match to ~1e-8.
+    check("fnInt(X^2, X, 0, 1) → 1/3",
+          eval(c, "fnInt(X^2, X, 0, 1)"),
+          UIController::formatScalar(1.0 / 3.0));
+    check("fnInt(X, X, 0, 10) → 50",
+          eval(c, "fnInt(X, X, 0, 10)"), "50");
+    check("fnInt(X^3, X, 0, 2) → 4",
+          eval(c, "fnInt(X^3, X, 0, 2)"), "4");
+
+    // Order-swap: a > b returns the signed integral.
+    check("fnInt(X, X, 1, 0) → -0.5",
+          eval(c, "fnInt(X, X, 1, 0)"),
+          UIController::formatScalar(-0.5));
+
+    // Degenerate bounds.
+    check("fnInt(X, X, 5, 5) → 0",
+          eval(c, "fnInt(X, X, 5, 5)"), "0");
+
+    // nDeriv — symmetric finite difference. Default h = 1e-3 → error
+    // ≈ h²·f‴(x)/6 for smooth functions; pick targets where the exact
+    // derivative is a small integer.
+    check("nDeriv(X^2, X, 3) → 6",
+          eval(c, "nDeriv(X^2, X, 3)"), "6");
+    check("nDeriv(X^3, X, 2) ≈ 12 (Simpson tolerance)",
+          eval(c, "nDeriv(X^3, X, 2)"), "12.000001");
+
+    // Explicit h.
+    check("nDeriv(X^2, X, 0, 0.5) → 0",
+          eval(c, "nDeriv(X^2, X, 0, 0.5)"), "0");
+
+    // h=0 is a domain error.
+    check("nDeriv(X, X, 0, 0) → DOMAIN",
+          eval(c, "nDeriv(X, X, 0, 0)"), "ERR:DOMAIN");
+
+    // sum — exact arithmetic; integer iteration.
+    check("sum(X, X, 1, 10) → 55",
+          eval(c, "sum(X, X, 1, 10)"), "55");
+    check("sum(X^2, X, 1, 5) → 55",
+          eval(c, "sum(X^2, X, 1, 5)"), "55");
+    check("sum(2X, X, 1, 4) → 20",
+          eval(c, "sum(2X, X, 1, 4)"), "20");
+
+    // Empty range → identity (0 for sum).
+    check("sum(X, X, 5, 1) → 0 (empty)",
+          eval(c, "sum(X, X, 5, 1)"), "0");
+
+    // Iteration cap — 1,000,000 iterations are above the 100,000 cap.
+    // (Don't use `1e6` here: the engine parses `e` as the constant E,
+    // not scientific notation, so `1e6` evaluates to ~16.3.)
+    check("sum(1, X, 1, 1000000) → DOMAIN (over cap)",
+          eval(c, "sum(1, X, 1, 1000000)"), "ERR:DOMAIN");
+
+    // prod.
+    check("prod(X, X, 1, 5) → 120 (= 5!)",
+          eval(c, "prod(X, X, 1, 5)"), "120");
+    check("prod(2, X, 1, 5) → 32 (= 2^5)",
+          eval(c, "prod(2, X, 1, 5)"), "32");
+    check("prod(X, X, 5, 1) → 1 (empty identity)",
+          eval(c, "prod(X, X, 5, 1)"), "1");
+
+    // Bound variable other than X — varRegistry path. Use A so the
+    // sampler writes/restores varRegistry[0] without touching xValue.
+    check("sum(A^2, A, 1, 3) → 14",
+          eval(c, "sum(A^2, A, 1, 3)"), "14");
+
+    // Variables outside the bound name resolve from the registry,
+    // restored after the loop. Set A=5, then sum 1..A.
+    {
+      UIController cc;
+      cc.processExpression(QStringLiteral("5→A"));
+      cc.processInput(QStringLiteral("ENTER"));
+      cc.processInput(QStringLiteral("CLEAR"));
+      cc.processExpression(QStringLiteral("sum(X, X, 1, A)"));
+      cc.processInput(QStringLiteral("ENTER"));
+      check("sum(X, X, 1, A) with A=5 → 15",
+            cc.currentDisplay(), "15");
+    }
+
+    // Nested calls — outer's slot reservation happens before recursion
+    // into args, so each call carries its own K index.
+    check("fnInt(fnInt(1, Y, 0, X), X, 0, 1) → 0.5",
+          eval(c, "fnInt(fnInt(1, Y, 0, X), X, 0, 1)"),
+          UIController::formatScalar(0.5));
+
+    // Deferred expression spanning a built-in-paren function — the
+    // earlier opensParenScope fix targets this.
+    {
+      QString s = eval(c, "fnInt(sin(X), X, 0, π)");
+      bool ok = s.startsWith("2") || s.startsWith("1.99");
+      check("fnInt(sin(X), X, 0, π) ≈ 2",
+            ok ? QString("2 (≈)") : s, "2 (≈)");
+    }
+
+    // Syntax errors: variable arg must be a single VarA..VarZ.
+    check("fnInt(X, X+1, 0, 1) → SYNTAX",
+          eval(c, "fnInt(X, X+1, 0, 1)"), "ERR:SYNTAX");
+    check("fnInt(X, 5, 0, 1) → SYNTAX",
+          eval(c, "fnInt(X, 5, 0, 1)"), "ERR:SYNTAX");
+
+    // Wrong arity.
+    check("fnInt(X, X, 0) → SYNTAX (missing upper)",
+          eval(c, "fnInt(X, X, 0)"), "ERR:SYNTAX");
+  }
+
   section("Number base (IMP-043)");
   {
     using tux_ti83::NumberBase;

@@ -164,6 +164,25 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-044: Calculus framework — `fnInt(`, `nDeriv(`, `sum(`, `prod(`
+
+- **Status:** applied (2026-05-25)
+- **Location:** [core_math/include/capsules/capsule_math.hpp](core_math/include/capsules/capsule_math.hpp), [core_math/src/core_math.cpp](core_math/src/core_math.cpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/qml/components/MathMenuPopup.qml](app/qml/components/MathMenuPopup.qml), [tests/test_math.cpp](tests/test_math.cpp)
+- **Effort:** large
+- **Description:** Four calculus functions whose first argument must stay unevaluated so the engine can sample it at many bound points. The shunting-yard is strictly eager, so this required a dedicated preprocessing-and-side-channel framework — the framework lift is paid once and reused by all four functions.
+- **Change:**
+  - Engine: eight new tokens — surface (`FnInt`, `NDeriv`, `Sum`, `Prod`) and synthetic-after-rewrite (`FnIntCall`, `NDerivCall`, `SumCall`, `ProdCall`). The surface tokens never reach the shunting-yard.
+  - Rewrite pass (new, runs as the first operation in `evaluate()` before digit-flush): walks the source tokens, finds each surface deferred-call function, locates the matching `)` (depth-aware on built-in-paren functions via the new `opensParenScope` helper — the missing-built-in-paren bug caused `nDeriv(sin(X), X, 0)` and all nested calls to fail with `ERR:SYNTAX` until this was found), splits the parenthesised contents by top-level commas, recursively rewrites every argument so inner deferred calls resolve first, captures the unevaluated first argument plus the bound variable letter into a `thread_local std::vector<DeferredCall>`, and emits a synthetic *Call token followed by the eager argument subexpressions (lower, upper / point, h / start, end) and the side-table index `K` encoded as raw digit tokens. The synthetic call has `has_built_in_paren=true` so the shunting-yard adds a synthetic LeftParen and treats it as a normal n-ary function.
+  - RAII depth guard (`EvalGuard`): only the outermost `evaluate()` call clears the deferred table; nested calls (Y-VARS recursion, deferred-call handlers recursing on a captured expression) inherit, which is what lets a captured sub-stream containing already-rewritten synthetic call tokens resolve against the parent's table.
+  - Evaluator branches: `FnIntCall` runs composite Simpson's rule with N=100 even subintervals (handles `a > b` by flipping and negating, `a == b` short-circuits to 0). `NDerivCall` symmetric finite difference; default h = 0.001 if the user omits the 4th arg, `h == 0` returns `ERR:DOMAIN`. `SumCall` / `ProdCall` floor the bounds, iterate inclusive, return the identity element (0 / 1) for an empty range, and cap iteration at 100,000 to keep `sum(X, X, 1, 10^12)` from wedging the engine. All four share a `sample` lambda that saves/restores the bound variable's registry slot and passes the sample as `xValue` when the bound variable is X (so graph-mode X resolution sees the loop value). Sub-eval errors propagate verbatim — the initial implementation flattened them to a generic `"Error"`, which masked recursion / divide-by-zero / domain errors as `ERR:SYNTAX`.
+  - MATH menu: four new entries route through the existing `processExpression` insertion path.
+  - 19 new regression tests cover closed-form integrals (X², X³, sin over [0, π]), derivatives, exact sums / products, empty ranges, the iteration cap, nested calls (`fnInt(fnInt(1, Y, 0, X), X, 0, 1)` = 0.5), the X-vs-other-var sampler split, and the syntax-error gates (non-Var var arg, wrong arity). 279/279 passing.
+- **Trade-offs:**
+  - `sum(`/`prod(` use a 4-arg textbook form (`expr, var, start, end`) rather than TI-83's list-based `sum(seq(...))` shape. List-based forms can be added later as overloads once Phase C lists land; the 4-arg form will stay because it's clearer and unambiguous.
+  - `seq(` is deliberately not in this commit — it returns a list, so there's nothing useful to do without list infrastructure. ROADMAP entry stays 📅, pending Phase C.
+  - The call-index encoding via raw digit tokens means each rewritten call adds 1–3 extra digit tokens to the stream (one per decimal digit of `K`). At realistic expression sizes (<100 deferred calls per expression) this is invisible; the alternative — extending `Token` with a payload field — would have rippled through every site that compares or copies tokens.
+- **Notes:** The framework is reusable: any future function that needs an unevaluated expression argument (e.g. an equation solver `solve(eqn, var, guess)`) can follow the same surface-token + *Call-token pattern and the existing rewriter handles arg capture, nesting, and variable binding for free.
+
 ### IMP-043: DEC/HEX/OCT/BIN base conversion
 
 - **Status:** applied (2026-05-24) — closes the "Base conversion" entry in ROADMAP Number systems.

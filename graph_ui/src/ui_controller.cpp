@@ -136,6 +136,16 @@ constexpr TokenSpec kTokens[] = {
     {"nCr(",   Token::NCr,   "nCr("},
     {"nPr(",   Token::NPr,   "nPr("},
 
+    // Deferred-evaluation calculus functions. The engine's preprocessing
+    // pass rewrites these into synthetic *Call tokens with a thread-local
+    // side table holding the unevaluated expression; the original
+    // surface tokens still need entries here so the user can type or
+    // CATALOG-insert them.
+    {"fnInt(",  Token::FnInt,  "fnInt("},
+    {"nDeriv(", Token::NDeriv, "nDeriv("},
+    {"sum(",    Token::Sum,    "sum("},
+    {"prod(",   Token::Prod,   "prod("},
+
     // Factorial — unary postfix
     {"!", Token::Fact, "!"},
 

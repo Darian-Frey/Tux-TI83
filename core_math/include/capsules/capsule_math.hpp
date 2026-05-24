@@ -189,7 +189,28 @@ enum class Token {
   // overrides xValue for the recursive yLookup eval.
   Y1Call,
   Y2Call,
-  Y3Call
+  Y3Call,
+  // Deferred-evaluation calculus functions. The user-typed form takes
+  // an expression, a bound variable, and one or two bounds:
+  //   fnInt(expr, var, lower, upper)        — definite integral
+  //   nDeriv(expr, var, point [, h])        — symmetric finite difference
+  //   sum(expr, var, start, end)            — Σ from ⌊start⌋ to ⌊end⌋
+  //   prod(expr, var, start, end)           — Π from ⌊start⌋ to ⌊end⌋
+  // A preprocessing pass in `evaluate()` extracts the unevaluated first
+  // argument and the variable letter into a thread-local side table,
+  // rewriting the call into a synthetic *Call token whose eager args
+  // remain in the token stream (so the existing shunting-yard handles
+  // bound expressions identically to any other operand). The synthetic
+  // call carries its side-table index as a trailing integer operand,
+  // popped by the evaluator alongside the eager arguments.
+  FnInt,
+  NDeriv,
+  Sum,
+  Prod,
+  FnIntCall,
+  NDerivCall,
+  SumCall,
+  ProdCall
 };
 
 struct Matrix {
