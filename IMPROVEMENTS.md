@@ -164,6 +164,21 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-042: `Y1(arg)` explicit-argument form for Y-VARS
+
+- **Status:** applied (2026-05-24) — closes the v1 limitation noted in IMP-036.
+- **Location:** [core_math/include/capsules/capsule_math.hpp](core_math/include/capsules/capsule_math.hpp), [core_math/src/core_math.cpp](core_math/src/core_math.cpp), [tests/test_math.cpp](tests/test_math.cpp)
+- **Effort:** medium
+- **Description:** IMP-036 only supported the bare form (`Y1` uses the current X). `Y1(3)` parsed as `Y1 * 3` via implicit-mul rather than evaluating Y1 with X=3. Closing this limitation requires Y_n to behave both as a leaf token (bare) and a function-with-arg, which the shunting-yard parser doesn't natively support.
+- **Change:**
+  - Engine: three internal tokens `Y1Call` / `Y2Call` / `Y3Call`. These have function semantics with built-in paren (in `is_function` and `has_built_in_paren`). They're never typed directly — synthesised by a new preprocessing pass slotted between Sto-rewriting and implicit-mul injection. The pass walks the post-Sto token stream and collapses any `[Y_n, LeftParen]` adjacency into a single `Y_nCall` token, dropping the LeftParen (the synthetic LeftParen pushed by the function-with-built-in-paren machinery takes its place).
+  - The implicit-mul pass operates on the post-Y-call token stream — by the time it runs, `Y_n` is no longer followed by `LeftParen` and so doesn't get wedged with an `ImplicitMul`.
+  - Hoisted `activeYn` (the cycle-detection `static thread_local std::set<int>`) from the bare-Y branch's block scope to function scope so the bare and call forms share one guard. Mixed cycles (bare Y1 referencing Y2 which references Y1(0)) now trip the same recursion check.
+  - New evaluator branch for `Y_nCall`: pops the argument off the operand stack and evaluates the referenced buffer with the popped value as `xValue` (instead of the outer call's xValue). Same cycle / empty-buffer / type-error handling as the bare form.
+  - 8 new regression tests: `Y1(3)`, `Y1(3+1)`, `Y1(-2)` (unary-minus arg), `Y1(Y3(3))` (nested call), empty-target call form, self-reference detection, and a mixed cycle across the bare and call forms. 243/243 passing.
+- **Trade-offs:** Rewrite happens at evaluation time, not in the live buffer — `m_displayStrings` and any post-edit re-render still show the original `Y1(...)` form (correct). Could surface the rewrite into the buffer too, but the display side already does the right thing and the eval rewrite is per-call, so this is fine.
+- **Notes:** Pairs well with the TABLE view (IMP-035) — `Y2 = Y1(X)` shows Y2 column matching Y1's at every X. The previously-documented "Y1(3) parses as Y1*3" limitation is now closed.
+
 ### IMP-041: `e^(` and `sgn(` as proper unary functions
 
 - **Status:** applied (2026-05-24)

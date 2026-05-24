@@ -178,7 +178,18 @@ enum class Token {
   // Self-reference and cross-Y cycles return "Recursion".
   Y1,
   Y2,
-  Y3
+  Y3,
+  // Explicit-argument call form for Y-VARS: `Y1(3)` evaluates Y1
+  // with X = 3 (the argument), rather than the bare form's
+  // implicit-current-X. Synthesised in a preprocessing pass by
+  // detecting [Y_n, LeftParen] adjacency and collapsing to a single
+  // Y_nCall token. The call form is a unary function with built-in
+  // paren — the argument expression flows through the standard
+  // function-arg pipeline, gets popped off the operand stack, and
+  // overrides xValue for the recursive yLookup eval.
+  Y1Call,
+  Y2Call,
+  Y3Call
 };
 
 struct Matrix {

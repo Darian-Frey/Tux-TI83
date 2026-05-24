@@ -792,6 +792,55 @@ int main(int argc, char *argv[]) {
   check("2sgn(7) = 2 (juxtaposition with implicit mul)",
         eval(c, "2sgn(7)"), "2");
 
+  section("Y-VARS call form: Y1(arg) (IMP-042)");
+  {
+    UIController yc;
+    tux_ti83::MathStateMachine::varRegistry.fill(0.0);
+
+    // Set Y1 = X^2 by switching to slot 0 and evaluating.
+    yc.setActiveFunction(0);
+    eval(yc, "X^2");
+    // Cross-slot: Y2 evaluates Y1(3) → 9
+    yc.setActiveFunction(1);
+    check("Y1(3) with Y1=X^2 → 9", eval(yc, "Y1(3)"), "9");
+    check("Y1(3+1) with Y1=X^2 → 16",
+          eval(yc, "Y1(3+1)"), "16");
+    check("Y1(-2) with Y1=X^2 → 4 (unary-minus arg)",
+          eval(yc, "Y1(-2)"), "4");
+    // Argument can itself be a Y-VAR. Set Y3 = X+1 to test:
+    yc.setActiveFunction(2);
+    eval(yc, "X+1");
+    yc.setActiveFunction(1);
+    check("Y1(Y3(3)) with Y3=X+1, Y1=X^2 → 16",
+          eval(yc, "Y1(Y3(3))"), "16");
+
+    // Empty target → arg ignored, evaluates to 0 (matches bare form).
+    // Reset Y3 so it's empty again.
+    yc.setActiveFunction(2);
+    yc.processInput(QStringLiteral("CLEAR"));
+    yc.setActiveFunction(1);
+    check("Y3(99) with Y3 empty → 0",
+          eval(yc, "Y3(99)"), "0");
+
+    // Recursion across forms: Y1=Y1(0)+1 (call form referencing itself)
+    yc.setActiveFunction(0);
+    check("Y1(0)+1 in Y1 → ERR:RECURSION",
+          eval(yc, "Y1(0)+1"), "ERR:RECURSION");
+
+    // Cross-form cycle: Y1=Y2, Y2=Y1(0)
+    UIController cc;
+    cc.setActiveFunction(0);
+    cc.processInput(QStringLiteral("CLEAR"));
+    cc.processExpression(QStringLiteral("Y2"));
+    cc.setActiveFunction(1);
+    cc.processInput(QStringLiteral("CLEAR"));
+    cc.processExpression(QStringLiteral("Y1(0)"));
+    cc.setActiveFunction(0);
+    cc.processInput(QStringLiteral("ENTER"));
+    check("Y1=Y2, Y2=Y1(0) → ERR:RECURSION (mixed cycle)",
+          cc.currentDisplay(), "ERR:RECURSION");
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

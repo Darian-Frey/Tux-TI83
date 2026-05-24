@@ -37,6 +37,9 @@ int EOSPrecedence::precedence(Token t) {
   case Token::FPart:
   case Token::Exp:
   case Token::Sgn:
+  case Token::Y1Call:
+  case Token::Y2Call:
+  case Token::Y3Call:
   case Token::Round:
   case Token::Min:
   case Token::Max:
@@ -102,6 +105,7 @@ bool EOSPrecedence::is_function(Token t) {
           t == Token::Abs || t == Token::Int ||
           t == Token::IPart || t == Token::FPart ||
           t == Token::Exp || t == Token::Sgn ||
+          t == Token::Y1Call || t == Token::Y2Call || t == Token::Y3Call ||
           t == Token::Sinh || t == Token::Cosh || t == Token::Tanh ||
           t == Token::ASinh || t == Token::ACosh || t == Token::ATanh ||
           is_binary_function(t));
@@ -123,6 +127,7 @@ bool EOSPrecedence::has_built_in_paren(Token t) {
           t == Token::Log || t == Token::Ln || t == Token::Sqrt ||
           t == Token::Abs || t == Token::Int || t == Token::IPart ||
           t == Token::FPart || t == Token::Exp || t == Token::Sgn ||
+          t == Token::Y1Call || t == Token::Y2Call || t == Token::Y3Call ||
           t == Token::Det || t == Token::Transpose ||
           t == Token::Rref ||
           t == Token::Round || t == Token::Min ||
@@ -370,6 +375,30 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
     }
   }
 
+  // Y-VARS call-form rewrite: collapse [Y_n, LeftParen] into a single
+  // Y_nCall token. Done before implicit-mul so we don't wedge an
+  // ImplicitMul between Y_n and its argument's `(`. The call form is
+  // a unary function with built-in paren — the argument expression
+  // then flows through the standard function-arg pipeline. IMP-042.
+  std::vector<Token> ycTokens;
+  ycTokens.reserve(stoTokens.size());
+  for (size_t i = 0; i < stoTokens.size(); ++i) {
+    Token t = stoTokens[i];
+    const bool isLeafYn = (t == Token::Y1 || t == Token::Y2 || t == Token::Y3);
+    if (isLeafYn &&
+        i + 1 < stoTokens.size() &&
+        stoTokens[i + 1] == Token::LeftParen) {
+      const Token callForm =
+          (t == Token::Y1) ? Token::Y1Call :
+          (t == Token::Y2) ? Token::Y2Call :
+                             Token::Y3Call;
+      ycTokens.push_back(callForm);
+      ++i;  // skip the LeftParen — the call form has built-in paren
+    } else {
+      ycTokens.push_back(t);
+    }
+  }
+
   // Third preprocessing pass: insert ImplicitMul between juxtaposed
   // value-like tokens so `2π`, `2(3+4)`, `(3)(4)`, `2sin(x)`, `5X`
   // all work without an explicit `×`. IMP-005.
@@ -398,10 +427,10 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
            EOSPrecedence::is_function(t);
   };
   std::vector<Token> finalTokens;
-  finalTokens.reserve(stoTokens.size() * 2);
-  for (size_t i = 0; i < stoTokens.size(); ++i) {
-    if (i > 0 && valueLikeEnd(stoTokens[i - 1]) &&
-        valueLikeStart(stoTokens[i])) {
+  finalTokens.reserve(ycTokens.size() * 2);
+  for (size_t i = 0; i < ycTokens.size(); ++i) {
+    if (i > 0 && valueLikeEnd(ycTokens[i - 1]) &&
+        valueLikeStart(ycTokens[i])) {
       // Neg is treated as a function by is_function (for shunting-yard
       // unary handling), but `2-3` should never become `2 ImplicitMul
       // (Neg 3)` — the Sub-vs-Neg disambiguation lives in the UI's
@@ -409,10 +438,10 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
       // intend a unary minus. Still skip injection on Neg to keep
       // `2-3` → `2 - 3` rather than `2 * (-3)`. The latter is
       // numerically identical here but loses source structure.
-      if (stoTokens[i] != Token::Neg)
+      if (ycTokens[i] != Token::Neg)
         finalTokens.push_back(Token::ImplicitMul);
     }
-    finalTokens.push_back(stoTokens[i]);
+    finalTokens.push_back(ycTokens[i]);
   }
 
   std::vector<std::pair<Token, double>> rpn;
@@ -502,6 +531,13 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
   auto toB = [](double v) { return std::abs(v) > 1e-9; };
 
   int storeIdx = 0;
+  // Y-VAR cycle guard, hoisted to function scope so both the bare
+  // and call-form branches share one set. Cross-form cycles (e.g.
+  // bare Y1 reaches Y2(...) which reaches bare Y1) still trip.
+  // `static thread_local` so the set persists across nested
+  // recursive evaluate() calls in the same thread without leaking
+  // state between top-level evaluations.
+  static thread_local std::set<int> activeYn;
   for (auto &node : rpn) {
     Token t = node.first;
     if (t == Token::Num0)
@@ -522,16 +558,12 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
       // scalar 0 on first use (matches TI-83 power-on state).
       stack.push({lastResult.isMatrix, lastResult.value, lastResult.matrixValue});
     } else if (t == Token::Y1 || t == Token::Y2 || t == Token::Y3) {
-      // Y-VARS — recursively evaluate the referenced function buffer
-      // at the current xValue. Cycle guard via a static thread_local
-      // set keyed by Y-index: any attempt to re-enter a Y_n already
-      // mid-evaluation returns "Recursion". An empty referenced
-      // buffer (or null yLookup) silently evaluates to 0 — matches
-      // TI-83 behaviour of an empty function slot.
+      // Y-VARS bare form — recursively evaluate the referenced buffer
+      // at the current xValue. Cycle guard via `activeYn` (declared
+      // at function scope above; shared with the call form).
       const int yIdx = (t == Token::Y1) ? 0
                      : (t == Token::Y2) ? 1
                                         : 2;
-      static thread_local std::set<int> activeYn;
       if (activeYn.count(yIdx))
         return {false, 0.0, {}, false, "Recursion"};
       if (!yLookup) {
@@ -546,6 +578,41 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
       activeYn.insert(yIdx);
       MathStateMachine sub;
       CalculationResult subRes = sub.evaluate(buf, xValue);
+      activeYn.erase(yIdx);
+      if (!subRes.success) return subRes;
+      if (subRes.isMatrix)
+        return {false, 0.0, {}, false, "Type Error"};
+      stack.push({false, subRes.value, {}});
+    } else if (t == Token::Y1Call || t == Token::Y2Call ||
+               t == Token::Y3Call) {
+      // Y-VARS explicit-argument form — pop the argument from the
+      // operand stack and recursively evaluate the referenced buffer
+      // with X = arg. Shares the activeYn cycle guard with the bare
+      // form so mixed cycles are caught. IMP-042.
+      if (stack.empty())
+        return {false, 0.0, {}, false, "Error"};
+      Operand argOp = stack.top();
+      stack.pop();
+      if (argOp.isMat)
+        return {false, 0.0, {}, false, "Type Error"};
+      const double argX = argOp.val;
+      const int yIdx = (t == Token::Y1Call) ? 0
+                     : (t == Token::Y2Call) ? 1
+                                            : 2;
+      if (activeYn.count(yIdx))
+        return {false, 0.0, {}, false, "Recursion"};
+      if (!yLookup) {
+        stack.push({false, 0.0, {}});
+        continue;
+      }
+      std::vector<Token> buf = yLookup(yIdx);
+      if (buf.empty()) {
+        stack.push({false, 0.0, {}});
+        continue;
+      }
+      activeYn.insert(yIdx);
+      MathStateMachine sub;
+      CalculationResult subRes = sub.evaluate(buf, argX);
       activeYn.erase(yIdx);
       if (!subRes.success) return subRes;
       if (subRes.isMatrix)
