@@ -164,6 +164,16 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-040: Periodic save protects against crash-loss
+
+- **Status:** applied (2026-05-24)
+- **Location:** [app/main.cpp](app/main.cpp)
+- **Effort:** trivial
+- **Description:** IMP-033 persistence saved only on clean exit, so a crash (BUG-019, BUG-020, or any future regression) lost the entire session. The follow-up note in the IMP-033 entry called this out explicitly.
+- **Change:** New `QTimer` in `main.cpp` set to fire every 30 seconds, wired to `uiController.saveState()`. Owned by the function-local stack so it stops cleanly on `app.exec()` return. Tests / CLI / REPL don't run a Qt event loop and don't get a timer.
+- **Trade-offs:** Naïve interval-based — saves whether or not state actually changed. The JSON is ~1 KB and the disk write is fsynced inside saveState's downstream path; the cost is invisible in practice. A "dirty flag + debounce" version would save fewer no-op writes but adds tracking complexity. Acceptable to revisit if the state file grows much larger.
+- **Notes:** Verified by leaving the GUI idle for >2 min and grepping `session.log` — three `saveState ok` events fired at exactly 30000-ms intervals, plus the existing on-exit save. Worst-case loss on a crash is now ~30s of unrecorded input instead of the full session.
+
 ### IMP-039: Four more ZOOM presets (ZSquare / ZTrig / ZDecimal / ZInteger)
 
 - **Status:** applied (2026-05-23)

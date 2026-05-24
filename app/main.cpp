@@ -2,6 +2,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QDebug>
+#include <QTimer>
 #include "ui_controller.hpp"
 #include "crash_logger.hpp"
 
@@ -24,6 +25,16 @@ int main(int argc, char *argv[]) {
     // exists (first run) or it fails to parse — leaves the controller
     // in default state in that case.
     uiController.loadState();
+
+    // Periodic save — protects against crashes that skip the
+    // post-exec saveState(). Fires every 30s; saveState() is
+    // idempotent and cheap (single ~1 KB JSON file). Tests / CLI /
+    // REPL don't run a Qt event loop so no timer for them.
+    QTimer autoSaveTimer;
+    autoSaveTimer.setInterval(30 * 1000);
+    QObject::connect(&autoSaveTimer, &QTimer::timeout,
+                     &uiController, &tux_ti83::UIController::saveState);
+    autoSaveTimer.start();
 
     // EXPLICIT LINK: Register the controller BEFORE loading the file
     engine.rootContext()->setContextProperty("uiController", &uiController);
