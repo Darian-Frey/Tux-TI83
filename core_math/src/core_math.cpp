@@ -35,6 +35,8 @@ int EOSPrecedence::precedence(Token t) {
   case Token::Int:
   case Token::IPart:
   case Token::FPart:
+  case Token::Exp:
+  case Token::Sgn:
   case Token::Round:
   case Token::Min:
   case Token::Max:
@@ -99,6 +101,7 @@ bool EOSPrecedence::is_function(Token t) {
           t == Token::Rref || t == Token::Neg ||
           t == Token::Abs || t == Token::Int ||
           t == Token::IPart || t == Token::FPart ||
+          t == Token::Exp || t == Token::Sgn ||
           t == Token::Sinh || t == Token::Cosh || t == Token::Tanh ||
           t == Token::ASinh || t == Token::ACosh || t == Token::ATanh ||
           is_binary_function(t));
@@ -119,7 +122,8 @@ bool EOSPrecedence::has_built_in_paren(Token t) {
           t == Token::ASin || t == Token::ACos || t == Token::ATan ||
           t == Token::Log || t == Token::Ln || t == Token::Sqrt ||
           t == Token::Abs || t == Token::Int || t == Token::IPart ||
-          t == Token::FPart || t == Token::Det || t == Token::Transpose ||
+          t == Token::FPart || t == Token::Exp || t == Token::Sgn ||
+          t == Token::Det || t == Token::Transpose ||
           t == Token::Rref ||
           t == Token::Round || t == Token::Min ||
           t == Token::Max || t == Token::Mod ||
@@ -722,6 +726,10 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokens,
           v = std::trunc(v);
         else if (t == Token::FPart)
           v = v - std::trunc(v);
+        else if (t == Token::Exp)
+          v = std::exp(v);
+        else if (t == Token::Sgn)
+          v = (v > 0.0) ? 1.0 : (v < 0.0 ? -1.0 : 0.0);
         else if (t == Token::Sinh)
           v = std::sinh(v);
         else if (t == Token::Cosh)

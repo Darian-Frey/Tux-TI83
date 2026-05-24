@@ -123,6 +123,8 @@ constexpr TokenSpec kTokens[] = {
     {"int(",   Token::Int,   "int("},
     {"iPart(", Token::IPart, "iPart("},
     {"fPart(", Token::FPart, "fPart("},
+    {"e^(",    Token::Exp,   "e^("},
+    {"sgn(",   Token::Sgn,   "sgn("},
 
     // Number functions (binary) — Wave 2
     {"round(", Token::Round, "round("},

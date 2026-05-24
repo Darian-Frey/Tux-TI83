@@ -164,6 +164,20 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-041: `e^(` and `sgn(` as proper unary functions
+
+- **Status:** applied (2026-05-24)
+- **Location:** [core_math/include/capsules/capsule_math.hpp](core_math/include/capsules/capsule_math.hpp), [core_math/src/core_math.cpp](core_math/src/core_math.cpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/qml/components/MathMenuPopup.qml](app/qml/components/MathMenuPopup.qml), [tests/test_math.cpp](tests/test_math.cpp)
+- **Effort:** trivial
+- **Description:** Two small math primitives that were missing or awkward. `e^(` was reachable via the 2ND+LN macro but produced three tokens (`E`, `Pow`, `LeftParen`) — semantically identical to `std::exp` but not first-class. `sgn(` (sign function) wasn't there at all.
+- **Change:**
+  - Engine: added `Token::Exp` and `Token::Sgn`. Standard unary plumbing — `precedence`, `is_function`, `has_built_in_paren` all extended. Evaluator branches: `Exp` calls `std::exp`; `Sgn` returns `-1`/`0`/`+1`.
+  - Controller: kTokens entries `e^(` → `Token::Exp` and `sgn(` → `Token::Sgn`. The 2ND+LN macro string `"e^("` now tokenises as a single `Exp` token (longest-match in `tokenize`).
+  - UI: MathMenuPopup gained `e^(` and `sgn(` entries so they're discoverable without keyboard shortcuts.
+  - Tests: 8 new assertions covering inverse round-trip (`e^(ln(5)) = 5`), all three Sgn branches, non-integer negative, and juxtaposition (`2sgn(7) = 2`).
+- **Trade-offs:** Sgn's sign convention at zero matches TI-83 (`sgn(0) = 0`) rather than mathematical `sgn(0) = undefined` or some libraries' `sgn(0) = NaN`. Returning 0 keeps the function total over the reals.
+- **Notes:** Closes two small bullets from the Number-functions backlog. Outstanding small math primitives: `fnInt(` and `nDeriv(` (need delayed-evaluation infrastructure to capture an "expression argument") and `sum(` / `prod(` / `seq(` (same).
+
 ### IMP-040: Periodic save protects against crash-loss
 
 - **Status:** applied (2026-05-24)

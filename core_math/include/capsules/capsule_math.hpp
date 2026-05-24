@@ -73,6 +73,13 @@ enum class Token {
   Int,
   IPart,
   FPart,
+  // Natural exponential — eˣ as a dedicated token. The 2ND+LN macro
+  // already injected "e^(" as three tokens (E, Pow, LeftParen) which
+  // computed the same thing via implicit `M_E ^ x`; this token makes
+  // it a single first-class entry and matches the TI-83 keytop label.
+  Exp,
+  // Sign function — returns -1, 0, or +1.
+  Sgn,
   // Number functions (binary). Pop two operands during evaluation;
   // arguments are separated by Comma in the source expression.
   Round,

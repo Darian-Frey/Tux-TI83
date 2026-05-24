@@ -45,6 +45,8 @@ Popup {
         { label: "int(",   input: "int(",   available: true  },
         { label: "iPart(", input: "iPart(", available: true  },
         { label: "fPart(", input: "fPart(", available: true  },
+        { label: "e^(",    input: "e^(",    available: true  },
+        { label: "sgn(",   input: "sgn(",   available: true  },
         { label: "round(", input: "round(", available: true },
         { label: "min(",   input: "min(",   available: true },
         { label: "max(",   input: "max(",   available: true },

@@ -779,6 +779,19 @@ int main(int argc, char *argv[]) {
           cc.currentDisplay(), "ERR:RECURSION");
   }
 
+  section("Exp + Sgn (IMP-041)");
+  check("e^(0) = 1", eval(c, "e^(0)"), "1");
+  check("e^(1) = e", eval(c, "e^(1)"), UIController::formatScalar(M_E));
+  check("e^(ln(5)) = 5 (inverse round-trip)",
+        eval(c, "e^(ln(5))"), "5");
+  check("sgn(-5) = -1",   eval(c, "sgn(-5)"), "-1");
+  check("sgn(0)  =  0",   eval(c, "sgn(0)"),  "0");
+  check("sgn(5)  =  1",   eval(c, "sgn(5)"),  "1");
+  check("sgn(-3.7) = -1 (non-integer negative)",
+        eval(c, "sgn(-3.7)"), "-1");
+  check("2sgn(7) = 2 (juxtaposition with implicit mul)",
+        eval(c, "2sgn(7)"), "2");
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 
