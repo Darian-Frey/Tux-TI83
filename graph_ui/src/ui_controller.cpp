@@ -401,6 +401,15 @@ void UIController::loadState() {
   }
   m_activeIdx = (saved_active >= 0 && saved_active < 3) ? saved_active : 0;
 
+  // Treat the loaded display content as a "previous result" — next
+  // keypress should clear and start fresh (state-machine rule:
+  // typing in Evaluated state wipes the active buffer and returns
+  // to Inputting). Without this, the loaded Y1 buffer stayed in
+  // Inputting state and any new digit appended to the loaded
+  // expression — `0` + `52` = displayed as `052`.
+  m_displayState = Evaluated;
+  m_displayExpression.clear();
+
   // Fire the change signals so any QML bindings refresh.
   emit angleModeChanged();
   emit notationChanged();
@@ -408,6 +417,7 @@ void UIController::loadState() {
   emit drawModeChanged();
   emit viewportChanged();
   emit displayChanged();
+  emit displayStateChanged();
   emit activeFunctionIndexChanged();
 
   CrashLogger::logEvent(QStringLiteral("loadState ok"));
@@ -1150,6 +1160,64 @@ void UIController::zoomOut() {
   m_xMax = cx + rx * 2.0;
   m_yMin = cy - ry * 2.0;
   m_yMax = cy + ry * 2.0;
+  emit viewportChanged();
+}
+
+void UIController::zoomSquare() {
+  CrashLogger::logEvent(QStringLiteral("zoomSquare"));
+  // Snap y-range to match x-range while keeping the current centre.
+  // 1 unit X ≈ 1 unit Y on screen (exact for square canvases).
+  const double cy = (m_yMin + m_yMax) * 0.5;
+  const double half = (m_xMax - m_xMin) * 0.5;
+  m_yMin = cy - half;
+  m_yMax = cy + half;
+  emit viewportChanged();
+}
+
+void UIController::zoomTrig() {
+  CrashLogger::logEvent(QStringLiteral("zoomTrig"));
+  // TI-83's trig-friendly window. 2.3π chosen on the real device so
+  // each pixel maps to π/24 — the exact tick step it uses for sin/cos.
+  // We don't have the same fixed pixel grid, but the bounds still
+  // give a "natural" trig view.
+  m_xMin = -2.3 * M_PI;
+  m_xMax =  2.3 * M_PI;
+  m_yMin = -4.0;
+  m_yMax =  4.0;
+  emit viewportChanged();
+}
+
+void UIController::zoomDecimal() {
+  CrashLogger::logEvent(QStringLiteral("zoomDecimal"));
+  // TI-83's ZDecimal: the [-4.7, 4.7] × [-3.1, 3.1] window. On the
+  // real device this gives each pixel a coordinate of 0.1 exactly;
+  // here it's just a "clean decimal" preset.
+  m_xMin = -4.7;
+  m_xMax =  4.7;
+  m_yMin = -3.1;
+  m_yMax =  3.1;
+  emit viewportChanged();
+}
+
+void UIController::zoomInteger() {
+  CrashLogger::logEvent(QStringLiteral("zoomInteger"));
+  // Snap each viewport edge to its nearest integer. Keeps the user
+  // close to where they were but cleans up the decimals.
+  m_xMin = std::floor(m_xMin + 0.5);
+  m_xMax = std::floor(m_xMax + 0.5);
+  m_yMin = std::floor(m_yMin + 0.5);
+  m_yMax = std::floor(m_yMax + 0.5);
+  // Guard against degenerate zero-width windows after snapping (e.g.
+  // a user who'd already zoomed to a sub-unit range): expand to at
+  // least ±1 around centre so the canvas still draws something.
+  if (m_xMax - m_xMin < 1.0) {
+    const double cx = (m_xMin + m_xMax) * 0.5;
+    m_xMin = cx - 1.0; m_xMax = cx + 1.0;
+  }
+  if (m_yMax - m_yMin < 1.0) {
+    const double cy = (m_yMin + m_yMax) * 0.5;
+    m_yMin = cy - 1.0; m_yMax = cy + 1.0;
+  }
   emit viewportChanged();
 }
 

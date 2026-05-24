@@ -29,6 +29,16 @@ Each entry uses this template:
 
 ## Fixed
 
+### BUG-021: Loaded state leaves display in Inputting, so first keystroke appends to the prior buffer
+
+- **Status:** fixed (2026-05-23, same session as IMP-039)
+- **Location:** [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp) `loadState()`
+- **Severity:** medium (user-visible — silently appends to the loaded expression instead of starting a fresh one)
+- **Description:** After `loadState()` restored the persisted Y= buffers via `processExpression`, the display state stayed at `Inputting` with the cursor positioned at the end of the active buffer. The next keystroke went through the normal Inputting path, which appends instead of clearing. So a user whose saved Y1 was `0`, typing `52` on launch, saw `052` rather than `52`.
+- **Reproduction (was):** With any saved Y1 content, close the GUI cleanly to persist state, relaunch, and type a digit on the active slot — the digit landed after the saved content rather than replacing it.
+- **Fix:** After loadState's restore loop, set `m_displayState = Evaluated` and emit `displayStateChanged`. This applies the existing state-machine rule "next digit/function keypress in Evaluated state: clears expr, returns to Inputting" — the loaded content is treated as a stale previous result; the first keystroke replaces it. Users who want to preserve a slot's saved content can switch to a different slot via FunctionSelector before typing.
+- **Notes:** Surfaced and fixed during IMP-039 testing. Latent in the original IMP-033 persistence design but only obvious once a user actually persisted then resumed.
+
 ### BUG-020: Cross-slot cursor position causes vector out-of-bounds insertion
 
 - **Status:** fixed (2026-05-23, same session as IMP-033)

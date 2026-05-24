@@ -164,6 +164,22 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-039: Four more ZOOM presets (ZSquare / ZTrig / ZDecimal / ZInteger)
+
+- **Status:** applied (2026-05-23)
+- **Location:** [graph_ui/include/ui_controller.hpp](graph_ui/include/ui_controller.hpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/qml/components/ZoomPopup.qml](app/qml/components/ZoomPopup.qml)
+- **Effort:** small
+- **Description:** ZoomPopup had only the four presets that shipped with IMP-028 (ZStandard, Zoom In, Zoom Out, ZFit). Real TI-83 has ~10 entries; the most useful absent ones were ZSquare (equal X/Y scaling), ZTrig (trig-friendly window), ZDecimal (the canonical "clean decimals" preset), and ZInteger (snap edges to integers).
+- **Change:**
+  - Four new Q_INVOKABLE methods on UIController:
+    - `zoomSquare()` keeps the current centre and snaps y-range to match x-range so 1 X = 1 Y on screen
+    - `zoomTrig()` sets `[-2.3π, 2.3π] × [-4, 4]` (TI-83 conventions)
+    - `zoomDecimal()` sets `[-4.7, 4.7] × [-3.1, 3.1]`
+    - `zoomInteger()` snaps all four viewport edges to their nearest integer with a `< 1.0` degenerate-window guard
+  - ZoomPopup grew to 8 entries; popup height bumped 260→380 to fit them.
+- **Trade-offs:** ZSquare here ignores the actual canvas aspect ratio — assumes square pixels. Close enough for the default window size; a real-aspect implementation would need the canvas to report its render size to the controller.
+- **Notes:** Surfaced BUG-021 during verification (saved-state appending to typed input). Brings ZOOM coverage from 40% to 80% of the real TI-83 menu — outstanding entries (ZBox draggable rect, ZoomStat, ZoomPrevious, ZoomMemory) are deferred.
+
 ### IMP-038: Factory RESET button + MODE popup height fix
 
 - **Status:** applied (2026-05-23)

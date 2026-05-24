@@ -18,8 +18,9 @@ Popup {
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
+    // Height sized for 8 rows + header + padding.
     width: 280
-    height: 260
+    height: 380
     padding: 14
 
     x: (parent.width - width) / 2
@@ -36,13 +37,21 @@ Popup {
         { label: "1: ZStandard", action: "zstd" },
         { label: "2: Zoom In",   action: "zin"  },
         { label: "3: Zoom Out",  action: "zout" },
-        { label: "4: ZFit",      action: "zfit" }
+        { label: "4: ZSquare",   action: "zsqr" },
+        { label: "5: ZTrig",     action: "ztrg" },
+        { label: "6: ZDecimal",  action: "zdec" },
+        { label: "7: ZInteger",  action: "zint" },
+        { label: "8: ZFit",      action: "zfit" }
     ]
 
     function dispatch(action) {
         if (action === "zstd")      uiController.resetViewport()
         else if (action === "zin")  uiController.zoomIn()
         else if (action === "zout") uiController.zoomOut()
+        else if (action === "zsqr") uiController.zoomSquare()
+        else if (action === "ztrg") uiController.zoomTrig()
+        else if (action === "zdec") uiController.zoomDecimal()
+        else if (action === "zint") uiController.zoomInteger()
         else if (action === "zfit") uiController.zoomFit()
         root.close()
     }

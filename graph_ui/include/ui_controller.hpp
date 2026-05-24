@@ -191,6 +191,20 @@ public:
     // pixel coordinates; these wrap it for the menu's preset use.
     Q_INVOKABLE void zoomIn();
     Q_INVOKABLE void zoomOut();
+    // ZSquare: equalise the y-range to the x-range so 1 unit X looks
+    // 1 unit Y on screen. Centred on the current viewport centre.
+    // Approximate — assumes a square canvas; close enough for most
+    // window aspect ratios.
+    Q_INVOKABLE void zoomSquare();
+    // ZTrig: a window suited for trig functions — x ∈ [-2.3π, 2.3π],
+    // y ∈ [-4, 4]. Matches TI-83 conventions.
+    Q_INVOKABLE void zoomTrig();
+    // ZDecimal: TI-83's "nice decimal coords" window —
+    // [-4.7, 4.7] × [-3.1, 3.1].
+    Q_INVOKABLE void zoomDecimal();
+    // ZInteger: snap the current viewport edges to the nearest
+    // integers. Useful when stepping through integer X values.
+    Q_INVOKABLE void zoomInteger();
     Q_INVOKABLE void updateMatrix(const QString& name, int rows, int cols, const QVariantList& values);
     Q_INVOKABLE QVariantList getMultiGraphPoints(int resolution);
     Q_INVOKABLE void pan(double dx, double dy, double vw, double vh);
