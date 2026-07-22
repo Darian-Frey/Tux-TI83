@@ -865,7 +865,7 @@ void UIController::evaluate() {
       QString matStr = "[[";
       for (int i = 0; i < result.matrixValue.rows; ++i) {
         for (int j = 0; j < result.matrixValue.cols; ++j) {
-          matStr += QString::number(result.matrixValue.at(i, j));
+          matStr += formatScalar(result.matrixValue.at(i, j));
           if (j < result.matrixValue.cols - 1)
             matStr += ",";
         }

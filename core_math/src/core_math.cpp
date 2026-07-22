@@ -570,7 +570,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
     if (!currentNumStr.empty()) {
       try {
         double v = std::stod(currentNumStr);
-        processedTokens.push_back(Token::Num0);
+        processedTokens.push_back(Token::NumLiteral);
         numericValues.push_back(v);
       } catch (...) {
         // Bare "." or other malformed numeric runs — std::stod throws
@@ -654,7 +654,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
     return t == Token::Y1 || t == Token::Y2 || t == Token::Y3;
   };
   auto valueLikeEnd = [&isYn](Token t) {
-    return t == Token::Num0 ||
+    return t == Token::NumLiteral ||
            t == Token::Pi || t == Token::E || t == Token::Ans ||
            t == Token::RightParen || t == Token::Fact ||
            (t >= Token::VarA && t <= Token::VarZ) ||
@@ -662,7 +662,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
            isYn(t);
   };
   auto valueLikeStart = [&isYn](Token t) {
-    return t == Token::Num0 ||
+    return t == Token::NumLiteral ||
            t == Token::Pi || t == Token::E || t == Token::Ans ||
            t == Token::LeftParen ||
            (t >= Token::VarA && t <= Token::VarZ) ||
@@ -692,7 +692,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
   std::stack<Token> opStack;
   int numIdx = 0;
   for (auto t : finalTokens) {
-    if (t == Token::Num0)
+    if (t == Token::NumLiteral)
       rpn.push_back({t, numericValues[numIdx++]});
     else if ((t >= Token::MatA && t <= Token::MatJ) ||
              (t >= Token::VarA && t <= Token::VarZ) ||
@@ -784,7 +784,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
   static thread_local std::set<int> activeYn;
   for (auto &node : rpn) {
     Token t = node.first;
-    if (t == Token::Num0)
+    if (t == Token::NumLiteral)
       stack.push({false, node.second, {}});
     else if (t >= Token::VarA && t <= Token::VarZ) {
       if (t == Token::VarX)

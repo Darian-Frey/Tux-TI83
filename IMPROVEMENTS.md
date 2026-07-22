@@ -111,58 +111,29 @@ Each entry uses this template:
   gap. The current behaviour is technically correct but uselessly so —
   no way for a CLI user to populate the matrix first.
 
-### IMP-010: Route matrix element formatting through `formatScalar`
-- **Status:** suggested
-- **Found:** 2026-04-08 (during matrix-transpose work)
-- **Location:** [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp) `evaluate()` matrix-result formatting branch
-- **Effort:** trivial (one-line change)
-- **Description:** The scalar-result branch of `evaluate()` routes
-  through `formatScalar(double)` — a centralised helper that uses
-  10-significant-digit precision to avoid scientific-notation surprises
-  (fixed during the factorial work). But the matrix-result branch
-  still uses bare `QString::number(matrixValue.at(i, j))` with the
-  default 6-digit precision. A matrix with a large integer element
-  (anything ≥ 10⁶) would render that cell as scientific, inconsistent
-  with scalar display.
-- **Proposal:** Replace `QString::number(result.matrixValue.at(i, j))`
-  with `formatScalar(result.matrixValue.at(i, j))` in the matrix-to-
-  string loop. One-line change.
-- **Trade-offs:** None — strictly more consistent. The two display
-  paths become one semantic (10-sig-digit 'g' format).
-- **Notes:** Not user-visible yet because no test matrix has elements
-  large enough to hit the 6-digit precision cliff, but the
-  inconsistency would surface the moment someone computes e.g.
-  `[A]*[B]` where `[A]` and `[B]` have large values. Trivial to fix;
-  flagging because it's the kind of small consistency gap that grows
-  into real bugs if left to accumulate.
-
-### IMP-004: `Token::Num0` doubles as the "numeric literal" sentinel
-- **Status:** suggested
-- **Found:** 2026-04-06 (post-Step 6 spot-check of `core_math/`)
-- **Location:** [core_math/src/core_math.cpp:123-129](core_math/src/core_math.cpp#L123-L129) and [core_math/src/core_math.cpp:147-150](core_math/src/core_math.cpp#L147-L150)
-- **Effort:** small
-- **Description:** The first pre-pass in `MathStateMachine::evaluate`
-  collects digit tokens into a string, parses to a double, stores it in
-  a parallel `numericValues` vector, and pushes `Token::Num0` as a
-  placeholder in `processedTokens`. The shunting-yard loop later sees
-  `Num0` and pulls the next value out of `numericValues` via
-  `numIdx++`. This works but conflates two meanings of `Num0`: "the
-  literal digit 0" and "this is a numeric literal, look up the value
-  in the parallel array." Anyone reading `processedTokens` has to know
-  the trick.
-- **Proposal:** Add a `Token::NumLiteral` enum value used only as the
-  sentinel. Or refactor `processedTokens` to a `vector<RpnNode>` with
-  explicit literal/op/var variants and eliminate the parallel
-  `numericValues` array entirely.
-- **Trade-offs:** The minimal rename is essentially zero-risk. The
-  fuller refactor touches the parser hot path and would benefit from
-  having tests in place first.
-- **Notes:** Worth doing before adding negative literals or scientific
-  notation, both of which would extend this code path.
-
 ---
 
 ## Applied
+
+### IMP-004: `Token::Num0` doubles as the "numeric literal" sentinel
+
+- **Status:** applied (2026-07-22)
+- **Location:** [core_math/include/capsules/capsule_math.hpp](core_math/include/capsules/capsule_math.hpp) (Token enum), [core_math/src/core_math.cpp](core_math/src/core_math.cpp) (`MathStateMachine::evaluate`)
+- **Effort:** small
+- **Description:** The digit-flush prepass in `evaluate()` coalesced runs of `Num0..Num9`/`Decimal` into a single parsed double and pushed `Token::Num0` as a placeholder, with the value stored in the parallel `numericValues` array. Downstream passes then read `Token::Num0` as "a numeric literal, look up its value" — conflating that meaning with "the literal digit 0". Anyone reading the post-flush stream had to know the trick.
+- **Change:** Took the minimal-rename option (not the fuller `RpnNode` refactor). Added a dedicated `Token::NumLiteral` at the **end** of the enum — placed there so the digit-detection `(int)t in [0,9]` check and the contiguous `VarA..VarZ`/`MatA..MatJ` ranges renumber nothing. Renamed the five post-flush sentinel sites (the flush push, both implicit-mul value-like classifiers, the RPN builder's value lookup, and the evaluator's literal-push) to `NumLiteral`. The four pre-flush raw-digit emitters (`emitDigits`' base offset and the nDeriv default-`h` `0.001` emit) correctly stay as raw `Num0..Num9` tokens — they feed *into* the flush pass. Pure mechanical rename, zero behaviour change: 279/279 regression tests pass unchanged.
+- **Trade-offs:** None for the minimal rename. The parallel-array `numericValues` design is untouched — the fuller `vector<RpnNode>` refactor that would eliminate it remains available as a future step, now unblocked by the clearer sentinel. Worth having done before negative literals / scientific-notation input extend this path.
+- **Notes:** Applied alongside IMP-010 as a "clear the trivial improvements backlog" pass. The 279-test suite made the hot-path rename safe to verify mechanically.
+
+### IMP-010: Route matrix element formatting through `formatScalar`
+
+- **Status:** applied (2026-07-22)
+- **Location:** [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp) `evaluate()` matrix-result formatting branch
+- **Effort:** trivial (one-line change)
+- **Description:** The scalar-result branch of `evaluate()` routed through `formatScalar(double)` (10-significant-digit precision, base/Notation/Decimal aware), but the matrix-result branch used bare `QString::number(matrixValue.at(i, j))` at default 6-digit precision. A matrix element ≥ 10⁶ would render that cell in scientific notation, inconsistent with scalar display, and matrix cells ignored the active MODE display settings entirely.
+- **Change:** Replaced `QString::number(result.matrixValue.at(i, j))` with `formatScalar(result.matrixValue.at(i, j))` in the matrix-to-string loop. One line. Matrix cells now share the exact same display semantic as scalars — 10-sig-digit `g` format, and (as a bonus, more TI-83-faithful) they now also honour the active Notation/Decimal/Base MODE settings.
+- **Trade-offs:** None for the precision fix. Matrix cells now also reflect Sci/Fix/Base mode; this matches real TI-83 behaviour (matrix elements respect display mode) so it's an improvement rather than a surprise.
+- **Notes:** Applied alongside IMP-004. Not previously user-visible because no regression matrix had elements large enough to hit the 6-digit cliff; the fix pre-empts it.
 
 ### IMP-044: Calculus framework — `fnInt(`, `nDeriv(`, `sum(`, `prod(`
 

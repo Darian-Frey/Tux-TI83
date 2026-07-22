@@ -210,7 +210,15 @@ enum class Token {
   FnIntCall,
   NDerivCall,
   SumCall,
-  ProdCall
+  ProdCall,
+  // IMP-004: dedicated numeric-literal sentinel. The digit-flush prepass
+  // in evaluate() coalesces runs of Num0..Num9/Decimal into a single
+  // parsed double and pushes this marker in their place, with the value
+  // stored in the parallel `numericValues` array. Distinct from Num0 (the
+  // literal digit 0) so post-flush passes can't confuse "the value zero"
+  // with "a numeric literal, look up its value". Never produced by the
+  // tokenizer — only appears downstream of the flush pass.
+  NumLiteral
 };
 
 struct Matrix {
