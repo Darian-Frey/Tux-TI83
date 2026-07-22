@@ -281,7 +281,7 @@ Engine implements more than the UI currently exposes — listed below.
 
 ### Other graphing modes
 - 💭 Parametric mode (X1T, Y1T)
-- 💭 Polar mode (r1, r2)
+- ✅ Polar mode (r1, r2, r3) — landed 2026-07-22. MODE → Graph → Pol; each function buffer is read as `r = f(θ)` and rendered on the shared canvas via `(r,θ)→(x,y)`. Angle-unit-aware (radian/degree). Reuses the Func-mode render/pan/zoom pipeline; `r1/r2/r3` selector + `POL` header indicator + persisted `graphMode`. Caveats: the angle variable is entered as `X` (no dedicated `θ` token — avoids a core_math change), θ sweeps a fixed full turn (no θmin/θmax/θstep settings yet), and trace isn't polar-aware yet.
 - 💭 Sequence mode (u(n), v(n))
 - 💭 Inequality shading (Inequalz app on TI-83 Plus)
 
@@ -310,7 +310,7 @@ Engine implements more than the UI currently exposes — listed below.
 - ✅ Cursor movement within an expression (left/right arrow editing) — added 2026-04-18 (token-level cursor in UIController; insertToken/backspace are cursor-aware; Left/Right/Home/End keyboard shortcuts; Display's TextInput binds to cursorOffset so the visual cursor tracks edits mid-expression; unary-negation disambiguation now looks at the token immediately left of the cursor rather than the tail)
 - ✅ Insert mode toggle (2nd + DEL) — added 2026-04-29 (`m_insertMode` flag on UIController; default INS splices, OVR replaces the token at the cursor and falls back to append past the end; header `OVR` badge; DEL key has an `INS` 2ND corner label; on-screen `CURSOR` section also added with HOME / ← / → / END to complement the existing keyboard shortcuts)
 - ✅ ALPHA-lock mode — added 2026-04-18 (2ND + ALPHA toggles a persistent `alphaLocked` flag in addition to the one-shot `alphaArmed`; header shows "A-LOCK" when locked; any letter keypress fires its ALPHA variant without clearing the lock; ALPHA alone or CLEAR releases it; 2ND during lock preserves the lock so 2ND+letter combos stay usable mid-typing)
-- 📅 `MODE` menu follow-ups — Notation (Normal/Sci/Eng), Decimal (Float/Fix N), and Draw (Connected/Dot) all wired now. Remaining placeholder rows: Graph: Func/Par/Pol/Seq, Plot: Sequential/Simul (needs frame-by-frame animation framework), Complex: Real/a+bi/re^θi, Screen: Full/Horiz/G-T. Each needs a backing property + evaluator/renderer support.
+- 📅 `MODE` menu follow-ups — Notation (Normal/Sci/Eng), Decimal (Float/Fix N), Draw (Connected/Dot), and Graph: Func/Pol all wired now (Pol landed 2026-07-22, see Graphing › Other graphing modes). Remaining placeholder rows are kept deliberately greyed until their features exist: Graph: Par/Seq, Plot: Sequential/Simul (needs frame-by-frame animation framework), Complex: Real/a+bi/re^θi, Screen: Full/Horiz/G-T. Each needs a backing property + evaluator/renderer support.
 - 📅 `CATALOG` browser (alphabetical list of every command)
 - ✅ Mode indicator in the header — dynamic, binds to `notation` / `fixDecimals` / `angleMode`. Renders e.g. `NORMAL  RAD` (defaults) or `SCI  FIX 2  DEG`; see [IMP-034](IMPROVEMENTS.md).
 - ✅ WINDOW popup ported to the new UI (see Graphing › Window settings)

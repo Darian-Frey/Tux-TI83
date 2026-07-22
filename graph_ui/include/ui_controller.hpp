@@ -70,6 +70,13 @@ private:
     // sample, no connecting lines). Real TI-83 has this in the MODE
     // menu; behaviour purely affects rendering, not evaluation.
     Q_PROPERTY(int drawMode READ drawMode WRITE setDrawMode NOTIFY drawModeChanged)
+
+    // Graph type (MODE → Graph row). 0 = Func (Cartesian y=f(x)),
+    // 2 = Pol (polar r=f(θ)). Values match the row's option order
+    // [Func,Par,Pol,Seq]; Par(1)/Seq(3) are unimplemented and rejected
+    // by setGraphMode. In Pol mode the function buffers are read as
+    // r1/r2/r3 and the sweep variable X stands in for θ.
+    Q_PROPERTY(int graphMode READ graphMode WRITE setGraphMode NOTIFY graphModeSettingChanged)
     // TRACE soft-key state. When true, the graph canvas draws a
     // crosshair on the active function's curve at `traceX` and shows
     // an X / Y readout. Left/Right arrow input is routed to
@@ -107,6 +114,8 @@ public:
     Q_INVOKABLE void toggleInsertMode();
     int drawMode() const { return m_drawMode; }
     void setDrawMode(int m);
+    int graphMode() const { return m_graphMode; }
+    void setGraphMode(int m);
     bool isTracing() const { return m_isTracing; }
     double traceX() const { return m_traceX; }
     double traceY() const;
@@ -241,9 +250,14 @@ signals:
     void cursorMoved();
     void insertModeChanged();
     void drawModeChanged();
+    void graphModeSettingChanged();
     void traceChanged();
 
 private:
+    // Home-screen slot label prefix: "r" in polar graph mode, else "Y".
+    QString functionPrefix() const {
+        return (m_graphMode == 2) ? QStringLiteral("r") : QStringLiteral("Y");
+    }
     // processInput dispatches to these. Each handles one concern; the
     // dispatcher itself stays a thin switch over the input string.
     void clearAll();
@@ -284,6 +298,9 @@ private:
     bool m_insertMode = true;
     // 0 = Connected (default), 1 = Dot. See drawMode property above.
     int m_drawMode = 0;
+    // Graph type: 0 = Func, 2 = Pol (option-index encoding). See the
+    // graphMode property above.
+    int m_graphMode = 0;
     // TRACE state. When `m_isTracing` is true the graph canvas paints
     // a crosshair at (m_traceX, evaluated Y) on the active function.
     // m_traceX is reset to viewport centre on every toggleTrace(true).

@@ -19,7 +19,7 @@ RowLayout {
     spacing: 4
 
     Repeater {
-        model: ["Y1", "Y2", "Y3"]
+        model: 3
         delegate: Rectangle {
             id: cell
             Layout.fillWidth: true
@@ -37,7 +37,8 @@ RowLayout {
 
             Text {
                 anchors.centerIn: parent
-                text: modelData
+                // r1/r2/r3 in polar graph mode, Y1/Y2/Y3 otherwise.
+                text: (uiController.graphMode === 2 ? "r" : "Y") + (index + 1)
                 color: active ? Style.textPrimary : Style.textSecondary
                 font.family: Style.monoFamily
                 font.pixelSize: Style.funcKeyLabelPixelSize

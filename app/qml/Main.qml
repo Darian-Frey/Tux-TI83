@@ -465,10 +465,14 @@ ApplicationWindow {
                     const n = uiController.notation
                     const fx = uiController.fixDecimals
                     const a = uiController.angleMode
+                    const g = uiController.graphMode
                     const notation = (n === 1) ? "SCI" : (n === 2) ? "ENG" : "NORMAL"
                     const angle = (a === 1) ? "DEG" : "RAD"
                     const fixSeg = (fx >= 0) ? ("  FIX " + fx) : ""
-                    return notation + fixSeg + "  " + angle
+                    // Only surface a non-default graph mode (POL); Func is
+                    // the default and stays implicit to avoid clutter.
+                    const graphSeg = (g === 2) ? "  POL" : ""
+                    return notation + fixSeg + "  " + angle + graphSeg
                 }
                 color: Style.textMuted
                 font.family: Style.monoFamily

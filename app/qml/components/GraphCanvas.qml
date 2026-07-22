@@ -211,6 +211,7 @@ Rectangle {
             function onDisplayChanged() { canvas.requestPaint() }
             function onActiveFunctionIndexChanged() { canvas.requestPaint() }
             function onDrawModeChanged() { canvas.requestPaint() }
+            function onGraphModeSettingChanged() { canvas.requestPaint() }
             function onTraceChanged() { canvas.requestPaint() }
         }
     }

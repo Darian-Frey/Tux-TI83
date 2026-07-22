@@ -13,10 +13,12 @@ import ".."
 // respond to clicks — this preserves the real TI-83's MODE layout as a
 // roadmap of what's coming without pretending settings exist.
 //
-// Behavioural contract: the Angle row writes to `uiController.angleMode`
-// (0 = Radian, 1 = Degree); the header's angle indicator binds to the
-// same property, so flipping the setting updates the badge immediately.
-// All other rows are visual placeholders — no backing property yet.
+// Behavioural contract: wired rows write straight to a controller
+// property (Angle, Notation, Decimal, Base, Graph, Draw) and the header
+// indicator binds to the same properties. The Graph row wires Func/Pol
+// (Par/Seq greyed via disabledIndices). Plot / Complex / Screen remain
+// full placeholders (active:false) — their features aren't built, so
+// they render greyed rather than pretending the settings exist.
 Popup {
     id: root
 
@@ -52,6 +54,10 @@ Popup {
         property var options: []            // list of display strings
         property int  selectedIndex: 0
         property bool active: false
+        // Indices within `options` that render greyed and ignore clicks
+        // even when the row is active — used for options that front
+        // unimplemented features (e.g. Graph → Par/Seq).
+        property var disabledIndices: []
         signal selected(int index)
 
         Layout.fillWidth: true
@@ -70,6 +76,12 @@ Popup {
             Repeater {
                 model: row.options
                 delegate: Rectangle {
+                    // A segment is interactive only when its row is active
+                    // AND it isn't in the row's disabledIndices set. Greyed
+                    // segments still render so the full TI-83 MODE layout
+                    // shows as a roadmap of what's coming.
+                    property bool segEnabled: row.active
+                                              && row.disabledIndices.indexOf(index) < 0
                     // `fillWidth` with a `minimumWidth` tied to the text's
                     // implicit width keeps short digit segments modest and
                     // lets long labels (e.g. "Float", "Connected") expand
@@ -79,7 +91,7 @@ Popup {
                     Layout.minimumWidth: segLabel.implicitWidth + 12
                     Layout.preferredHeight: 26
                     radius: 4
-                    opacity: row.active ? 1.0 : 0.4
+                    opacity: segEnabled ? 1.0 : 0.4
                     color: index === row.selectedIndex
                            ? Style.secondBg
                            : (segMouse.containsMouse
@@ -102,7 +114,7 @@ Popup {
                         id: segMouse
                         anchors.fill: parent
                         hoverEnabled: true
-                        enabled: row.active
+                        enabled: parent.segEnabled
                         onClicked: row.selected(index)
                     }
                 }
@@ -172,10 +184,17 @@ Popup {
             active: true
             onSelected: (index) => uiController.numberBase = index
         }
+        // Graph: Func / Pol wired (Cartesian and polar). Par / Seq stay
+        // greyed — not implemented. selectedIndex/onSelected use the
+        // option index directly, matching the controller's graphMode
+        // encoding (0 = Func, 2 = Pol).
         ModeRow {
             label: "Graph"
             options: ["Func", "Par", "Pol", "Seq"]
-            selectedIndex: 0
+            disabledIndices: [1, 3]
+            selectedIndex: uiController.graphMode
+            active: true
+            onSelected: (index) => uiController.graphMode = index
         }
         ModeRow {
             label: "Draw"

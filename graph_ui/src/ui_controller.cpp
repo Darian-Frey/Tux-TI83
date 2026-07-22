@@ -310,6 +310,7 @@ void UIController::saveState() const {
   mode["fixDecimals"] = MathStateMachine::fixDecimals;
   mode["numberBase"]  = static_cast<int>(MathStateMachine::numberBase);
   mode["drawMode"]    = m_drawMode;
+  mode["graphMode"]   = m_graphMode;
   root["mode"] = mode;
 
   // TBLSET (TABLE mode settings — separate object since they're
@@ -397,6 +398,8 @@ void UIController::loadState() {
   }
   if (mode.contains("drawMode"))
     m_drawMode = (mode["drawMode"].toInt() == 1) ? 1 : 0;
+  if (mode.contains("graphMode"))
+    m_graphMode = (mode["graphMode"].toInt() == 2) ? 2 : 0;
 
   // TBLSET restore. Step must be non-zero — guard against bad data.
   QJsonObject table = root.value("table").toObject();
@@ -476,6 +479,7 @@ void UIController::resetAll() {
   m_isGraphMode = false;
   m_isTableMode = false;
   m_drawMode = 0;
+  m_graphMode = 0;
   m_insertMode = true;
   m_isTracing = false;
   m_traceX = 0.0;
@@ -494,6 +498,7 @@ void UIController::resetAll() {
   emit activeFunctionIndexChanged();
   emit viewportChanged();
   emit graphModeChanged();
+  emit graphModeSettingChanged();
   emit tableModeChanged();
   emit tableSettingsChanged();
   emit displayStateChanged();
@@ -587,6 +592,21 @@ void UIController::setDrawMode(int m) {
     return;
   m_drawMode = clamped;
   emit drawModeChanged();
+}
+
+void UIController::setGraphMode(int m) {
+  CrashLogger::logEvent(QStringLiteral("setGraphMode: ") + QString::number(m));
+  // Only Func (0) and Pol (2) are implemented; Par (1) / Seq (3) are
+  // rejected and fall back to Func so a stray write can't strand the
+  // user in an unimplemented mode.
+  const int clamped = (m == 2) ? 2 : 0;
+  if (m_graphMode == clamped)
+    return;
+  m_graphMode = clamped;
+  emit graphModeSettingChanged();
+  // The home-screen slot prefix (r/Y) and the graph render both depend
+  // on the mode — nudge the display so bindings and the canvas refresh.
+  emit displayChanged();
 }
 
 void UIController::moveCursorLeft() {
@@ -857,7 +877,7 @@ void UIController::evaluate() {
   // currentStr is overwritten with the result.
   m_displayExpression = currentStr;
   QString entry =
-      "Y" + QString::number(m_activeIdx + 1) + ": " + currentStr + " = ";
+      functionPrefix() + QString::number(m_activeIdx + 1) + ": " + currentStr + " = ";
 
   MathStateMachine msm;
   // In calc mode, X behaves like any other scalar variable — resolve
@@ -935,7 +955,7 @@ void UIController::convertDisplayToFraction() {
     return; // Irrational or unconvertible — silently leave the decimal.
   auto &currentStr = m_displayStrings[m_activeIdx];
   currentStr = QString::fromStdString(fracStr);
-  m_history.prepend("Y" + QString::number(m_activeIdx + 1) +
+  m_history.prepend(functionPrefix() + QString::number(m_activeIdx + 1) +
                     ": Ans▶Frac = " + currentStr);
   emit historyChanged();
   emit displayChanged();
@@ -949,7 +969,7 @@ void UIController::convertDisplayToDecimal() {
     return;
   auto &currentStr = m_displayStrings[m_activeIdx];
   currentStr = formatScalar(MathStateMachine::lastResult.value);
-  m_history.prepend("Y" + QString::number(m_activeIdx + 1) +
+  m_history.prepend(functionPrefix() + QString::number(m_activeIdx + 1) +
                     ": Ans▶Dec = " + currentStr);
   emit historyChanged();
   emit displayChanged();
@@ -1368,18 +1388,38 @@ QVariantList UIController::getMultiGraphPoints(int resolution) {
   // fix; QML doesn't need to know about empty slots, it just gets
   // an empty array and skips it.
   QVariantList allFunctions;
-  double step = (m_xMax - m_xMin) / resolution;
   MathStateMachine msm;
+
+  // Polar mode (graphMode == 2) sweeps the angle parameter over a full
+  // turn and interprets each buffer as r = f(θ), converting (r, θ) to
+  // Cartesian for the shared {x, y} point contract the canvas renders.
+  // The sweep variable X stands in for θ, so trig inside the expression
+  // and the (r,θ)→(x,y) conversion both use the current angle unit and
+  // stay consistent. Func mode (0) sweeps x across the viewport.
+  const bool polar = (m_graphMode == 2);
+  const bool degree = (MathStateMachine::angleMode == AngleMode::Degree);
+  const double sweepMin = polar ? 0.0 : m_xMin;
+  const double sweepMax =
+      polar ? (degree ? 360.0 : 2.0 * M_PI) : m_xMax;
+  const double step = (sweepMax - sweepMin) / resolution;
+
   for (size_t f = 0; f < m_functionBuffers.size(); ++f) {
     QVariantList points;
     if (!m_functionBuffers[f].empty()) {
       for (int i = 0; i <= resolution; ++i) {
-        double x = m_xMin + (i * step);
-        CalculationResult res = msm.evaluate(m_functionBuffers[f], x);
+        double s = sweepMin + (i * step);
+        CalculationResult res = msm.evaluate(m_functionBuffers[f], s);
         if (res.success && !res.isMatrix) {
           QVariantMap pt;
-          pt["x"] = x;
-          pt["y"] = res.value;
+          if (polar) {
+            const double thetaRad = degree ? (s * M_PI / 180.0) : s;
+            const double r = res.value;
+            pt["x"] = r * std::cos(thetaRad);
+            pt["y"] = r * std::sin(thetaRad);
+          } else {
+            pt["x"] = s;
+            pt["y"] = res.value;
+          }
           points.append(pt);
         }
       }
