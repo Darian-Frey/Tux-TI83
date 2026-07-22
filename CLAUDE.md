@@ -158,7 +158,7 @@ p               → π
 cd build && make -j$(nproc)
 
 # Run
-./build/Tux-TI83
+./build/tux_ti83
 ```
 
 Qt 6.5+ required. Ensure `qmake`/`cmake` resolves to Qt6, not Qt5.
