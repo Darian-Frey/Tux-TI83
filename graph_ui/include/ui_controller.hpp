@@ -2,6 +2,7 @@
 #include <QObject>
 #include <QStringList>
 #include <QVariantList>
+#include <QVariantMap>
 #include <deque>
 #include <vector>
 #include "capsules/capsule_math.hpp"
@@ -216,6 +217,10 @@ public:
     // integers. Useful when stepping through integer X values.
     Q_INVOKABLE void zoomInteger();
     Q_INVOKABLE void updateMatrix(const QString& name, int rows, int cols, const QVariantList& values);
+    // IMP-007: read a stored matrix back for the EDIT tab. Returns
+    // {"rows": int, "cols": int, "data": [doubles]}. Undefined/unknown
+    // names return rows=cols=0 with an empty data list.
+    Q_INVOKABLE QVariantMap getMatrix(const QString& name) const;
     Q_INVOKABLE QVariantList getMultiGraphPoints(int resolution);
     Q_INVOKABLE void pan(double dx, double dy, double vw, double vh);
     Q_INVOKABLE void zoom(double f, double mx, double my, double vw, double vh);

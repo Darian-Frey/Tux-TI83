@@ -188,6 +188,8 @@ constexpr TokenSpec kTokens[] = {
     {"[A]", Token::MatA, "[A]"},
     {"[B]", Token::MatB, "[B]"},
     {"[C]", Token::MatC, "[C]"},
+    {"[D]", Token::MatD, "[D]"},
+    {"[E]", Token::MatE, "[E]"},
 };
 
 // Lazy-built lookup maps. Pointers are stable because kTokens has static
@@ -280,6 +282,8 @@ void UIController::saveState() const {
   persistMatrix("A", Token::MatA);
   persistMatrix("B", Token::MatB);
   persistMatrix("C", Token::MatC);
+  persistMatrix("D", Token::MatD);
+  persistMatrix("E", Token::MatE);
   root["matrices"] = matrices;
 
   // Function buffers Y1/Y2/Y3 as their display strings. Round-trips
@@ -363,6 +367,8 @@ void UIController::loadState() {
   restoreMatrix("A", Token::MatA);
   restoreMatrix("B", Token::MatB);
   restoreMatrix("C", Token::MatC);
+  restoreMatrix("D", Token::MatD);
+  restoreMatrix("E", Token::MatE);
 
   // MODE — apply before function buffers so any side effects use
   // the right format settings.
@@ -1112,22 +1118,61 @@ QStringList UIController::catalogEntries() const {
   return out;
 }
 
+// IMP-008: map a matrix name ("[A]".."[J]", or bare "A".."J") to its
+// registry Token. Replaces the hardcoded [A]/[B]/[C] if-chain so the
+// editor can target any of the engine's ten matrix slots. Returns false
+// for anything outside the A..J range.
+static bool matrixTokenForName(const QString &name, Token &out) {
+  QString s = name;
+  s.remove('[').remove(']');
+  if (s.size() != 1)
+    return false;
+  const QChar c = s.at(0).toUpper();
+  if (c < QChar('A') || c > QChar('J'))
+    return false;
+  out = static_cast<Token>(static_cast<int>(Token::MatA) +
+                           (c.unicode() - 'A'));
+  return true;
+}
+
 void UIController::updateMatrix(const QString &name, int rows, int cols,
                                 const QVariantList &values) {
   CrashLogger::logEvent(QStringLiteral("updateMatrix: ") + name +
                         QStringLiteral(" ") + QString::number(rows) +
                         QStringLiteral("x") + QString::number(cols));
+  Token tok;
+  if (!matrixTokenForName(name, tok))
+    return;
   Matrix mat;
   mat.rows = rows;
   mat.cols = cols;
   for (const auto &v : values)
     mat.data.push_back(v.toDouble());
-  if (name == "[A]")
-    MathStateMachine::matrixRegistry[Token::MatA] = mat;
-  else if (name == "[B]")
-    MathStateMachine::matrixRegistry[Token::MatB] = mat;
-  else if (name == "[C]")
-    MathStateMachine::matrixRegistry[Token::MatC] = mat;
+  MathStateMachine::matrixRegistry[tok] = mat;
+}
+
+QVariantMap UIController::getMatrix(const QString &name) const {
+  QVariantMap out;
+  QVariantList data;
+  Token tok;
+  if (matrixTokenForName(name, tok)) {
+    auto it = MathStateMachine::matrixRegistry.find(tok);
+    if (it != MathStateMachine::matrixRegistry.end()) {
+      const Matrix &m = it->second;
+      out["rows"] = m.rows;
+      out["cols"] = m.cols;
+      for (double v : m.data)
+        data.append(v);
+      out["data"] = data;
+      return out;
+    }
+  }
+  // Unknown name or slot never populated — report an empty matrix so the
+  // editor falls back to its default blank grid.
+  out["rows"] = 0;
+  out["cols"] = 0;
+  out["data"] = data;
+  return out;
 }
 
 void UIController::zoomFit() {

@@ -195,9 +195,9 @@ Engine implements more than the UI currently exposes — listed below.
 - 📅 `dim(`, `identity(`, `randM(`
 - 📅 `augment(`
 - 📅 Matrix ↔ List conversion (`Matr→List`, `List→Matr`)
-- 📅 Variable matrix dimensions (currently editor is fixed at 3×3)
-- 📅 Extend UI registry exposure to `[A]`–`[E]` (matches TI-83 hardware default)
-- 💭 Extend UI registry exposure to all 10 (`[A]`–`[J]`, TI-83 Plus / TI-84 range; engine is already there)
+- ✅ Variable matrix dimensions — matrix editor v2 supports 1×1 up to 6×6 via R/C steppers (was fixed 3×3); landed 2026-07-22 (IMP-007 + IMP-008). Grid cap is 6 (QML/popup-height pragmatism, not the TI-83 99×99 max).
+- ✅ Extend UI registry exposure to `[A]`–`[E]` (matches TI-83 hardware default) — matrix editor v2 selector + NAMES tab + persistence now cover `[A]`–`[E]`; landed 2026-07-22 (IMP-007 + IMP-008)
+- 💭 Extend UI registry exposure to all 10 (`[A]`–`[J]`, TI-83 Plus / TI-84 range; engine is already there — `matrixTokenForName` already maps A–J, just needs more selector/NAMES entries)
 
 ## Lists
 

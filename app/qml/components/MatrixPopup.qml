@@ -15,10 +15,10 @@ import ".."
 // EDIT calls `uiController.updateMatrix()` to write to the registry. The
 // popup auto-closes after any insertion or save.
 //
-// Limitations carried over from the legacy popup (worth a future
-// improvement entry): the EDIT tab always targets `[A]` (no matrix
-// selector), is fixed at 3×3 (no variable dimensions), and starts with
-// empty fields each time it opens (doesn't read existing values back).
+// Matrix editor v2 (IMP-007 + IMP-008): the EDIT tab now has a matrix
+// selector ([A]–[E]), variable dimensions (1×1 up to 6×6), and reads any
+// existing stored values back into the grid on open / tab-switch /
+// selection so editing an existing matrix doesn't require retyping.
 Popup {
     id: root
 
@@ -27,11 +27,136 @@ Popup {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
     width: 320
-    height: 460
+    height: 540
     padding: 14
 
     x: (parent.width - width) / 2
     y: (parent.height - height) / 2
+
+    // ── EDIT-tab state ──
+    // `cells` is a flat row-major array of the field strings; `mRows`/
+    // `mCols` are the live dimensions. The TextFields are not bound to
+    // `cells` (binding would fight user edits) — instead each field
+    // initialises from it and writes back via setCell, and reloads push
+    // fresh values in through syncFields.
+    property string selectedMatrix: "[A]"
+    property int mRows: 3
+    property int mCols: 3
+    property var cells: []
+
+    readonly property int maxDim: 6
+
+    function cellText(i) { return (i >= 0 && i < cells.length) ? cells[i] : "" }
+    function setCell(i, t) { if (i >= 0 && i < cells.length) cells[i] = t }
+
+    // Load a stored matrix into the editor. Empty/undefined slots fall
+    // back to a blank 3×3 grid.
+    function loadMatrix(name) {
+        selectedMatrix = name
+        var m = uiController.getMatrix(name)
+        var r = (m && m.rows > 0) ? m.rows : 3
+        var c = (m && m.cols > 0) ? m.cols : 3
+        var data = (m && m.data) ? m.data : []
+        var arr = []
+        for (var i = 0; i < r * c; i++)
+            arr.push(i < data.length ? String(data[i]) : "")
+        cells = arr
+        mRows = r
+        mCols = c
+        Qt.callLater(syncFields)
+    }
+
+    // Grow/shrink the working array to mRows×mCols, preserving values by
+    // flat index (fill from top-left, drop the tail).
+    function resizeCells() {
+        var arr = []
+        for (var i = 0; i < mRows * mCols; i++)
+            arr.push(i < cells.length ? cells[i] : "")
+        cells = arr
+        Qt.callLater(syncFields)
+    }
+
+    // Push `cells` back into whatever TextFields currently exist. Called
+    // via Qt.callLater so it runs after the Repeater has (re)built its
+    // delegates for the current dimensions.
+    function syncFields() {
+        for (var i = 0; i < matrixGrid.children.length; i++) {
+            var ch = matrixGrid.children[i]
+            if (ch && ch.hasOwnProperty("cellIndex") && ch.hasOwnProperty("text"))
+                ch.text = cellText(ch.cellIndex)
+        }
+    }
+
+    onOpened: loadMatrix(selectedMatrix)
+
+    // Compact [−] N [+] dimension stepper used for both rows and cols.
+    component DimStepper: Row {
+        id: stp
+        property string labelText: ""
+        property int value: 0
+        signal dec()
+        signal inc()
+        spacing: 4
+
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            text: stp.labelText
+            color: Style.textMuted
+            font.family: Style.monoFamily
+            font.pixelSize: Style.funcKeyLabelPixelSize
+        }
+        Rectangle {
+            width: 26; height: 26; radius: 4
+            color: decArea.containsMouse
+                   ? Qt.lighter(Style.bgSection, 1.0 + Style.keyHoverLighten)
+                   : Style.bgSection
+            border.width: 1
+            border.color: Style.keyBorderNeutral
+            Text {
+                anchors.centerIn: parent
+                text: "−"
+                color: Style.textPrimary
+                font.family: Style.monoFamily
+                font.pixelSize: Style.keyLabelPixelSize
+            }
+            MouseArea {
+                id: decArea
+                anchors.fill: parent
+                hoverEnabled: true
+                onClicked: stp.dec()
+            }
+        }
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            width: 18
+            horizontalAlignment: Text.AlignHCenter
+            text: stp.value
+            color: Style.textDisplay
+            font.family: Style.monoFamily
+            font.pixelSize: Style.keyLabelPixelSize
+        }
+        Rectangle {
+            width: 26; height: 26; radius: 4
+            color: incArea.containsMouse
+                   ? Qt.lighter(Style.bgSection, 1.0 + Style.keyHoverLighten)
+                   : Style.bgSection
+            border.width: 1
+            border.color: Style.keyBorderNeutral
+            Text {
+                anchors.centerIn: parent
+                text: "+"
+                color: Style.textPrimary
+                font.family: Style.monoFamily
+                font.pixelSize: Style.keyLabelPixelSize
+            }
+            MouseArea {
+                id: incArea
+                anchors.fill: parent
+                hoverEnabled: true
+                onClicked: stp.inc()
+            }
+        }
+    }
 
     background: Rectangle {
         color: Style.bgSurface
@@ -134,7 +259,7 @@ Popup {
             Item {
                 ListView {
                     anchors.fill: parent
-                    model: ["[A]", "[B]", "[C]"]
+                    model: ["[A]", "[B]", "[C]", "[D]", "[E]"]
                     spacing: 4
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
@@ -218,36 +343,103 @@ Popup {
                 }
             }
 
-            // EDIT tab — 3×3 matrix grid editor (target: [A])
+            // EDIT tab — matrix selector + variable-dimension grid editor
             ColumnLayout {
                 spacing: 8
+                onVisibleChanged: if (visible) root.loadMatrix(root.selectedMatrix)
 
-                Text {
+                // ── Matrix selector [A]–[E] ──
+                Row {
                     Layout.fillWidth: true
-                    text: "Edit [A] (3×3)"
-                    color: Style.textSecondary
-                    font.family: Style.monoFamily
-                    font.pixelSize: Style.exprPixelSize
+                    spacing: 5
+                    Repeater {
+                        model: ["[A]", "[B]", "[C]", "[D]", "[E]"]
+                        Rectangle {
+                            width: (matrixGrid.width - 4 * 5) / 5
+                            height: 30
+                            radius: 4
+                            property bool sel: root.selectedMatrix === modelData
+                            color: selArea.containsMouse
+                                   ? Qt.lighter(Style.bgSection, 1.0 + Style.keyHoverLighten)
+                                   : Style.bgSection
+                            border.width: 1
+                            border.color: sel ? Style.textExpr : Style.keyBorderNeutral
+                            Text {
+                                anchors.centerIn: parent
+                                text: modelData
+                                color: parent.sel ? Style.textExpr : Style.textSecondary
+                                font.family: Style.monoFamily
+                                font.pixelSize: Style.funcKeyLabelPixelSize
+                            }
+                            MouseArea {
+                                id: selArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                onClicked: root.loadMatrix(modelData)
+                            }
+                        }
+                    }
+                }
+
+                // ── Dimension steppers + live label ──
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Text {
+                        text: "Edit " + root.selectedMatrix
+                        color: Style.textSecondary
+                        font.family: Style.monoFamily
+                        font.pixelSize: Style.exprPixelSize
+                    }
+                    Item { Layout.fillWidth: true }
+
+                    // Rows stepper
+                    DimStepper {
+                        labelText: "R"
+                        value: root.mRows
+                        onDec: if (root.mRows > 1) { root.mRows--; root.resizeCells() }
+                        onInc: if (root.mRows < root.maxDim) { root.mRows++; root.resizeCells() }
+                    }
+                    Text {
+                        text: "×"
+                        color: Style.textMuted
+                        font.family: Style.monoFamily
+                        font.pixelSize: Style.keyLabelPixelSize
+                    }
+                    // Cols stepper
+                    DimStepper {
+                        labelText: "C"
+                        value: root.mCols
+                        onDec: if (root.mCols > 1) { root.mCols--; root.resizeCells() }
+                        onInc: if (root.mCols < root.maxDim) { root.mCols++; root.resizeCells() }
+                    }
                 }
 
                 GridLayout {
                     id: matrixGrid
-                    columns: 3
+                    columns: root.mCols
                     rowSpacing: 6
                     columnSpacing: 6
                     Layout.fillWidth: true
 
                     Repeater {
-                        model: 9
+                        id: gridRepeater
+                        model: root.mRows * root.mCols
                         TextField {
+                            property int cellIndex: index
                             placeholderText: "0"
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 32
+                            Layout.preferredHeight: 30
                             color: Style.textDisplay
                             font.family: Style.monoFamily
                             font.pixelSize: Style.keyLabelPixelSize
                             horizontalAlignment: TextInput.AlignHCenter
                             selectByMouse: true
+                            // Initialise from the working array; new delegates
+                            // (after a dimension change) pick up their value here.
+                            Component.onCompleted: text = root.cellText(cellIndex)
+                            onTextChanged: root.setCell(cellIndex, text)
                             background: Rectangle {
                                 color: Style.bgDisplay
                                 radius: 4
@@ -261,22 +453,19 @@ Popup {
                 Item { Layout.fillHeight: true }
 
                 CalcKey {
-                    label: "SAVE TO [A]"
+                    label: "SAVE TO " + root.selectedMatrix
                     keyType: "enter"
                     onPressed: {
-                        // Walk the GridLayout's children. Repeater inserts its
-                        // instantiated items as children of the parent layout
-                        // ahead of the Repeater itself, so children[0..8] are
-                        // the nine TextFields. Non-finite parses fall back to 0
-                        // (matches legacy popup behaviour after BUG-001-style
-                        // guarding).
+                        // Collect from the working array (kept in sync by each
+                        // field's onTextChanged). Non-finite / empty parses
+                        // fall back to 0.
                         var vals = []
-                        for (var i = 0; i < 9; i++) {
-                            var raw = matrixGrid.children[i].text
-                            var v = parseFloat(raw)
+                        for (var i = 0; i < root.mRows * root.mCols; i++) {
+                            var v = parseFloat(root.cells[i])
                             vals.push(Number.isFinite(v) ? v : 0)
                         }
-                        uiController.updateMatrix("[A]", 3, 3, vals)
+                        uiController.updateMatrix(root.selectedMatrix,
+                                                  root.mRows, root.mCols, vals)
                         root.close()
                     }
                 }

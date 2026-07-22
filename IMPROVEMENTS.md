@@ -29,53 +29,6 @@ Each entry uses this template:
 
 ## Suggested
 
-### IMP-007: MatrixPopup EDIT tab doesn't read existing values back
-- **Status:** suggested
-- **Found:** 2026-04-07 (Phase A — matrix editor reintegration)
-- **Location:** [app/qml/components/MatrixPopup.qml](app/qml/components/MatrixPopup.qml) (EDIT tab GridLayout)
-- **Effort:** medium
-- **Description:** When the user opens the matrix editor and switches to
-  the EDIT tab, the nine TextFields are always empty (placeholder `0`).
-  If `[A]` already has values stored in the registry, they're not shown.
-  Users editing an existing matrix have to retype every value, and any
-  field they leave blank gets saved as `0` — silently overwriting
-  previous data. This matches the legacy popup behaviour but it's a
-  pretty rough UX.
-- **Proposal:** Two-step:
-  1. Add a `Q_INVOKABLE QVariantList getMatrix(QString name)` getter on
-     `UIController` that returns the current matrix data for the named
-     registry entry (or empty if undefined).
-  2. In `MatrixPopup`, populate the TextFields from that getter when the
-     EDIT tab becomes visible (or when the popup opens).
-- **Trade-offs:** Requires a small controller addition. No risk to the
-  math engine — the registry is already exposed, just needs a typed
-  getter.
-- **Notes:** Pairs naturally with [IMP-008](IMPROVEMENTS.md) (matrix
-  selector) and the planned variable-dimensions work for the matrix
-  editor.
-
-### IMP-008: MatrixPopup EDIT tab is hardcoded to `[A]` and 3×3
-- **Status:** suggested
-- **Found:** 2026-04-07 (Phase A — matrix editor reintegration)
-- **Location:** [app/qml/components/MatrixPopup.qml](app/qml/components/MatrixPopup.qml) (EDIT tab; the SAVE button hardcodes `"[A]"` and `3, 3`)
-- **Effort:** medium
-- **Description:** The EDIT tab can only edit `[A]`, and only at 3×3.
-  This was true of the legacy popup too. Real TI-83 lets you edit any of
-  the matrices `[A]`–`[J]` at any dimensions up to 99×99 (memory
-  permitting). The current UI offers no way to edit `[B]`, `[C]`, or
-  larger matrices.
-- **Proposal:** Add two new controls to the top of the EDIT tab:
-  1. A matrix selector (dropdown or row of small CalcKeys: `[A] [B] [C]`)
-  2. Two SpinBox / numeric fields for rows and columns
-  When the selector or dimensions change, regenerate the GridLayout's
-  Repeater model. The SAVE button uses the currently selected matrix
-  name and dimensions instead of hardcoded values.
-- **Trade-offs:** Adds a chunk of UI logic. Worth doing once the new
-  matrix vocabulary (transpose, inverse, rref) starts landing on
-  ROADMAP, since users will want to manipulate more than just `[A]`.
-- **Notes:** Strongly pairs with [IMP-007](IMPROVEMENTS.md). Both should
-  ship together as a single "matrix editor v2" pass.
-
 ### IMP-011: CLI / REPL can't populate matrices
 - **Status:** suggested
 - **Found:** 2026-04-08 (user-reported after matrix-inverse landed)
@@ -114,6 +67,18 @@ Each entry uses this template:
 ---
 
 ## Applied
+
+### IMP-007 + IMP-008: Matrix editor v2 — selector, variable dimensions, read-back
+
+- **Status:** applied (2026-07-22)
+- **Location:** [graph_ui/include/ui_controller.hpp](graph_ui/include/ui_controller.hpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp), [app/qml/components/MatrixPopup.qml](app/qml/components/MatrixPopup.qml)
+- **Effort:** medium
+- **Description:** The EDIT tab was hardcoded to `[A]` at a fixed 3×3 and always opened with blank fields — editing an existing matrix meant retyping every value, and any left-blank cell silently overwrote stored data with 0. IMP-007 (read existing values back) and IMP-008 (matrix selector + variable dimensions) shipped together as a single "matrix editor v2" pass, as their entries anticipated.
+- **Change:**
+  - Controller: new static `matrixTokenForName()` helper maps `[A]`–`[J]` (or bare `A`–`J`) to the registry `Token`, replacing the hardcoded `[A]/[B]/[C]` if-chain in `updateMatrix`. New `Q_INVOKABLE QVariantMap getMatrix(const QString&) const` returns `{rows, cols, data}` for the named slot (rows=cols=0 for unset/unknown). Persistence (`persistMatrix`/`restoreMatrix`) and the `kTokens` NAMES table extended from `[A]`–`[C]` to `[A]`–`[E]` (engine already backs `[A]`–`[J]`; UI now exposes five, matching TI-83 hardware defaults).
+  - QML: EDIT tab rewritten. A `[A]`–`[E]` selector row (selected slot highlighted with the expr-blue border), `R`/`C` `[−] N [+]` steppers (1–6, via a new inline `DimStepper` component), a live-reflowing `GridLayout` (`columns: mCols`, `model: mRows*mCols`), and a dynamic header + `SAVE TO [x]` label. The working values live in a flat `cells` array that fields initialise from (`Component.onCompleted`) and write back to (`onTextChanged`); `loadMatrix()` pulls stored values via `getMatrix` and pushes them into the fields through `Qt.callLater(syncFields)`. Load fires on popup open, on EDIT-tab visibility, and on every selector click.
+- **Trade-offs:** Dimension cap is 1×6 (not TI-83's 99×99) — a QML grid of TextFields is impractical past a handful of rows, and the popup has finite height. Resize preserves cells by flat index (fill top-left, drop the tail), so growing the column count shifts existing values; users set dimensions before filling. Both acceptable for a desktop editor; the flat-index behaviour is documented in the component header.
+- **Notes:** Verified end-to-end in the GUI — read-back of a stored `[A]` (incl. the 2000000 element from IMP-010 testing), live dimension changes, per-slot editing of `[B]`, save/recall round-trip through NAMES, and re-open read-back. 279/279 regression tests unchanged (the new paths are GUI-only — matrices remain non-CLI-populatable, tracked as the still-open [IMP-011](IMPROVEMENTS.md)).
 
 ### IMP-004: `Token::Num0` doubles as the "numeric literal" sentinel
 
