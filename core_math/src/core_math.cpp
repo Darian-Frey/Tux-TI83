@@ -9,6 +9,7 @@
 namespace tux_ti83 {
 
 std::map<Token, Matrix> MathStateMachine::matrixRegistry;
+std::map<Token, std::vector<double>> MathStateMachine::listRegistry;
 std::array<double, 26> MathStateMachine::varRegistry{};
 AngleMode MathStateMachine::angleMode = AngleMode::Radian;
 NumberNotation MathStateMachine::notation = NumberNotation::Normal;
@@ -602,18 +603,22 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
   // reads this in source order as each Sto fires, so the sidebar layout
   // mirrors `numericValues` for Num0.
   std::vector<Token> stoTokens;
-  std::vector<int> storeTargets;
+  // Store targets recorded as the raw target Token so both scalar
+  // variables (VarA..VarZ) and lists (L1..L6) can be assigned. The
+  // evaluator reads this in source order as each Sto fires.
+  std::vector<Token> storeTargets;
   stoTokens.reserve(processedTokens.size());
   for (size_t i = 0; i < processedTokens.size(); ++i) {
     if (processedTokens[i] == Token::Sto) {
-      if (i + 1 >= processedTokens.size() ||
-          processedTokens[i + 1] < Token::VarA ||
-          processedTokens[i + 1] > Token::VarZ)
+      const bool hasTarget = (i + 1 < processedTokens.size());
+      const Token tgt = hasTarget ? processedTokens[i + 1] : Token::Sto;
+      const bool isVar = (tgt >= Token::VarA && tgt <= Token::VarZ);
+      const bool isList = (tgt >= Token::L1 && tgt <= Token::L6);
+      if (!hasTarget || (!isVar && !isList))
         return {false, 0.0, {}, false, "Syntax Error"};
-      storeTargets.push_back(
-          (int)processedTokens[i + 1] - (int)Token::VarA);
+      storeTargets.push_back(tgt);
       stoTokens.push_back(Token::Sto);
-      ++i;  // skip the target Var — already consumed.
+      ++i;  // skip the target — already consumed.
     } else {
       stoTokens.push_back(processedTokens[i]);
     }
@@ -657,16 +662,20 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
     return t == Token::NumLiteral ||
            t == Token::Pi || t == Token::E || t == Token::Ans ||
            t == Token::RightParen || t == Token::Fact ||
+           t == Token::RightBrace ||
            (t >= Token::VarA && t <= Token::VarZ) ||
            (t >= Token::MatA && t <= Token::MatJ) ||
+           (t >= Token::L1 && t <= Token::L6) ||
            isYn(t);
   };
   auto valueLikeStart = [&isYn](Token t) {
     return t == Token::NumLiteral ||
            t == Token::Pi || t == Token::E || t == Token::Ans ||
            t == Token::LeftParen ||
+           t == Token::LeftBrace ||
            (t >= Token::VarA && t <= Token::VarZ) ||
            (t >= Token::MatA && t <= Token::MatJ) ||
+           (t >= Token::L1 && t <= Token::L6) ||
            isYn(t) ||
            EOSPrecedence::is_function(t);
   };
@@ -690,12 +699,17 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
 
   std::vector<std::pair<Token, double>> rpn;
   std::stack<Token> opStack;
+  // Element counts for open list-literal `{` scopes — parallel to the
+  // LeftBrace markers on opStack. Starts at 1 (one element before any
+  // comma); each top-level comma inside the braces bumps it.
+  std::stack<int> braceCounts;
   int numIdx = 0;
   for (auto t : finalTokens) {
     if (t == Token::NumLiteral)
       rpn.push_back({t, numericValues[numIdx++]});
     else if ((t >= Token::MatA && t <= Token::MatJ) ||
              (t >= Token::VarA && t <= Token::VarZ) ||
+             (t >= Token::L1 && t <= Token::L6) ||
              t == Token::Pi || t == Token::E || t == Token::Ans ||
              t == Token::Y1 || t == Token::Y2 || t == Token::Y3)
       rpn.push_back({t, 0.0});
@@ -730,16 +744,38 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
         opStack.pop();
       }
     } else if (t == Token::Comma) {
-      // Argument separator for binary functions like round(x, n). Pops
-      // operators (including unary functions inside the current
-      // argument) until the matching LeftParen of the enclosing
-      // function. The synthetic LeftParen pushed by built-in-paren
-      // functions makes this work uniformly. The comma itself isn't
-      // pushed anywhere; it's just a structural marker.
-      while (!opStack.empty() && opStack.top() != Token::LeftParen) {
+      // Argument separator for binary functions like round(x, n) AND the
+      // element separator inside a `{...}` list literal. Pops operators
+      // until the enclosing scope marker (LeftParen for a function,
+      // LeftBrace for a list). The comma itself isn't pushed — it's just
+      // a structural marker. When the enclosing scope is a brace, bump
+      // that brace's element count.
+      while (!opStack.empty() && opStack.top() != Token::LeftParen &&
+             opStack.top() != Token::LeftBrace) {
         rpn.push_back({opStack.top(), 0.0});
         opStack.pop();
       }
+      if (!opStack.empty() && opStack.top() == Token::LeftBrace &&
+          !braceCounts.empty())
+        braceCounts.top()++;
+    } else if (t == Token::LeftBrace) {
+      // Open a list literal. Marker on the operator stack + a fresh
+      // element counter (1 = the element before any comma).
+      opStack.push(t);
+      braceCounts.push(1);
+    } else if (t == Token::RightBrace) {
+      // Close a list literal: flush operators back to the LeftBrace,
+      // drop the marker, and emit a MakeList carrying the element count.
+      while (!opStack.empty() && opStack.top() != Token::LeftBrace) {
+        rpn.push_back({opStack.top(), 0.0});
+        opStack.pop();
+      }
+      if (opStack.empty() || braceCounts.empty())
+        return {false, 0.0, {}, false, "Syntax Error"};  // unmatched }
+      opStack.pop();  // remove the LeftBrace marker
+      const int count = braceCounts.top();
+      braceCounts.pop();
+      rpn.push_back({Token::MakeList, static_cast<double>(count)});
     } else {
       // BUG-009 fix: respect right-associativity in the precedence loop.
       // Left-associative operators pop the stack on `>=`; right-associative
@@ -770,6 +806,10 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
     bool isMat;
     double val;
     Matrix mat;
+    // Phase C lists. Defaulted so existing brace-init sites
+    // ({isMat, val, mat}) still compile — the rest zero-fills.
+    bool isList = false;
+    std::vector<double> list;
   };
   std::stack<Operand> stack;
   auto toB = [](double v) { return std::abs(v) > 1e-9; };
@@ -800,7 +840,8 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
     else if (t == Token::Ans) {
       // Recall the last successful evaluation result. Defaults to the
       // scalar 0 on first use (matches TI-83 power-on state).
-      stack.push({lastResult.isMatrix, lastResult.value, lastResult.matrixValue});
+      stack.push({lastResult.isMatrix, lastResult.value, lastResult.matrixValue,
+                  lastResult.isList, lastResult.listValue});
     } else if (t == Token::Y1 || t == Token::Y2 || t == Token::Y3) {
       // Y-VARS bare form — recursively evaluate the referenced buffer
       // at the current xValue. Cycle guard via `activeYn` (declared
@@ -975,17 +1016,57 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
 
       stack.push({false, result, {}});
     } else if (t == Token::Sto) {
-      // Write the top-of-stack value into varRegistry[target] and push
-      // it back so the display reflects the stored value. Scalar only —
-      // matrices have their own registry and `[A]..[J]` syntax.
+      // Write the top-of-stack value into its target registry and push
+      // it back so the display reflects the stored value. Target type
+      // must match the value: a scalar var takes a scalar, an L1..L6
+      // list takes a list. A mismatch is ERR:DATA TYPE (matches TI-83).
       if (stack.empty())
         return {false, 0.0, {}, false, "Error"};
       Operand v = stack.top();
       stack.pop();
-      if (v.isMat)
-        return {false, 0.0, {}, false, "Type Error"};
-      varRegistry[storeTargets[storeIdx++]] = v.val;
+      const Token tgt = storeTargets[storeIdx++];
+      if (tgt >= Token::VarA && tgt <= Token::VarZ) {
+        if (v.isMat || v.isList)
+          return {false, 0.0, {}, false, "Type Error"};
+        varRegistry[(int)tgt - (int)Token::VarA] = v.val;
+      } else {  // L1..L6
+        if (!v.isList)
+          return {false, 0.0, {}, false, "Type Error"};
+        listRegistry[tgt] = v.list;
+      }
       stack.push(v);
+    } else if (t >= Token::L1 && t <= Token::L6) {
+      // List leaf — resolve from the registry. Absent slot is undefined.
+      auto it = listRegistry.find(t);
+      if (it == listRegistry.end())
+        return {false, 0.0, {}, false, "Undefined List"};
+      Operand o;
+      o.isMat = false;
+      o.val = 0.0;
+      o.isList = true;
+      o.list = it->second;
+      stack.push(o);
+    } else if (t == Token::MakeList) {
+      // Assemble a list literal: pop `count` operands (pushed in source
+      // order, so they come off the stack reversed) into a list. Nested
+      // lists / matrices as elements are rejected.
+      const int count = static_cast<int>(std::llround(node.second));
+      if (count <= 0 || static_cast<int>(stack.size()) < count)
+        return {false, 0.0, {}, false, "Syntax Error"};
+      std::vector<double> lst(static_cast<size_t>(count));
+      for (int i = count - 1; i >= 0; --i) {
+        Operand op = stack.top();
+        stack.pop();
+        if (op.isMat || op.isList)
+          return {false, 0.0, {}, false, "Type Error"};
+        lst[static_cast<size_t>(i)] = op.val;
+      }
+      Operand o;
+      o.isMat = false;
+      o.val = 0.0;
+      o.isList = true;
+      o.list = std::move(lst);
+      stack.push(o);
     } else if (t >= Token::MatA && t <= Token::MatJ) {
       if (matrixRegistry.count(t))
         stack.push({true, 0.0, matrixRegistry[t]});
@@ -996,7 +1077,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
         return {false, 0.0, {}, false, "Error"};
       Operand a = stack.top();
       stack.pop();
-      if (a.isMat)
+      if (a.isMat || a.isList)
         return {false, 0.0, {}, false, "Type Error"};
       double val = a.val;
       // Non-negative integers only, capped at 170 (171! overflows double).
@@ -1015,7 +1096,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
         stack.pop();
         Operand a = stack.top();
         stack.pop();
-        if (a.isMat || b.isMat)
+        if (a.isMat || b.isMat || a.isList || b.isList)
           return {false, 0.0, {}, false, "Type Error"};
         double result = 0.0;
         if (t == Token::Round) {
@@ -1062,6 +1143,11 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
         return {false, 0.0, {}, false, "Error"};
       Operand a = stack.top();
       stack.pop();
+      // Wave 1: no unary function accepts a list operand (element-wise
+      // function mapping over lists is a later wave). Reject rather than
+      // silently reading a.val (which is 0 for a list).
+      if (a.isList)
+        return {false, 0.0, {}, false, "Type Error"};
 
       // Handle functions based on type
       if (t == Token::Det) {
@@ -1180,6 +1266,49 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
       Operand a = stack.top();
       stack.pop();
 
+      // List arithmetic (Phase C): element-wise +,-,*,/,^ with scalar
+      // broadcasting. list⊕list requires equal length; matrices are
+      // rejected. Other operators (comparisons/logic) on lists aren't
+      // supported yet. Handled ahead of the scalar/matrix branches so a
+      // single `continue` skips them once a list operand is involved.
+      if (a.isList || b.isList) {
+        if (a.isMat || b.isMat)
+          return {false, 0.0, {}, false, "Type Error"};
+        const bool arith =
+            (t == Token::Add || t == Token::Sub || t == Token::Mul ||
+             t == Token::ImplicitMul || t == Token::Div || t == Token::Pow);
+        if (!arith)
+          return {false, 0.0, {}, false, "Type Error"};
+        if (a.isList && b.isList && a.list.size() != b.list.size())
+          return {false, 0.0, {}, false, "Dim Mismatch"};
+        const size_t n = a.isList ? a.list.size() : b.list.size();
+        Operand out;
+        out.isMat = false;
+        out.val = 0.0;
+        out.isList = true;
+        out.list.resize(n);
+        for (size_t i = 0; i < n; ++i) {
+          const double av = a.isList ? a.list[i] : a.val;
+          const double bv = b.isList ? b.list[i] : b.val;
+          double r = 0.0;
+          if (t == Token::Add)
+            r = av + bv;
+          else if (t == Token::Sub)
+            r = av - bv;
+          else if (t == Token::Mul || t == Token::ImplicitMul)
+            r = av * bv;
+          else if (t == Token::Div) {
+            if (bv == 0.0)
+              return {false, 0.0, {}, false, "DIVIDE BY 0"};
+            r = av / bv;
+          } else  // Pow
+            r = std::pow(av, bv);
+          out.list[i] = r;
+        }
+        stack.push(out);
+        continue;
+      }
+
       if (t == Token::Add) {
         if (a.isMat && b.isMat) {
           // BUG-010 fix: matrixAdd silently returned an empty Matrix on
@@ -1291,7 +1420,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
   if (stack.empty())
     return {false, 0.0, {}, false, "Error"};
   Operand res = stack.top();
-  return {true, res.val, res.mat, res.isMat, ""};
+  return {true, res.val, res.mat, res.isMat, "", res.isList, res.list};
 }
 
 std::string MathStateMachine::toFraction(double value, double tolerance) {

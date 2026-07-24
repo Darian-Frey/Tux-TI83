@@ -190,6 +190,17 @@ constexpr TokenSpec kTokens[] = {
     {"[C]", Token::MatC, "[C]"},
     {"[D]", Token::MatD, "[D]"},
     {"[E]", Token::MatE, "[E]"},
+
+    // Lists (Phase C). `{`/`}` delimit list literals; L1..L6 reference
+    // the list registry.
+    {"{", Token::LeftBrace, "{"},
+    {"}", Token::RightBrace, "}"},
+    {"L1", Token::L1, "L1"},
+    {"L2", Token::L2, "L2"},
+    {"L3", Token::L3, "L3"},
+    {"L4", Token::L4, "L4"},
+    {"L5", Token::L5, "L5"},
+    {"L6", Token::L6, "L6"},
 };
 
 // Lazy-built lookup maps. Pointers are stable because kTokens has static
@@ -899,6 +910,17 @@ void UIController::evaluate() {
           matStr += "][";
       }
       currentStr = matStr + "]]";
+    } else if (result.isList) {
+      // Phase C: render a list as {e1,e2,...}. Elements route through
+      // formatScalar so they honour the active Notation/Decimal/Base
+      // MODE settings, consistent with scalar and matrix display.
+      QString listStr = "{";
+      for (size_t i = 0; i < result.listValue.size(); ++i) {
+        listStr += formatScalar(result.listValue[i]);
+        if (i + 1 < result.listValue.size())
+          listStr += ",";
+      }
+      currentStr = listStr + "}";
     } else {
       // BUG-015 fix: default scalar display is decimal. Users get the
       // fraction form on demand via the ▶Frac MATH-menu entry.
@@ -926,7 +948,7 @@ void UIController::evaluate() {
       currentStr = "ERR:DATA TYPE";
     else if (msg == "Dim Mismatch")
       currentStr = "ERR:INVALID DIM";
-    else if (msg == "Undefined Matrix")
+    else if (msg == "Undefined Matrix" || msg == "Undefined List")
       currentStr = "ERR:UNDEFINED";
     else if (msg == "SINGULAR MAT")
       currentStr = "ERR:SINGULAR MAT";

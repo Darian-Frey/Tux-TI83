@@ -199,13 +199,16 @@ Engine implements more than the UI currently exposes — listed below.
 - ✅ Extend UI registry exposure to `[A]`–`[E]` (matches TI-83 hardware default) — matrix editor v2 selector + NAMES tab + persistence now cover `[A]`–`[E]`; landed 2026-07-22 (IMP-007 + IMP-008)
 - 💭 Extend UI registry exposure to all 10 (`[A]`–`[J]`, TI-83 Plus / TI-84 range; engine is already there — `matrixTokenForName` already maps A–J, just needs more selector/NAMES entries)
 
-## Lists
+**Phase C in progress — Wave 1 (engine foundation) landed 2026-07-22.**
+The list value type, `L1`–`L6` registry, `{…}` literals, element-wise
+arithmetic, and `STO→` to a list are done in the engine and covered by
+30 regression tests. UI exposure (`{`/`}` keys + Stat editor) is Wave 2.
 
-- 📅 Lists `L1`–`L6`
-- 📅 List entry / editing UI (Stat editor)
-- 📅 List arithmetic (vectorised ops)
-- 📅 List functions: `sum(`, `mean(`, `min(`, `max(`, `stdDev(`, `variance(`
-- 📅 `seq(` for generating lists from formulas
+- ✅ Lists `L1`–`L6` — engine registry + `{1,2,3}` literals + display; leaf resolution with `ERR:UNDEFINED` for unset slots. UI keys/editor pending (Wave 2). Landed 2026-07-22.
+- 🔜 List entry / editing UI (Stat editor) — Wave 2 (next). Needs `{`/`}` keys (2ND+`(`/`)`) + a list editor + persistence.
+- ✅ List arithmetic (vectorised ops) — element-wise `+ − × ÷ ^` with equal-length lists (`ERR:INVALID DIM` otherwise) and scalar broadcasting; implicit-mul (`2L1`, `2{1,2}`) works. Unary/binary math functions reject lists (`ERR:DATA TYPE`) pending Wave 3 element-wise mapping. Landed 2026-07-22.
+- 📅 List functions: `sum(`, `mean(`, `min(`, `max(`, `stdDev(`, `variance(` — Wave 3
+- 📅 `seq(` for generating lists from formulas — Wave 3 (also unblocks the deferred `seq(` in Calculus)
 - 📅 List ↔ Matrix conversion
 - 📅 Custom named lists (`L1`–`L6` plus `αLIST`)
 

@@ -995,6 +995,67 @@ int main(int argc, char *argv[]) {
     MathStateMachine::numberBase = NumberBase::Dec;
   }
 
+  section("Lists (Phase C — Wave 1)");
+  {
+    // Fresh list registry so we don't inherit state from a prior run.
+    tux_ti83::MathStateMachine::listRegistry.clear();
+
+    // Literals + display.
+    check("{1,2,3} literal", eval(c, "{1,2,3}"), "{1,2,3}");
+    check("single-element {5}", eval(c, "{5}"), "{5}");
+
+    // Element-wise arithmetic (equal length).
+    check("{1,2,3}+{4,5,6} → {5,7,9}", eval(c, "{1,2,3}+{4,5,6}"), "{5,7,9}");
+    check("{5,7,9}-{1,2,3} → {4,5,6}", eval(c, "{5,7,9}-{1,2,3}"), "{4,5,6}");
+    check("{1,2,3}*{2,3,4} → {2,6,12}", eval(c, "{1,2,3}*{2,3,4}"), "{2,6,12}");
+    check("{6,8,10}/{2,4,5} → {3,2,2}", eval(c, "{6,8,10}/{2,4,5}"), "{3,2,2}");
+    check("{2,3,4}^{2,2,2} → {4,9,16}", eval(c, "{2,3,4}^{2,2,2}"), "{4,9,16}");
+
+    // Scalar broadcast (both operand orders).
+    check("{1,2,3}+10 → {11,12,13}", eval(c, "{1,2,3}+10"), "{11,12,13}");
+    check("10+{1,2,3} → {11,12,13}", eval(c, "10+{1,2,3}"), "{11,12,13}");
+    check("{1,2,3}*2 → {2,4,6}", eval(c, "{1,2,3}*2"), "{2,4,6}");
+    check("2{1,2,3} implicit mul → {2,4,6}", eval(c, "2{1,2,3}"), "{2,4,6}");
+    check("{1,2,3}^2 → {1,4,9}", eval(c, "{1,2,3}^2"), "{1,4,9}");
+
+    // Error paths.
+    check("{1,2}+{1,2,3} → ERR:INVALID DIM",
+          eval(c, "{1,2}+{1,2,3}"), "ERR:INVALID DIM");
+    check("{10,20}/{2,0} → ERR:DIVIDE BY 0",
+          eval(c, "{10,20}/{2,0}"), "ERR:DIVIDE BY 0");
+
+    // STO round-trip: list → L1, read back, list arithmetic on the ref.
+    check("{1,2,3}→L1 returns the list", eval(c, "{1,2,3}→L1"), "{1,2,3}");
+    check("L1 reads back {1,2,3}", eval(c, "L1"), "{1,2,3}");
+    check("L1+L1 → {2,4,6}", eval(c, "L1+L1"), "{2,4,6}");
+    check("2L1 → {2,4,6}", eval(c, "2L1"), "{2,4,6}");
+    check("L1²=L1^2 → {1,4,9}", eval(c, "L1^2"), "{1,4,9}");
+    // List → list store.
+    check("L1→L2 returns {1,2,3}", eval(c, "L1→L2"), "{1,2,3}");
+    check("L2 reads back {1,2,3}", eval(c, "L2"), "{1,2,3}");
+
+    // Undefined list read.
+    check("L5 undefined → ERR:UNDEFINED", eval(c, "L5"), "ERR:UNDEFINED");
+
+    // Type mismatches.
+    check("5→L1 (scalar to list) → ERR:DATA TYPE",
+          eval(c, "5→L1"), "ERR:DATA TYPE");
+    check("{1,2}→A (list to scalar) → ERR:DATA TYPE",
+          eval(c, "{1,2}→A"), "ERR:DATA TYPE");
+    check("sin({0,1}) → ERR:DATA TYPE", eval(c, "sin({0,1})"), "ERR:DATA TYPE");
+    check("abs({1,2}) → ERR:DATA TYPE", eval(c, "abs({1,2})"), "ERR:DATA TYPE");
+    check("{1,2}! → ERR:DATA TYPE", eval(c, "{1,2}!"), "ERR:DATA TYPE");
+    check("min({1,2},3) → ERR:DATA TYPE",
+          eval(c, "min({1,2},3)"), "ERR:DATA TYPE");
+
+    // Ans carries a list result forward.
+    check("{4,5,6} seeds Ans", eval(c, "{4,5,6}"), "{4,5,6}");
+    check("Ans+1 → {5,6,7}", evalChained(c, "Ans+1"), "{5,6,7}");
+
+    // Restore so later sections aren't surprised by leftover L1/L2.
+    tux_ti83::MathStateMachine::listRegistry.clear();
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

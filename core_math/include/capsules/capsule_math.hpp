@@ -218,7 +218,28 @@ enum class Token {
   // literal digit 0) so post-flush passes can't confuse "the value zero"
   // with "a numeric literal, look up its value". Never produced by the
   // tokenizer — only appears downstream of the flush pass.
-  NumLiteral
+  NumLiteral,
+
+  // --- Lists (Phase C) ---
+  // L1..L6 registry references (contiguous, like MatA..MatJ) — leaf
+  // operands resolved from `listRegistry`.
+  L1,
+  L2,
+  L3,
+  L4,
+  L5,
+  L6,
+  // `{` and `}` delimit a list literal. LeftBrace acts as a grouping
+  // marker on the operator stack (like LeftParen); RightBrace closes the
+  // literal and the shunting-yard emits a MakeList carrying the element
+  // count. Commas inside the braces separate elements.
+  LeftBrace,
+  RightBrace,
+  // Synthetic: emitted by the shunting-yard when a `}` closes a list
+  // literal. Its RPN node carries the element count in the `.second`
+  // field; the evaluator pops that many operands into a List. Never
+  // typed by the user.
+  MakeList
 };
 
 struct Matrix {
@@ -236,6 +257,11 @@ struct CalculationResult {
   Matrix matrixValue; // Supports matrix-to-matrix results
   bool isMatrix = false;
   std::string error_message;
+  // Phase C lists. Appended after the original five fields so existing
+  // positional initializers ({success, value, mat, isMatrix, err}) keep
+  // working — isList defaults false, listValue empty.
+  bool isList = false;
+  std::vector<double> listValue;
 };
 
 class EOSPrecedence {
@@ -288,6 +314,10 @@ public:
 
   // Matrix Storage
   static std::map<Token, Matrix> matrixRegistry;
+
+  // List storage L1..L6 (Phase C). Keyed by the L1..L6 token. A slot
+  // absent from the map is an undefined list (ERR:UNDEFINED on read).
+  static std::map<Token, std::vector<double>> listRegistry;
 
   // Scalar variable registry A..Z. Zero-initialised on program start;
   // mutated via Sto. Errors don't overwrite — the evaluator writes to
