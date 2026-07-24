@@ -207,8 +207,8 @@ arithmetic, and `STO→` to a list are done in the engine and covered by
 - ✅ Lists `L1`–`L6` — engine registry + `{1,2,3}` literals + display; leaf resolution with `ERR:UNDEFINED` for unset slots. UI keys/editor pending (Wave 2). Landed 2026-07-22.
 - ✅ List entry / editing UI (Stat editor) — Wave 2, landed 2026-07-22. `{`/`}` on 2ND+`(`/`)`, `L1`–`L6` on 2ND+`1`–`6`, and a `ListPopup` Stat editor (L1–L6 selector, length stepper 1–10, editable column, value read-back) opened via 2ND+`MATRX`. `L1`–`L6` persist in `state.json`. Editor length caps at 10 (UI pragmatism; the engine itself is unbounded).
 - ✅ List arithmetic (vectorised ops) — element-wise `+ − × ÷ ^` with equal-length lists (`ERR:INVALID DIM` otherwise) and scalar broadcasting; implicit-mul (`2L1`, `2{1,2}`) works. Unary/binary math functions reject lists (`ERR:DATA TYPE`) pending Wave 3 element-wise mapping. Landed 2026-07-22.
-- 📅 List functions: `sum(`, `mean(`, `min(`, `max(`, `stdDev(`, `variance(` — Wave 3
-- 📅 `seq(` for generating lists from formulas — Wave 3 (also unblocks the deferred `seq(` in Calculus)
+- ✅ List functions: `sum(`, `prod(`, `mean(`, `min(`, `max(`, `stdDev(`, `variance(` — Wave 3a, landed 2026-07-22. `mean`/`stdDev`/`variance` are list-only (sample n−1 for stdDev/variance; `ERR:DOMAIN` for n<2). `sum(`/`prod(` overload the calculus 4-arg forms by arity (1 list arg → reduction); `min(`/`max(` overload the 2-scalar forms by operand type. In the MATH menu. Limitation: 2-arg `min(`/`max(` with a list operand (element-wise) not yet supported.
+- 🔜 `seq(` for generating lists from formulas — Wave 3b (next; deferred-eval framework, returns a list — also unblocks the deferred `seq(` in Calculus). `median(` pairs here too.
 - 📅 List ↔ Matrix conversion
 - 📅 Custom named lists (`L1`–`L6` plus `αLIST`)
 

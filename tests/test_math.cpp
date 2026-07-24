@@ -1056,6 +1056,47 @@ int main(int argc, char *argv[]) {
     tux_ti83::MathStateMachine::listRegistry.clear();
   }
 
+  section("List functions (Phase C — Wave 3)");
+  {
+    tux_ti83::MathStateMachine::listRegistry.clear();
+
+    // Reductions on a literal.
+    check("sum({1,2,3,4}) → 10", eval(c, "sum({1,2,3,4})"), "10");
+    check("prod({1,2,3,4}) → 24", eval(c, "prod({1,2,3,4})"), "24");
+    check("mean({1,2,3,4}) → 2.5", eval(c, "mean({1,2,3,4})"), "2.5");
+    check("min({3,1,2}) → 1", eval(c, "min({3,1,2})"), "1");
+    check("max({3,9,1}) → 9", eval(c, "max({3,9,1})"), "9");
+    check("variance({1,2,3,4}) → 1.666666667",
+          eval(c, "variance({1,2,3,4})"), "1.666666667");
+    check("stdDev({1,2,3,4}) → 1.290994449",
+          eval(c, "stdDev({1,2,3,4})"), "1.290994449");
+
+    // Reductions on a stored list reference.
+    check("{2,4,6}→L1", eval(c, "{2,4,6}→L1"), "{2,4,6}");
+    check("sum(L1) → 12", eval(c, "sum(L1)"), "12");
+    check("mean(L1) → 4", eval(c, "mean(L1)"), "4");
+
+    // Composition + implicit-mul.
+    check("sum({1,2,3})+sum({4,5,6}) → 21",
+          eval(c, "sum({1,2,3})+sum({4,5,6})"), "21");
+    check("2mean({1,2,3}) → 4", eval(c, "2mean({1,2,3})"), "4");
+
+    // Overloads preserved: 4-arg calculus sum, and 2-scalar min/max.
+    check("sum(X,X,1,4) still calculus → 10", eval(c, "sum(X,X,1,4)"), "10");
+    check("prod(X,X,1,4) still calculus → 24", eval(c, "prod(X,X,1,4)"), "24");
+    check("min(3,7) still binary → 3", eval(c, "min(3,7)"), "3");
+    check("max(3,7) still binary → 7", eval(c, "max(3,7)"), "7");
+
+    // Type / domain errors.
+    check("sum(3) scalar arg → ERR:DATA TYPE", eval(c, "sum(3)"), "ERR:DATA TYPE");
+    check("mean(5) scalar arg → ERR:DATA TYPE", eval(c, "mean(5)"), "ERR:DATA TYPE");
+    check("stdDev({5}) n<2 → ERR:DOMAIN", eval(c, "stdDev({5})"), "ERR:DOMAIN");
+    check("variance({5}) n<2 → ERR:DOMAIN",
+          eval(c, "variance({5})"), "ERR:DOMAIN");
+
+    tux_ti83::MathStateMachine::listRegistry.clear();
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

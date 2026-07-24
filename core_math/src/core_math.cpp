@@ -116,6 +116,8 @@ bool EOSPrecedence::is_function(Token t) {
           t == Token::SumCall || t == Token::ProdCall ||
           t == Token::Sinh || t == Token::Cosh || t == Token::Tanh ||
           t == Token::ASinh || t == Token::ACosh || t == Token::ATanh ||
+          t == Token::Mean || t == Token::StdDev || t == Token::Variance ||
+          t == Token::ListSum || t == Token::ListProd ||
           is_binary_function(t));
 }
 
@@ -144,7 +146,9 @@ bool EOSPrecedence::has_built_in_paren(Token t) {
           t == Token::Max || t == Token::Mod ||
           t == Token::NCr || t == Token::NPr ||
           t == Token::Sinh || t == Token::Cosh || t == Token::Tanh ||
-          t == Token::ASinh || t == Token::ACosh || t == Token::ATanh);
+          t == Token::ASinh || t == Token::ACosh || t == Token::ATanh ||
+          t == Token::Mean || t == Token::StdDev || t == Token::Variance ||
+          t == Token::ListSum || t == Token::ListProd);
 }
 
 // --- MATRIX MATH HELPERS ---
@@ -367,8 +371,11 @@ std::vector<std::vector<Token>> splitByComma(const std::vector<Token> &tokens,
   int depth = 0;
   for (int i = lo; i < hi; ++i) {
     Token t = tokens[i];
-    if (opensParenScope(t)) ++depth;
-    else if (t == Token::RightParen) --depth;
+    // Brace scopes count too, so the commas inside a `{…}` list literal
+    // argument (e.g. sum({1,2,3})) aren't mistaken for argument
+    // separators.
+    if (opensParenScope(t) || t == Token::LeftBrace) ++depth;
+    else if (t == Token::RightParen || t == Token::RightBrace) --depth;
     if (depth == 0 && t == Token::Comma) {
       parts.push_back(std::move(current));
       current.clear();
@@ -438,6 +445,21 @@ std::vector<Token> rewriteDeferredCalls(const std::vector<Token> &tokens,
 
     // Split the contents (i+1 .. rParen) by top-level commas.
     auto args = splitByComma(tokens, static_cast<int>(i) + 1, rParen);
+
+    // sum(/prod( overload (Phase C): a single argument is the LIST
+    // reduction (sum / product of a list), not the 4-arg calculus form.
+    // Emit the unary ListSum/ListProd around the (recursively rewritten)
+    // argument and skip the deferred-call machinery entirely.
+    if ((t == Token::Sum || t == Token::Prod) && args.size() == 1) {
+      auto rArgs = rewriteArgs(args, ok);
+      if (!ok) return out;
+      out.push_back(t == Token::Sum ? Token::ListSum : Token::ListProd);
+      for (auto x : rArgs[0])
+        out.push_back(x);
+      out.push_back(Token::RightParen);
+      i = rParen;  // continue past the original `)`
+      continue;
+    }
 
     // Argument count gate. fnInt/sum/prod want exactly 4; nDeriv
     // accepts 3 (default h) or 4 (explicit h).
@@ -1088,6 +1110,24 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
         result *= i;
       stack.push({false, result, {}});
     } else if (EOSPrecedence::is_function(t)) {
+      // min(/max( list overload (Phase C): when the top operand is a
+      // list, this is the single-arg list reduction (min/max element),
+      // not the two-scalar form. Peek before the binary pop so `min(L1)`
+      // and `min(a,b)` both work. Mixing a scalar and a list, or two
+      // lists, in one min/max call is not supported (Wave 3 limitation)
+      // — the list operand ends up on top and gets reduced alone.
+      if ((t == Token::Min || t == Token::Max) && !stack.empty() &&
+          stack.top().isList) {
+        Operand a = stack.top();
+        stack.pop();
+        if (a.list.empty())
+          return {false, 0.0, {}, false, "DOMAIN"};
+        double r = a.list[0];
+        for (double v : a.list)
+          r = (t == Token::Min) ? std::min(r, v) : std::max(r, v);
+        stack.push({false, r, {}});
+        continue;
+      }
       // Binary functions (round, min, max, mod) — pop two operands.
       if (EOSPrecedence::is_binary_function(t)) {
         if (stack.size() < 2)
@@ -1143,7 +1183,45 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
         return {false, 0.0, {}, false, "Error"};
       Operand a = stack.top();
       stack.pop();
-      // Wave 1: no unary function accepts a list operand (element-wise
+
+      // List reductions (Phase C Wave 3) — these REQUIRE a list operand
+      // and return a scalar. Handled before the generic list-reject
+      // guard below.
+      if (t == Token::ListSum || t == Token::ListProd ||
+          t == Token::Mean || t == Token::StdDev ||
+          t == Token::Variance) {
+        if (!a.isList)
+          return {false, 0.0, {}, false, "Type Error"};
+        const std::vector<double> &L = a.list;
+        const size_t n = L.size();
+        double res = 0.0;
+        if (t == Token::ListSum) {
+          for (double v : L) res += v;
+        } else if (t == Token::ListProd) {
+          res = 1.0;
+          for (double v : L) res *= v;
+        } else if (t == Token::Mean) {
+          if (n == 0)
+            return {false, 0.0, {}, false, "DOMAIN"};
+          double s = 0.0;
+          for (double v : L) s += v;
+          res = s / static_cast<double>(n);
+        } else {  // StdDev / Variance — sample (n-1 denominator)
+          if (n < 2)
+            return {false, 0.0, {}, false, "DOMAIN"};
+          double s = 0.0;
+          for (double v : L) s += v;
+          const double m = s / static_cast<double>(n);
+          double ss = 0.0;
+          for (double v : L) ss += (v - m) * (v - m);
+          const double var = ss / static_cast<double>(n - 1);
+          res = (t == Token::Variance) ? var : std::sqrt(var);
+        }
+        stack.push({false, res, {}});
+        continue;
+      }
+
+      // No other unary function accepts a list operand (element-wise
       // function mapping over lists is a later wave). Reject rather than
       // silently reading a.val (which is 0 for a list).
       if (a.isList)

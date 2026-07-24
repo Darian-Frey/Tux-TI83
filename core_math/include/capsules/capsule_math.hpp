@@ -239,7 +239,21 @@ enum class Token {
   // literal. Its RPN node carries the element count in the `.second`
   // field; the evaluator pops that many operands into a List. Never
   // typed by the user.
-  MakeList
+  MakeList,
+
+  // --- List reduction functions (Phase C Wave 3) ---
+  // Unary: take one list operand and return a scalar. Mean/StdDev/
+  // Variance are typed directly. ListSum/ListProd are synthetic — the
+  // deferred-call rewriter emits them when the calculus `sum(`/`prod(`
+  // (Token::Sum/Prod) are called with a single (list) argument instead
+  // of the 4-arg (expr,var,start,end) form, overloading the name by
+  // arity as IMP-044 anticipated. Min/Max reuse their existing tokens
+  // and branch on operand type in the evaluator.
+  Mean,
+  StdDev,
+  Variance,
+  ListSum,
+  ListProd
 };
 
 struct Matrix {

@@ -146,6 +146,13 @@ constexpr TokenSpec kTokens[] = {
     {"sum(",    Token::Sum,    "sum("},
     {"prod(",   Token::Prod,   "prod("},
 
+    // List reductions (Phase C Wave 3). sum(/prod(/min(/max( are the
+    // same tokens as above/below, overloaded by arity in the engine;
+    // mean/stdDev/variance are list-only.
+    {"mean(",     Token::Mean,     "mean("},
+    {"stdDev(",   Token::StdDev,   "stdDev("},
+    {"variance(", Token::Variance, "variance("},
+
     // Factorial — unary postfix
     {"!", Token::Fact, "!"},
 
