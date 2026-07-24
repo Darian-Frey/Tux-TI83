@@ -5,11 +5,11 @@ and every feature currently shipping. If you're looking for project
 architecture or contributor workflows, see [README.md](README.md) and
 [CLAUDE.md](CLAUDE.md) instead.
 
-> **Status:** skeleton. Each section has enough content to orient you,
-> but several sections are marked *"planned content"* — they'll be
-> fleshed out over time with worked examples and screenshots. See the
-> `USER_MANUAL.md` entry under **Tooling & testing** in
-> [ROADMAP.md](ROADMAP.md) for progress.
+> **Status:** actively maintained. Core calculation, variables, matrices,
+> lists, statistics/regressions, calculus, and graphing (including polar)
+> all ship today. A few sections still flag *"planned content"* for
+> worked examples and screenshots. See [ROADMAP.md](ROADMAP.md) for the
+> full, current feature ledger.
 
 ## Contents
 
@@ -19,17 +19,20 @@ architecture or contributor workflows, see [README.md](README.md) and
 4. [Basic Calculations](#basic-calculations)
 5. [The Keypad](#the-keypad)
 6. [The MATH Menu](#the-math-menu)
-7. [Matrices](#matrices)
-8. [Graph Mode](#graph-mode)
-9. [Keyboard Shortcuts](#keyboard-shortcuts)
-10. [CLI Usage](#cli-usage-one-shot)
-11. [REPL Usage](#repl-usage-interactive)
-12. [Ans and Conversions](#ans-and-conversions)
-13. [Error Messages](#error-messages)
-14. [Tips & Tricks](#tips--tricks)
-15. [Troubleshooting](#troubleshooting)
-16. [Glossary](#glossary)
-17. [Appendix: Function Reference](#appendix-function-reference)
+7. [Variables & Storage](#variables--storage)
+8. [Matrices](#matrices)
+9. [Lists & Statistics](#lists--statistics)
+10. [Graph Mode](#graph-mode)
+11. [The MODE Menu](#the-mode-menu)
+12. [Keyboard Shortcuts](#keyboard-shortcuts)
+13. [CLI Usage](#cli-usage-one-shot)
+14. [REPL Usage](#repl-usage-interactive)
+15. [Ans and Conversions](#ans-and-conversions)
+16. [Error Messages](#error-messages)
+17. [Tips & Tricks](#tips--tricks)
+18. [Troubleshooting](#troubleshooting)
+19. [Glossary](#glossary)
+20. [Appendix: Function Reference](#appendix-function-reference)
 
 ---
 
@@ -124,13 +127,20 @@ silently remain decimal — no exact fraction exists.
 
 *Detailed walk-through with screenshots planned.* At a glance:
 
-- **CONTROL** — modifier keys (some planned: `2ND`, `ALPHA`), delete /
-  clear, mode menu (planned)
+- **CONTROL** — `2ND` and `ALPHA` modifiers, `MODE` menu, delete (`⌫`),
+  `CLEAR`
+- **CURSOR** — `HOME`, `←`, `→`, `END` for in-expression editing, plus
+  `STO▸`
 - **SCIENTIFIC** — math functions with dedicated keys (`sin(`, `cos(`,
   `tan(`, `√(`, `ln(`, `log(`), the `^` operator, the constants `π`
   and `e`, plus the `MATH` menu and `MATRX` popup triggers
 - **NUMERIC** — digits, the four standard operators, `x²`, `Ans`,
   parentheses, comma, the `X` variable, unary `(-)`, and `ENTER`
+
+Most keys carry a **2ND** function (amber, top-left corner) and an
+**ALPHA** letter (green, top-right). Press `2ND` then the key for the
+amber label, or `ALPHA` then the key for the green letter. `2ND` then
+`ALPHA` engages **A-LOCK** for typing several letters in a row.
 
 ## The MATH Menu
 
@@ -152,37 +162,122 @@ additional functions that don't have dedicated keypad keys:
 | `!` | Factorial (unary postfix) | Unary |
 | `sinh(`, `cosh(`, `tanh(` | Hyperbolic | Unary |
 | `asinh(`, `acosh(`, `atanh(` | Inverse hyperbolic | Unary |
+| `e^(` | Exponential | Unary |
+| `sgn(` | Sign (−1 / 0 / +1) | Unary |
+| `fnInt(` | Numeric integral `fnInt(expr, var, a, b)` | Calculus |
+| `nDeriv(` | Numeric derivative `nDeriv(expr, var, x[, h])` | Calculus |
+| `sum(` / `prod(` | 4-arg summation/product, **or** 1-arg list reduction | Overloaded |
+| `seq(` | Generate a list: `seq(expr, var, start, end[, step])` | List |
+| `mean(`, `median(`, `stdDev(`, `variance(` | List statistics | List |
 | `▶Frac` | Post-hoc: convert last result to fraction | Action |
 | `▶Dec` | Post-hoc: convert last result to decimal | Action |
+| `→ (STO)` | Store to a variable or list | Action |
+
+`sum(`/`prod(`/`min(`/`max(` are **overloaded**: a single list argument
+(e.g. `sum(L1)`) reduces the list; the multi-argument forms
+(`sum(X,X,1,4)`, `min(3,7)`) keep their original meaning.
 
 *Worked examples planned.*
+
+## Variables & Storage
+
+Tux-TI83 remembers your work between sessions and across expressions.
+
+**Scalar variables `A`–`Z`.** Store a value with `STO▸` (the arrow):
+
+```
+5→A            → 5        (stores 5 in A)
+A+3→A          → 8        (A is now 8)
+A²             → 64
+```
+
+On the keyboard, press **Shift+letter** for a variable (bare lowercase
+letters are function shortcuts), or `|` / `->` for `STO▸`. `X` doubles as
+the graphing sweep variable and as an ordinary scalar on the home screen.
+
+**`Ans`.** The last successful result — see [Ans and Conversions](#ans-and-conversions).
+
+**Last-entry recall.** `2ND` + `ENTER` walks backward through a 10-deep
+history of what you typed, so you can fix a typo or reuse an expression.
+
+**Y-VARS.** Reference `Y1`, `Y2`, `Y3` from another expression — define
+`Y1 = X²`, then `Y2 = Y1+10` plots `X²+10`. The argument form `Y1(3)`
+evaluates `Y1` at `X = 3`. Self-reference and cycles raise `ERR:RECURSION`.
+
+**Persistence.** Scalars, matrices, lists, `Y=` buffers, the viewport, and
+MODE settings are saved to `~/.local/state/tux-ti83/state.json` (both
+periodically and on clean exit) and restored on the next launch. The
+**RESET** button in the MODE popup wipes everything back to defaults.
 
 ## Matrices
 
 Press the `MATRX` key (SCIENTIFIC section, row 2). The popup has three
 tabs:
 
-- **NAMES** — click `[A]`, `[B]`, or `[C]` to insert it at the cursor
-- **MATH** — click `det(` to insert the determinant function
-- **EDIT** — 3×3 grid editor for matrix `[A]`; fill cells, click
-  `SAVE TO [A]` to commit
+- **NAMES** — click `[A]`–`[E]` to insert it at the cursor
+- **MATH** — insert `det(`, `T(` (transpose), `rref(`, or `^-1` (inverse)
+- **EDIT** — the matrix editor v2: pick a matrix with the `[A]`–`[E]`
+  selector, set its dimensions with the `R`/`C` steppers (up to 6×6), fill
+  the grid, and click `SAVE TO [x]`. Existing values are read back when
+  you open a matrix, so you can edit rather than retype.
 
 Operations currently supported:
 
 | Operation | Example |
 |---|---|
-| Addition | `[A]+[B]` (same dimensions required) |
-| Subtraction | `[A]-[B]` |
+| Addition / subtraction | `[A]+[B]` / `[A]-[B]` (same dimensions) |
 | Scalar multiplication | `3*[A]` or `[A]*3` |
 | Matrix multiplication | `[A]*[B]` (conformable) |
 | Determinant | `det([A])` (square only) |
+| Transpose | `T([A])` |
+| Inverse | `[A]^-1` (square, non-singular) |
+| Reduced row-echelon | `rref([A])` |
 
 Errors surface as `ERR:INVALID DIM` (mismatched shapes),
-`ERR:DATA TYPE` (mixing matrix and scalar where not allowed), or
-`ERR:UNDEFINED` (matrix referenced before editing).
+`ERR:DATA TYPE` (mixing matrix and scalar where not allowed),
+`ERR:SINGULAR MAT` (inverting a singular matrix), or `ERR:UNDEFINED`
+(matrix referenced before editing). The engine backs `[A]`–`[J]`; the UI
+currently exposes `[A]`–`[E]`.
 
-*Worked examples planned: solving `Ax = b`, computing area via cross
-product, etc.*
+## Lists & Statistics
+
+**Lists `L1`–`L6`** hold sequences of numbers. Type a literal with
+`{` and `}` (2ND+`(` / 2ND+`)`), and store with `STO▸`:
+
+```
+{1,2,3}→L1     → {1,2,3}
+L1+10          → {11,12,13}    (scalar broadcasts)
+L1+L1          → {2,4,6}       (element-wise; equal lengths)
+2L1            → {2,4,6}
+```
+
+Insert a list name with `2ND` + a number key (`2ND`+`1` → `L1`, …).
+Element-wise arithmetic (`+ − × ÷ ^`) requires equal lengths
+(`ERR:INVALID DIM` otherwise); a scalar operand broadcasts.
+
+**The Stat list editor** opens with `2ND` + `MATRX` (labelled `STAT`).
+Pick a list, set its length, and fill in values. It also hosts the
+statistics buttons.
+
+**List functions** (also in the MATH menu): `sum(`, `prod(`, `mean(`,
+`median(`, `min(`, `max(`, `stdDev(`, `variance(` reduce a list to a
+scalar. `seq(expr, var, start, end[, step])` builds a list — so the
+classic `sum(seq(X²,X,1,4))` → `30` works.
+
+**1-Var Stats.** In the Stat editor, select a list and click
+`1-VAR STATS`. A results screen shows n, x̄, Σx, Σx², Sx (sample sd),
+σx (population sd), minX, Q1, Med, Q3, maxX.
+
+**2-Var Stats & regression.** Put your X data in `L1` and Y data in `L2`,
+then use the editor's buttons:
+
+- `2-VAR L1,L2` — the two-variable summary plus **LinReg** (slope `a`,
+  intercept `b`, correlation `r`, `r²`)
+- `REGRESSIONS ▸` — a menu of `QuadReg`, `CubicReg`, `ExpReg`, `LnReg`,
+  `PwrReg` (each reports its coefficients and `R²` / `r`)
+
+Exp/Ln/Pwr models require positive data where the maths demands it
+(`ERR:DOMAIN` otherwise); mismatched list lengths give `ERR:INVALID DIM`.
 
 ## Graph Mode
 
@@ -205,18 +300,50 @@ viewport.
 
 **Changing the viewport:**
 Press the `WINDOW` soft-key to open the viewport editor. Enter
-Xmin / Xmax / Ymin / Ymax values. Two shortcuts:
-- `ZSTD` — reset to `-10..10` on both axes
-- `ZFIT` — auto-scale Y to fit the current functions
+Xmin / Xmax / Ymin / Ymax values. The `ZOOM` soft-key offers presets:
+ZStandard (`-10..10`), ZoomFit (auto-scale Y), Zoom In/Out, ZSquare,
+ZTrig, ZDecimal, and ZInteger.
+
+**Trace.** The `TRACE` soft-key drops a crosshair on the active curve
+with a live X/Y readout; `←`/`→` step along the curve and `↑`/`↓` cycle
+between Y1/Y2/Y3.
+
+**Table.** `2ND` + `GRAPH` opens the `TABLE` view — a scrollable
+`X | Y1 | Y2 | Y3` grid. `2ND` + `WINDOW` opens `TBLSET` to set the table
+start and step.
+
+**Polar mode.** Set MODE → Graph → **Pol** to plot `r = f(θ)`. The three
+slots become `r1`/`r2`/`r3`; enter the function using `X` as the angle θ
+(e.g. `r1 = 4sin(3X)` draws a rose). See [The MODE Menu](#the-mode-menu).
 
 Press `Y=` to return to the keypad.
 
-*Planned: function styles (thick / dotted / shaded), trace mode, tables.*
+*Planned: a full Y-editor with on/off toggles and function styles (thick /
+dotted / shaded).*
+
+## The MODE Menu
+
+The `MODE` key (CONTROL section) opens the settings popup. Wired rows take
+effect immediately and are reflected in the header indicator:
+
+| Row | Options | Effect |
+|---|---|---|
+| **Angle** | Radian / Degree | How trig functions interpret their input |
+| **Notation** | Normal / Sci / Eng | Number display format |
+| **Decimal** | Float / Fix 0–9 | Fixed decimal places |
+| **Base** | Dec / Hex / Oct / Bin | Integer results shown in the chosen base (`0xFF`, `0o77`, `0b1010`); non-integers fall back to decimal |
+| **Graph** | Func / Pol | Cartesian `y=f(x)` or polar `r=f(θ)` |
+| **Draw** | Connected / Dot | How graph curves are drawn |
+
+`RESET` (in this popup) restores factory defaults and clears all saved
+state. The remaining rows (Plot, Complex, Screen, and Graph's Par/Seq)
+are shown greyed — placeholders for features not yet built.
 
 ## Keyboard Shortcuts
 
 ```
 0–9, .                  digit entry
+A–Z (Shift+letter)      scalar variables
 + − * /                 operators (converted to Unicode for display)
 ^                       power
 ( ) ,                   parens and argument separator
@@ -224,19 +351,20 @@ Press `Y=` to return to the keypad.
 Enter / =               evaluate
 Backspace               delete last token
 Escape                  CLEAR
+← → Home End            move the in-expression cursor
 s / c / t               sin( / cos( / tan(
 l / n / r               log( / ln( / √(
 p                       π
+|  (or ->)              STO▸
 ```
 
-Single-letter shortcuts are unconditional — pressing `s` immediately
-inserts `sin(` regardless of context. A future **ALPHA modifier**
-([IMP-003](IMPROVEMENTS.md)) will let bare letters be typed as
-literals for variable names; until then, letter keys are reserved for
-function shortcuts.
+Bare lowercase letters are function shortcuts (`s` → `sin(`); press
+**Shift+letter** for a scalar variable (`A`–`Z`), and type `Y1`/`Y2`/`Y3`
+directly for the Y-VARS. On the on-screen keypad, `2ND` reaches the amber
+labels — including `{` / `}` (2ND+`(` / `)`) and `L1`–`L6` (2ND+`1`–`6`).
 
 Functions without a dedicated shortcut (abs, round, min, max,
-hyperbolics, nCr, nPr, etc.) must come from the MATH menu.
+hyperbolics, nCr, calculus, list functions, …) come from the MATH menu.
 
 ## CLI Usage (one-shot)
 
@@ -326,9 +454,11 @@ TI-83-style error labels:
 | `ERR:DIVIDE BY 0` | Attempted to divide by zero; also thrown by `mod(x, 0)` |
 | `ERR:NONREAL ANS` | Operation would produce a non-real result — `√(-1)`, `log(-5)`, `ln(0)` |
 | `ERR:DOMAIN` | Input outside the function's valid domain — `asin(2)`, `(-5)!`, `acosh(0.5)`, `nCr(5, 6)` |
-| `ERR:INVALID DIM` | Matrix dimension mismatch — adding a 2×2 to a 3×3, etc. |
-| `ERR:DATA TYPE` | Type mismatch, usually mixing a matrix and a scalar in an op that doesn't support it |
-| `ERR:UNDEFINED` | Referenced a matrix (`[B]`, `[C]`) before editing values into it |
+| `ERR:INVALID DIM` | Dimension mismatch — adding a 2×2 to a 3×3, unequal-length lists, a backwards `seq` range, etc. |
+| `ERR:DATA TYPE` | Type mismatch — mixing a matrix/list and a scalar where not allowed, or a store-target mismatch (`5→L1`, `{1,2}→A`) |
+| `ERR:UNDEFINED` | Referenced a matrix or list before storing values into it |
+| `ERR:SINGULAR MAT` | Tried to invert a singular (non-invertible) matrix |
+| `ERR:RECURSION` | A Y-VAR references itself directly or through a cycle |
 
 ## Tips & Tricks
 
@@ -398,6 +528,7 @@ lands, the [README.md features list](README.md#features) and
 
 ---
 
-*This skeleton is a starting point. Sections marked "planned" will be
-expanded over time; contributions welcome — see [CLAUDE.md](CLAUDE.md)
+*This manual tracks the shipping feature set. Sections marked "planned"
+(worked examples, screenshots, the full function-reference appendix) will
+be expanded over time; contributions welcome — see [CLAUDE.md](CLAUDE.md)
 for the development workflow.*
