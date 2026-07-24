@@ -297,6 +297,20 @@ void UIController::saveState() const {
   persistMatrix("E", Token::MatE);
   root["matrices"] = matrices;
 
+  // Lists L1..L6 (Phase C) — only persist populated slots.
+  QJsonObject lists;
+  for (int i = 0; i < 6; ++i) {
+    const Token tok = static_cast<Token>(static_cast<int>(Token::L1) + i);
+    auto it = MathStateMachine::listRegistry.find(tok);
+    if (it == MathStateMachine::listRegistry.end())
+      continue;
+    QJsonArray data;
+    for (double v : it->second)
+      data.append(v);
+    lists[QStringLiteral("L") + QString::number(i + 1)] = data;
+  }
+  root["lists"] = lists;
+
   // Function buffers Y1/Y2/Y3 as their display strings. Round-trips
   // through processExpression on load.
   QJsonArray functions;
@@ -381,6 +395,21 @@ void UIController::loadState() {
   restoreMatrix("C", Token::MatC);
   restoreMatrix("D", Token::MatD);
   restoreMatrix("E", Token::MatE);
+
+  // Lists L1..L6 (Phase C).
+  QJsonObject lists = root.value("lists").toObject();
+  for (int i = 0; i < 6; ++i) {
+    const QString key = QStringLiteral("L") + QString::number(i + 1);
+    if (!lists.contains(key))
+      continue;
+    QJsonArray data = lists.value(key).toArray();
+    std::vector<double> vec;
+    vec.reserve(static_cast<size_t>(data.size()));
+    for (auto v : data)
+      vec.push_back(v.toDouble());
+    const Token tok = static_cast<Token>(static_cast<int>(Token::L1) + i);
+    MathStateMachine::listRegistry[tok] = vec;
+  }
 
   // MODE — apply before function buffers so any side effects use
   // the right format settings.
@@ -471,6 +500,7 @@ void UIController::resetAll() {
   // Engine-side statics.
   MathStateMachine::varRegistry.fill(0.0);
   MathStateMachine::matrixRegistry.clear();
+  MathStateMachine::listRegistry.clear();
   MathStateMachine::lastResult = {true, 0.0, {}, false, ""};
   MathStateMachine::angleMode    = AngleMode::Radian;
   MathStateMachine::notation     = NumberNotation::Normal;
@@ -1191,6 +1221,46 @@ void UIController::updateMatrix(const QString &name, int rows, int cols,
   for (const auto &v : values)
     mat.data.push_back(v.toDouble());
   MathStateMachine::matrixRegistry[tok] = mat;
+}
+
+// Map a list name ("L1".."L6") to its registry Token. Returns false for
+// anything outside L1..L6.
+static bool listTokenForName(const QString &name, Token &out) {
+  if (name.size() != 2 || name.at(0).toUpper() != QChar('L'))
+    return false;
+  const QChar d = name.at(1);
+  if (d < QChar('1') || d > QChar('6'))
+    return false;
+  out = static_cast<Token>(static_cast<int>(Token::L1) +
+                           (d.unicode() - '1'));
+  return true;
+}
+
+QVariantList UIController::getList(const QString &name) const {
+  QVariantList out;
+  Token tok;
+  if (listTokenForName(name, tok)) {
+    auto it = MathStateMachine::listRegistry.find(tok);
+    if (it != MathStateMachine::listRegistry.end())
+      for (double v : it->second)
+        out.append(v);
+  }
+  return out;
+}
+
+void UIController::updateList(const QString &name,
+                             const QVariantList &values) {
+  CrashLogger::logEvent(QStringLiteral("updateList: ") + name +
+                        QStringLiteral(" n=") +
+                        QString::number(values.size()));
+  Token tok;
+  if (!listTokenForName(name, tok))
+    return;
+  std::vector<double> data;
+  data.reserve(static_cast<size_t>(values.size()));
+  for (const auto &v : values)
+    data.push_back(v.toDouble());
+  MathStateMachine::listRegistry[tok] = data;
 }
 
 QVariantMap UIController::getMatrix(const QString &name) const {

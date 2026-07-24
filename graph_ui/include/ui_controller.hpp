@@ -230,6 +230,11 @@ public:
     // {"rows": int, "cols": int, "data": [doubles]}. Undefined/unknown
     // names return rows=cols=0 with an empty data list.
     Q_INVOKABLE QVariantMap getMatrix(const QString& name) const;
+    // Phase C Wave 2: list editor bridge. getList returns the stored
+    // values for "L1".."L6" (empty list if unset/unknown); updateList
+    // writes them into the registry.
+    Q_INVOKABLE QVariantList getList(const QString& name) const;
+    Q_INVOKABLE void updateList(const QString& name, const QVariantList& values);
     Q_INVOKABLE QVariantList getMultiGraphPoints(int resolution);
     Q_INVOKABLE void pan(double dx, double dy, double vw, double vh);
     Q_INVOKABLE void zoom(double f, double mx, double my, double vw, double vh);

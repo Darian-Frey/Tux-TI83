@@ -60,7 +60,17 @@ ApplicationWindow {
         "x²":   "√(",
         "ln(":  "e^(",
         "÷":    "!",      // factorial — matches TI-83 PRB convention
-        "(-)":  "Ans"
+        "(-)":  "Ans",
+        // Phase C lists: `{`/`}` on 2ND+(/) and L1..L6 on 2ND+1..6,
+        // both matching the TI-83 keytop layout.
+        "(":    "{",
+        ")":    "}",
+        "1":    "L1",
+        "2":    "L2",
+        "3":    "L3",
+        "4":    "L4",
+        "5":    "L5",
+        "6":    "L6"
     })
 
     // Primary-label → ALPHA-variant token. Backed by the VarA..VarZ
@@ -642,8 +652,8 @@ ApplicationWindow {
             columnSpacing: 6
 
             // Row 1
-            CalcKey { label: "(";  keyType: "function"; alphaLabel: "K"; onPressed: root.handleKey("(") }
-            CalcKey { label: ")";  keyType: "function"; alphaLabel: "L"; onPressed: root.handleKey(")") }
+            CalcKey { label: "(";  keyType: "function"; secondLabel: "{"; alphaLabel: "K"; onPressed: root.handleKey("(") }
+            CalcKey { label: ")";  keyType: "function"; secondLabel: "}"; alphaLabel: "L"; onPressed: root.handleKey(")") }
             CalcKey { label: ",";  keyType: "function"; alphaLabel: "J"; onPressed: root.handleKey(",") }
             CalcKey { label: "X";  keyType: "function"; onPressed: root.handleKey("X") }
             CalcKey { label: "÷";  keyType: "operator"; secondLabel: "!"; alphaLabel: "M"; onPressed: root.handleKey("÷") }
@@ -652,10 +662,15 @@ ApplicationWindow {
             CalcKey { label: "7";  keyType: "numeric"; alphaLabel: "O"; onPressed: root.handleKey("7") }
             CalcKey { label: "8";  keyType: "numeric"; alphaLabel: "P"; onPressed: root.handleKey("8") }
             CalcKey { label: "9";  keyType: "numeric"; alphaLabel: "Q"; onPressed: root.handleKey("9") }
-            // MATRX: ALPHA-armed → insert letter B via handleKey;
-            // otherwise open the matrix popup.
-            CalcKey { label: "MATRX"; keyType: "function"; alphaLabel: "B"; onPressed: {
-                if (root.alphaActive) {
+            // MATRX: 2ND-armed → open the Stat list editor (STAT); we
+            // have no dedicated STAT key, so the list editor shares this
+            // key's 2ND slot with the matrix editor. ALPHA-armed → insert
+            // letter B via handleKey; otherwise open the matrix popup.
+            CalcKey { label: "MATRX"; keyType: "function"; secondLabel: "STAT"; alphaLabel: "B"; onPressed: {
+                if (root.secondArmed) {
+                    root.clearModifiers()
+                    listPopup.open()
+                } else if (root.alphaActive) {
                     root.handleKey("MATRX")
                 } else {
                     root.clearModifiers()
@@ -665,9 +680,9 @@ ApplicationWindow {
             CalcKey { label: "×";  keyType: "operator"; alphaLabel: "R"; onPressed: root.handleKey("×") }
 
             // Row 3
-            CalcKey { label: "4";  keyType: "numeric"; alphaLabel: "T"; onPressed: root.handleKey("4") }
-            CalcKey { label: "5";  keyType: "numeric"; alphaLabel: "U"; onPressed: root.handleKey("5") }
-            CalcKey { label: "6";  keyType: "numeric"; alphaLabel: "V"; onPressed: root.handleKey("6") }
+            CalcKey { label: "4";  keyType: "numeric"; secondLabel: "L4"; alphaLabel: "T"; onPressed: root.handleKey("4") }
+            CalcKey { label: "5";  keyType: "numeric"; secondLabel: "L5"; alphaLabel: "U"; onPressed: root.handleKey("5") }
+            CalcKey { label: "6";  keyType: "numeric"; secondLabel: "L6"; alphaLabel: "V"; onPressed: root.handleKey("6") }
             // x² routes through handleKey when any modifier is armed so
             // 2ND + x² → √( and ALPHA + x² → I get intercepted there.
             // Default (no modifier) inserts the composite "^ 2" sequence,
@@ -683,9 +698,9 @@ ApplicationWindow {
             CalcKey { label: "−";  keyType: "operator"; alphaLabel: "W"; onPressed: root.handleKey("−") }
 
             // Row 4
-            CalcKey { label: "1";  keyType: "numeric"; alphaLabel: "Y"; onPressed: root.handleKey("1") }
-            CalcKey { label: "2";  keyType: "numeric"; alphaLabel: "Z"; onPressed: root.handleKey("2") }
-            CalcKey { label: "3";  keyType: "numeric"; onPressed: root.handleKey("3") }
+            CalcKey { label: "1";  keyType: "numeric"; secondLabel: "L1"; alphaLabel: "Y"; onPressed: root.handleKey("1") }
+            CalcKey { label: "2";  keyType: "numeric"; secondLabel: "L2"; alphaLabel: "Z"; onPressed: root.handleKey("2") }
+            CalcKey { label: "3";  keyType: "numeric"; secondLabel: "L3"; onPressed: root.handleKey("3") }
             CalcKey { label: "Ans"; keyType: "function"; onPressed: root.handleKey("Ans") }
             CalcKey { label: "+";  keyType: "operator"; alphaLabel: "\""; onPressed: root.handleKey("+") }
 
@@ -744,6 +759,10 @@ ApplicationWindow {
 
     MatrixPopup {
         id: matrixPopup
+    }
+
+    ListPopup {
+        id: listPopup
     }
 
     MathMenuPopup {
