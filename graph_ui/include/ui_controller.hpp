@@ -240,6 +240,13 @@ public:
     // median, Q3, maxX — or {"error": "UNDEFINED"} for an unset/empty
     // list. Quartiles use the TI-83 median-of-halves rule.
     Q_INVOKABLE QVariantMap oneVarStats(const QString& name) const;
+    // Phase C Wave 4b: 2-Var Stats + linear regression y = ax + b over a
+    // pair of equal-length lists. Returns n, meanX/meanY, sumX/sumY/sumXY
+    // /sumX2/sumY2, Sx/Sy, and (when the data isn't degenerate) the
+    // regression a, b, r, r2. {"error": ...} on undefined/mismatched
+    // lists.
+    Q_INVOKABLE QVariantMap twoVarStats(const QString& xName,
+                                        const QString& yName) const;
     Q_INVOKABLE QVariantList getMultiGraphPoints(int resolution);
     Q_INVOKABLE void pan(double dx, double dy, double vw, double vh);
     Q_INVOKABLE void zoom(double f, double mx, double my, double vw, double vh);

@@ -1328,6 +1328,75 @@ QVariantMap UIController::oneVarStats(const QString &name) const {
   return out;
 }
 
+QVariantMap UIController::twoVarStats(const QString &xName,
+                                      const QString &yName) const {
+  QVariantMap out;
+  Token xt, yt;
+  if (!listTokenForName(xName, xt) || !listTokenForName(yName, yt)) {
+    out["error"] = "UNDEFINED";
+    return out;
+  }
+  auto xi = MathStateMachine::listRegistry.find(xt);
+  auto yi = MathStateMachine::listRegistry.find(yt);
+  if (xi == MathStateMachine::listRegistry.end() ||
+      yi == MathStateMachine::listRegistry.end() ||
+      xi->second.empty() || yi->second.empty()) {
+    out["error"] = "UNDEFINED";
+    return out;
+  }
+  const std::vector<double> &X = xi->second;
+  const std::vector<double> &Y = yi->second;
+  if (X.size() != Y.size()) {
+    out["error"] = "DIM";
+    return out;
+  }
+  const int n = static_cast<int>(X.size());
+
+  double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
+  for (int i = 0; i < n; ++i) {
+    sumX += X[i]; sumY += Y[i];
+    sumXY += X[i] * Y[i];
+    sumX2 += X[i] * X[i]; sumY2 += Y[i] * Y[i];
+  }
+  const double meanX = sumX / n, meanY = sumY / n;
+  double ssX = 0, ssY = 0;
+  for (int i = 0; i < n; ++i) {
+    ssX += (X[i] - meanX) * (X[i] - meanX);
+    ssY += (Y[i] - meanY) * (Y[i] - meanY);
+  }
+  const double Sx = (n >= 2) ? std::sqrt(ssX / (n - 1)) : 0.0;
+  const double Sy = (n >= 2) ? std::sqrt(ssY / (n - 1)) : 0.0;
+
+  out["error"]  = "";
+  out["n"]      = n;
+  out["meanX"]  = meanX;
+  out["meanY"]  = meanY;
+  out["sumX"]   = sumX;
+  out["sumY"]   = sumY;
+  out["sumXY"]  = sumXY;
+  out["sumX2"]  = sumX2;
+  out["sumY2"]  = sumY2;
+  out["Sx"]     = Sx;
+  out["Sy"]     = Sy;
+
+  // Least-squares linear regression y = ax + b. Skipped (fields left
+  // absent → "—" in the results screen) when X has no spread.
+  const double denomX = n * sumX2 - sumX * sumX;
+  if (std::abs(denomX) > 1e-12) {
+    const double a = (n * sumXY - sumX * sumY) / denomX;
+    const double b = meanY - a * meanX;
+    out["a"] = a;
+    out["b"] = b;
+    const double denomY = n * sumY2 - sumY * sumY;
+    if (denomY > 1e-12) {
+      const double r = (n * sumXY - sumX * sumY) / std::sqrt(denomX * denomY);
+      out["r"]  = r;
+      out["r2"] = r * r;
+    }
+  }
+  return out;
+}
+
 QVariantMap UIController::getMatrix(const QString &name) const {
   QVariantMap out;
   QVariantList data;

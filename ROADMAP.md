@@ -216,7 +216,7 @@ arithmetic, and `STO→` to a list are done in the engine and covered by
 ## Statistics & probability
 
 - ✅ 1-variable stats — Wave 4a, landed 2026-07-22. `UIController::oneVarStats(list)` computes n, x̄, Σx, Σx², Sx (sample sd), σx (pop sd), minX, Q1, Med, Q3, maxX (TI-83 median-of-halves quartiles); shown in a `StatResultsPopup` opened from the Stat editor's **1-VAR STATS** button. Blank editor cells are skipped, so an untouched list reports `ERR:UNDEFINED`. Not yet: mode, and stat-variable recall (`x̄`, `Sx`, … as usable variables).
-- 📅 2-variable stats (correlation, regression coefficients) — Wave 4b
+- ✅ 2-variable stats (correlation, regression coefficients) — Wave 4b, landed 2026-07-22. `UIController::twoVarStats(xList, yList)` computes n, x̄, ȳ, Σx, Σy, Σxy, Σx², Σy², Sx, Sy plus least-squares linear regression a (slope), b (intercept), r, r² (degenerate X → regression omitted, stats kept; unequal lengths → `ERR:INVALID DIM`). Shown in the shared `StatResultsPopup` (now a scrollable `mode`-driven list) via the Stat editor's **2-VAR L1,L2** button (L1=Xlist, L2=Ylist, TI-83 defaults).
 - 📅 `rand`, `randInt(`, `randNorm(`, `randBin(`
 - 📅 `nCr`, `nPr`, factorial `!`
 - 📅 Statistical regressions: `LinReg`, `QuadReg`, `CubicReg`, `QuartReg`, `LnReg`, `ExpReg`, `PwrReg`, `SinReg`, `Logistic`

@@ -3,10 +3,10 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import ".."
 
-// 1-Var Stats results screen (Phase C Wave 4a). Displays the stat bundle
-// returned by uiController.oneVarStats() in the TI-83 row order. The
-// `results` map is set by the opener (the Stat editor's 1-VAR STATS
-// button) just before open().
+// Stat results screen (Phase C Wave 4a/4b). Renders the bundle returned
+// by oneVarStats()/twoVarStats() in TI-83 row order. The opener sets
+// `mode` ("oneVar" | "twoVar"), `results`, and `sourceLabel`, then
+// open(). The rows scroll so the longer 2-Var/LinReg set fits.
 Popup {
     id: root
 
@@ -23,6 +23,7 @@ Popup {
 
     property var results: ({})
     property string sourceLabel: ""
+    property string mode: "oneVar"
 
     background: Rectangle {
         color: Style.bgSurface
@@ -31,10 +32,7 @@ Popup {
         border.width: 1
     }
 
-    // (key, label) in TI-83 display order. `n` renders as an integer;
-    // everything else routes through formatScalar so the readout honours
-    // the active Notation / Decimal MODE settings.
-    readonly property var rows: [
+    readonly property var oneVarRows: [
         { key: "mean",   label: "x̄" },
         { key: "sumX",   label: "Σx" },
         { key: "sumX2",  label: "Σx²" },
@@ -47,6 +45,33 @@ Popup {
         { key: "Q3",     label: "Q3" },
         { key: "maxX",   label: "maxX" }
     ]
+    readonly property var twoVarRows: [
+        { key: "n",     label: "n" },
+        { key: "meanX", label: "x̄" },
+        { key: "meanY", label: "ȳ" },
+        { key: "sumX",  label: "Σx" },
+        { key: "sumY",  label: "Σy" },
+        { key: "sumXY", label: "Σxy" },
+        { key: "sumX2", label: "Σx²" },
+        { key: "sumY2", label: "Σy²" },
+        { key: "Sx",    label: "Sx" },
+        { key: "Sy",    label: "Sy" },
+        { key: "a",     label: "a (slope)" },
+        { key: "b",     label: "b (y-int)" },
+        { key: "r",     label: "r" },
+        { key: "r2",    label: "r²" }
+    ]
+    readonly property var rows: mode === "twoVar" ? twoVarRows : oneVarRows
+    readonly property string headerText: mode === "twoVar" ? "2-VAR / LINREG"
+                                                           : "1-VAR STATS"
+    readonly property string errorText: {
+        var e = (results && results.error) ? results.error : ""
+        if (e === "DIM")
+            return "ERR:INVALID DIM — Xlist and Ylist differ in length"
+        if (e)
+            return "ERR:UNDEFINED — empty or undefined list"
+        return ""
+    }
 
     contentItem: ColumnLayout {
         spacing: 10
@@ -54,7 +79,7 @@ Popup {
         // ── Header ──
         Text {
             Layout.fillWidth: true
-            text: "1-VAR STATS" + (root.sourceLabel ? "  " + root.sourceLabel : "")
+            text: root.headerText + (root.sourceLabel ? "  " + root.sourceLabel : "")
             color: Style.textMuted
             font.family: Style.monoFamily
             font.pixelSize: Style.sectionLabelPixelSize
@@ -70,53 +95,52 @@ Popup {
 
         // ── Error state ──
         Text {
-            visible: !!(root.results && root.results.error)
+            visible: root.errorText.length > 0
             Layout.fillWidth: true
-            text: "ERR:UNDEFINED — list is empty"
+            text: root.errorText
             color: Style.textError
             font.family: Style.monoFamily
             font.pixelSize: Style.exprPixelSize
+            wrapMode: Text.WordWrap
             horizontalAlignment: Text.AlignHCenter
         }
 
-        // ── Stat rows ──
-        ColumnLayout {
+        // ── Stat rows (scrollable) ──
+        ListView {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 4
-            visible: !(root.results && root.results.error)
-            // (kept as-is: `!(...)` already coerces to a proper bool)
-            Repeater {
-                model: root.rows
-                RowLayout {
+            visible: root.errorText.length === 0
+            clip: true
+            model: root.rows
+            spacing: 3
+            boundsBehavior: Flickable.StopAtBounds
+            delegate: RowLayout {
+                width: ListView.view.width
+                height: 24
+                Text {
+                    text: modelData.label
+                    color: Style.textSecondary
+                    font.family: Style.monoFamily
+                    font.pixelSize: Style.keyLabelPixelSize
+                    Layout.preferredWidth: 80
+                }
+                Text {
                     Layout.fillWidth: true
-                    Text {
-                        text: modelData.label
-                        color: Style.textSecondary
-                        font.family: Style.monoFamily
-                        font.pixelSize: Style.keyLabelPixelSize
-                        Layout.preferredWidth: 70
+                    horizontalAlignment: Text.AlignRight
+                    text: {
+                        if (!root.results || root.results[modelData.key] === undefined)
+                            return "—"
+                        if (modelData.key === "n")
+                            return "" + root.results.n
+                        return uiController.formatScalar(root.results[modelData.key])
                     }
-                    Text {
-                        Layout.fillWidth: true
-                        horizontalAlignment: Text.AlignRight
-                        text: {
-                            if (!root.results || root.results[modelData.key] === undefined)
-                                return "—"
-                            if (modelData.key === "n")
-                                return "" + root.results.n
-                            return uiController.formatScalar(root.results[modelData.key])
-                        }
-                        color: Style.textDisplay
-                        font.family: Style.monoFamily
-                        font.pixelSize: Style.keyLabelPixelSize
-                        elide: Text.ElideRight
-                    }
+                    color: Style.textDisplay
+                    font.family: Style.monoFamily
+                    font.pixelSize: Style.keyLabelPixelSize
+                    elide: Text.ElideRight
                 }
             }
         }
-
-        Item { Layout.fillHeight: true }
 
         CalcKey {
             label: "DONE"

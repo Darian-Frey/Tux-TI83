@@ -1170,6 +1170,55 @@ int main(int argc, char *argv[]) {
     tux_ti83::MathStateMachine::listRegistry.clear();
   }
 
+  section("2-Var Stats + LinReg (Phase C — Wave 4b)");
+  {
+    tux_ti83::MathStateMachine::listRegistry.clear();
+    auto near = [](double a, double b) { return std::abs(a - b) < 1e-6; };
+
+    // Perfectly linear: Y = 2X + 1 → a=2, b=1, r=1, r²=1.
+    eval(c, "{1,2,3,4}→L1");
+    eval(c, "{3,5,7,9}→L2");
+    QVariantMap s = c.twoVarStats("L1", "L2");
+    checkTrue("2-var: no error", s["error"].toString().isEmpty());
+    checkTrue("2-var: n = 4", s["n"].toInt() == 4);
+    checkTrue("2-var: meanX = 2.5", near(s["meanX"].toDouble(), 2.5));
+    checkTrue("2-var: meanY = 6", near(s["meanY"].toDouble(), 6.0));
+    checkTrue("2-var: sumXY = 70", near(s["sumXY"].toDouble(), 70.0));
+    checkTrue("LinReg: a (slope) = 2", near(s["a"].toDouble(), 2.0));
+    checkTrue("LinReg: b (intercept) = 1", near(s["b"].toDouble(), 1.0));
+    checkTrue("LinReg: r = 1", near(s["r"].toDouble(), 1.0));
+    checkTrue("LinReg: r² = 1", near(s["r2"].toDouble(), 1.0));
+
+    // Non-perfect fit: X={1,2,3,4,5}, Y={2,4,5,4,5} → a=0.6, b=2.2,
+    // r²=0.6.
+    eval(c, "{1,2,3,4,5}→L3");
+    eval(c, "{2,4,5,4,5}→L4");
+    QVariantMap s2 = c.twoVarStats("L3", "L4");
+    checkTrue("LinReg2: a = 0.6", near(s2["a"].toDouble(), 0.6));
+    checkTrue("LinReg2: b = 2.2", near(s2["b"].toDouble(), 2.2));
+    checkTrue("LinReg2: r² = 0.6", near(s2["r2"].toDouble(), 0.6));
+
+    // Dimension mismatch.
+    eval(c, "{1,2}→L5");
+    eval(c, "{1,2,3}→L6");
+    QVariantMap sd = c.twoVarStats("L5", "L6");
+    checkTrue("2-var dim mismatch → DIM", sd["error"].toString() == "DIM");
+
+    // Undefined lists.
+    tux_ti83::MathStateMachine::listRegistry.clear();
+    QVariantMap su = c.twoVarStats("L1", "L2");
+    checkTrue("2-var undefined → error", !su["error"].toString().isEmpty());
+
+    // Degenerate X (no spread) → regression fields absent, stats present.
+    eval(c, "{2,2,2}→L1");
+    eval(c, "{1,2,3}→L2");
+    QVariantMap sg = c.twoVarStats("L1", "L2");
+    checkTrue("2-var degenerate: stats present", sg["n"].toInt() == 3);
+    checkTrue("2-var degenerate: no slope", !sg.contains("a"));
+
+    tux_ti83::MathStateMachine::listRegistry.clear();
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

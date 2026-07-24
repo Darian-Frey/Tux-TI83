@@ -40,6 +40,9 @@ Popup {
     // Emitted when the user asks for 1-Var Stats on the selected list;
     // Main.qml computes the bundle and shows the results popup.
     signal statsRequested(string listName)
+    // Emitted for 2-Var Stats + LinReg over L1 (Xlist) and L2 (Ylist) —
+    // the TI-83 defaults.
+    signal twoVarRequested()
 
     function cellText(i) { return (i >= 0 && i < cells.length) ? cells[i] : "" }
     function setCell(i, t) { if (i >= 0 && i < cells.length) cells[i] = t }
@@ -70,6 +73,23 @@ Popup {
             if (ch && ch.hasOwnProperty("cellIndex") && ch.hasOwnProperty("text"))
                 ch.text = cellText(ch.cellIndex)
         }
+    }
+
+    // Persist the filled cells (blanks skipped) of the selected list.
+    // Shared by SAVE and the stat buttons so what you see is what's
+    // computed; an untouched list stays undefined.
+    function commitCells() {
+        var vals = []
+        for (var i = 0; i < mLen; i++) {
+            var raw = cells[i]
+            if (raw === undefined || raw === "")
+                continue
+            var v = parseFloat(raw)
+            if (Number.isFinite(v))
+                vals.push(v)
+        }
+        if (vals.length > 0)
+            uiController.updateList(selectedList, vals)
     }
 
     onOpened: loadList(selectedList)
@@ -240,55 +260,41 @@ Popup {
 
         Item { Layout.fillHeight: true }
 
-        RowLayout {
+        ColumnLayout {
             Layout.fillWidth: true
             spacing: 6
+
             CalcKey {
                 Layout.fillWidth: true
                 label: "SAVE TO " + root.selectedList
                 keyType: "enter"
-                onPressed: {
-                    // Blank cells are skipped (not saved as 0) so the
-                    // stored list is exactly the values entered — the
-                    // same model the 1-VAR STATS button uses.
-                    var vals = []
-                    for (var i = 0; i < root.mLen; i++) {
-                        var raw = root.cells[i]
-                        if (raw === undefined || raw === "")
-                            continue
-                        var v = parseFloat(raw)
-                        if (Number.isFinite(v))
-                            vals.push(v)
-                    }
-                    if (vals.length > 0)
-                        uiController.updateList(root.selectedList, vals)
-                    root.close()
-                }
+                onPressed: { root.commitCells(); root.close() }
             }
-            // 1-Var Stats over the currently selected list. Persists the
-            // filled cells first so the stats reflect unsaved edits.
-            // Blank cells are skipped (not treated as 0), so an untouched
-            // list stays undefined and reports ERR:UNDEFINED rather than
-            // silently becoming a list of zeros.
-            CalcKey {
+            RowLayout {
                 Layout.fillWidth: true
-                label: "1-VAR STATS"
-                keyType: "function"
-                onPressed: {
-                    var vals = []
-                    for (var i = 0; i < root.mLen; i++) {
-                        var raw = root.cells[i]
-                        if (raw === undefined || raw === "")
-                            continue
-                        var v = parseFloat(raw)
-                        if (Number.isFinite(v))
-                            vals.push(v)
+                spacing: 6
+                // 1-Var Stats over the selected list.
+                CalcKey {
+                    Layout.fillWidth: true
+                    label: "1-VAR STATS"
+                    keyType: "function"
+                    onPressed: {
+                        root.commitCells()
+                        var name = root.selectedList
+                        root.close()
+                        root.statsRequested(name)
                     }
-                    if (vals.length > 0)
-                        uiController.updateList(root.selectedList, vals)
-                    var name = root.selectedList
-                    root.close()
-                    root.statsRequested(name)
+                }
+                // 2-Var Stats + LinReg over L1 (X) and L2 (Y).
+                CalcKey {
+                    Layout.fillWidth: true
+                    label: "2-VAR L1,L2"
+                    keyType: "function"
+                    onPressed: {
+                        root.commitCells()
+                        root.close()
+                        root.twoVarRequested()
+                    }
                 }
             }
         }

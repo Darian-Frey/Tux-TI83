@@ -764,8 +764,15 @@ ApplicationWindow {
     ListPopup {
         id: listPopup
         onStatsRequested: (listName) => {
+            statResultsPopup.mode = "oneVar"
             statResultsPopup.sourceLabel = listName
             statResultsPopup.results = uiController.oneVarStats(listName)
+            statResultsPopup.open()
+        }
+        onTwoVarRequested: () => {
+            statResultsPopup.mode = "twoVar"
+            statResultsPopup.sourceLabel = "L1,L2"
+            statResultsPopup.results = uiController.twoVarStats("L1", "L2")
             statResultsPopup.open()
         }
     }
