@@ -152,6 +152,9 @@ constexpr TokenSpec kTokens[] = {
     {"mean(",     Token::Mean,     "mean("},
     {"stdDev(",   Token::StdDev,   "stdDev("},
     {"variance(", Token::Variance, "variance("},
+    {"median(",   Token::Median,   "median("},
+    // seq(expr,var,start,end[,step]) — generates a list (Wave 3b).
+    {"seq(",      Token::Seq,      "seq("},
 
     // Factorial — unary postfix
     {"!", Token::Fact, "!"},

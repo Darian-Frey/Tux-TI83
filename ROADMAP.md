@@ -151,7 +151,7 @@ yet built: 2ND modifier system, ALPHA modifier system (see
 - ✅ Numeric integration `fnInt(expr, var, a, b)` — composite Simpson's rule, N=100 subintervals; nested calls supported via thread-local deferred side-table (IMP-044, 2026-05-25)
 - ✅ Numeric derivative `nDeriv(expr, var, x [, h])` — symmetric finite difference, default h=0.001 (IMP-044, 2026-05-25)
 - ✅ `sum(expr, var, start, end)` / `prod(expr, var, start, end)` — 4-arg form; integer iteration with 100k-call cap. Deviates from TI-83's list-based `sum(seq(...))` syntax pending Phase C lists (IMP-044, 2026-05-25)
-- 📅 `seq(expr, var, start, end[, step])` — needs Phase C lists (returns a list); deferred until list infrastructure lands
+- ✅ `seq(expr, var, start, end[, step])` — landed 2026-07-22 (Phase C Wave 3b) once list infrastructure existed. Returns a list; see Lists section. Enables the TI-83 `sum(seq(...))` summation form.
 - 💭 Equation solver (Solver app)
 - 💭 Symbolic operations (well beyond original TI-83 scope)
 
@@ -208,7 +208,8 @@ arithmetic, and `STO→` to a list are done in the engine and covered by
 - ✅ List entry / editing UI (Stat editor) — Wave 2, landed 2026-07-22. `{`/`}` on 2ND+`(`/`)`, `L1`–`L6` on 2ND+`1`–`6`, and a `ListPopup` Stat editor (L1–L6 selector, length stepper 1–10, editable column, value read-back) opened via 2ND+`MATRX`. `L1`–`L6` persist in `state.json`. Editor length caps at 10 (UI pragmatism; the engine itself is unbounded).
 - ✅ List arithmetic (vectorised ops) — element-wise `+ − × ÷ ^` with equal-length lists (`ERR:INVALID DIM` otherwise) and scalar broadcasting; implicit-mul (`2L1`, `2{1,2}`) works. Unary/binary math functions reject lists (`ERR:DATA TYPE`) pending Wave 3 element-wise mapping. Landed 2026-07-22.
 - ✅ List functions: `sum(`, `prod(`, `mean(`, `min(`, `max(`, `stdDev(`, `variance(` — Wave 3a, landed 2026-07-22. `mean`/`stdDev`/`variance` are list-only (sample n−1 for stdDev/variance; `ERR:DOMAIN` for n<2). `sum(`/`prod(` overload the calculus 4-arg forms by arity (1 list arg → reduction); `min(`/`max(` overload the 2-scalar forms by operand type. In the MATH menu. Limitation: 2-arg `min(`/`max(` with a list operand (element-wise) not yet supported.
-- 🔜 `seq(` for generating lists from formulas — Wave 3b (next; deferred-eval framework, returns a list — also unblocks the deferred `seq(` in Calculus). `median(` pairs here too.
+- ✅ `seq(expr, var, start, end[, step])` — Wave 3b, landed 2026-07-22. Reuses the deferred-eval framework (IMP-044) to sample the unevaluated first arg over the stepped range and collect a list. Default step 1; negative steps allowed; backwards range → `ERR:INVALID DIM`, zero step → `ERR:DOMAIN`. The authentic TI-83 `sum(seq(...))` summation form now works. Also added `median(` (Wave 3b).
+- 📅 `median(` alongside 1-var stats — ✅ done early as a list reduction in Wave 3b (odd → middle, even → mean of the two middle values).
 - 📅 List ↔ Matrix conversion
 - 📅 Custom named lists (`L1`–`L6` plus `αLIST`)
 

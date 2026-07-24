@@ -117,7 +117,8 @@ bool EOSPrecedence::is_function(Token t) {
           t == Token::Sinh || t == Token::Cosh || t == Token::Tanh ||
           t == Token::ASinh || t == Token::ACosh || t == Token::ATanh ||
           t == Token::Mean || t == Token::StdDev || t == Token::Variance ||
-          t == Token::ListSum || t == Token::ListProd ||
+          t == Token::ListSum || t == Token::ListProd || t == Token::Median ||
+          t == Token::SeqCall ||
           is_binary_function(t));
 }
 
@@ -148,7 +149,8 @@ bool EOSPrecedence::has_built_in_paren(Token t) {
           t == Token::Sinh || t == Token::Cosh || t == Token::Tanh ||
           t == Token::ASinh || t == Token::ACosh || t == Token::ATanh ||
           t == Token::Mean || t == Token::StdDev || t == Token::Variance ||
-          t == Token::ListSum || t == Token::ListProd);
+          t == Token::ListSum || t == Token::ListProd || t == Token::Median ||
+          t == Token::SeqCall);
 }
 
 // --- MATRIX MATH HELPERS ---
@@ -360,7 +362,7 @@ struct EvalGuard {
 bool opensParenScope(Token t) {
   return t == Token::LeftParen ||
          t == Token::FnInt || t == Token::NDeriv ||
-         t == Token::Sum   || t == Token::Prod   ||
+         t == Token::Sum   || t == Token::Prod   || t == Token::Seq ||
          EOSPrecedence::has_built_in_paren(t);
 }
 
@@ -419,7 +421,8 @@ std::vector<Token> rewriteDeferredCalls(const std::vector<Token> &tokens,
   for (size_t i = 0; i < tokens.size(); ++i) {
     Token t = tokens[i];
     const bool isDeferred = (t == Token::FnInt || t == Token::NDeriv ||
-                              t == Token::Sum   || t == Token::Prod);
+                              t == Token::Sum   || t == Token::Prod   ||
+                              t == Token::Seq);
     if (!isDeferred) {
       out.push_back(t);
       continue;
@@ -461,10 +464,13 @@ std::vector<Token> rewriteDeferredCalls(const std::vector<Token> &tokens,
       continue;
     }
 
-    // Argument count gate. fnInt/sum/prod want exactly 4; nDeriv
-    // accepts 3 (default h) or 4 (explicit h).
+    // Argument count gate. fnInt/sum/prod want exactly 4; nDeriv accepts
+    // 3 (default h) or 4 (explicit h); seq accepts 4 (default step 1) or
+    // 5 (explicit step).
     if (t == Token::NDeriv) {
       if (args.size() < 3 || args.size() > 4) { ok = false; return out; }
+    } else if (t == Token::Seq) {
+      if (args.size() < 4 || args.size() > 5) { ok = false; return out; }
     } else {
       if (args.size() != 4) { ok = false; return out; }
     }
@@ -494,14 +500,27 @@ std::vector<Token> rewriteDeferredCalls(const std::vector<Token> &tokens,
     Token callTok = (t == Token::FnInt)  ? Token::FnIntCall :
                     (t == Token::NDeriv) ? Token::NDerivCall :
                     (t == Token::Sum)    ? Token::SumCall :
-                                           Token::ProdCall;
+                    (t == Token::Prod)   ? Token::ProdCall :
+                                           Token::SeqCall;
     out.push_back(callTok);
 
     auto emitArg = [&](const std::vector<Token> &arg) {
       for (auto x : arg) out.push_back(x);
     };
 
-    if (t == Token::FnInt || t == Token::Sum || t == Token::Prod) {
+    if (t == Token::Seq) {
+      // start, end, step (default 1 if omitted), K.
+      emitArg(rArgs[2]);
+      out.push_back(Token::Comma);
+      emitArg(rArgs[3]);
+      out.push_back(Token::Comma);
+      if (rArgs.size() == 5) {
+        emitArg(rArgs[4]);
+      } else {
+        out.push_back(Token::Num1);
+      }
+      out.push_back(Token::Comma);
+    } else if (t == Token::FnInt || t == Token::Sum || t == Token::Prod) {
       // lower, upper, K.
       emitArg(rArgs[2]);
       out.push_back(Token::Comma);
@@ -1037,6 +1056,58 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
       }
 
       stack.push({false, result, {}});
+    } else if (t == Token::SeqCall) {
+      // seq(expr, var, start, end, step) → list. Operands on the stack
+      // (top → bottom): K (side-table index), step, end, start.
+      if (stack.size() < 4)
+        return {false, 0.0, {}, false, "Error"};
+      Operand kOp = stack.top(); stack.pop();
+      Operand stepOp = stack.top(); stack.pop();
+      Operand endOp = stack.top(); stack.pop();
+      Operand startOp = stack.top(); stack.pop();
+      if (kOp.isMat || stepOp.isMat || endOp.isMat || startOp.isMat ||
+          kOp.isList || stepOp.isList || endOp.isList || startOp.isList)
+        return {false, 0.0, {}, false, "Type Error"};
+      const int K = static_cast<int>(std::llround(kOp.val));
+      if (K < 0 || K >= static_cast<int>(g_deferred.size()))
+        return {false, 0.0, {}, false, "Error"};
+      const std::vector<Token> &expr = g_deferred[K].expr;
+      const int vIdx = g_deferred[K].varIdx;
+      const int xIdx = static_cast<int>(Token::VarX) -
+                       static_cast<int>(Token::VarA);
+      const double start = startOp.val, end = endOp.val, step = stepOp.val;
+      if (step == 0.0)
+        return {false, 0.0, {}, false, "DOMAIN"};
+      // Count elements up-front (v = start + i*step) rather than
+      // accumulating, so float drift can't shift the endpoint. A
+      // backwards/empty range is ERR:INVALID DIM.
+      const long long count =
+          static_cast<long long>(std::floor((end - start) / step + 1e-9)) + 1;
+      if (count < 1)
+        return {false, 0.0, {}, false, "Dim Mismatch"};
+      constexpr long long kIterCap = 100000;
+      if (count > kIterCap)
+        return {false, 0.0, {}, false, "DOMAIN"};
+      std::vector<double> outList;
+      outList.reserve(static_cast<size_t>(count));
+      for (long long i = 0; i < count; ++i) {
+        const double v = start + static_cast<double>(i) * step;
+        const double prev = varRegistry[vIdx];
+        varRegistry[vIdx] = v;
+        MathStateMachine sub;
+        CalculationResult r = sub.evaluate(expr, (vIdx == xIdx) ? v : xValue);
+        varRegistry[vIdx] = prev;
+        if (!r.success) return r;
+        if (r.isMatrix || r.isList)
+          return {false, 0.0, {}, false, "Type Error"};
+        outList.push_back(r.value);
+      }
+      Operand o;
+      o.isMat = false;
+      o.val = 0.0;
+      o.isList = true;
+      o.list = std::move(outList);
+      stack.push(o);
     } else if (t == Token::Sto) {
       // Write the top-of-stack value into its target registry and push
       // it back so the display reflects the stored value. Target type
@@ -1189,7 +1260,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
       // guard below.
       if (t == Token::ListSum || t == Token::ListProd ||
           t == Token::Mean || t == Token::StdDev ||
-          t == Token::Variance) {
+          t == Token::Variance || t == Token::Median) {
         if (!a.isList)
           return {false, 0.0, {}, false, "Type Error"};
         const std::vector<double> &L = a.list;
@@ -1206,6 +1277,13 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
           double s = 0.0;
           for (double v : L) s += v;
           res = s / static_cast<double>(n);
+        } else if (t == Token::Median) {
+          if (n == 0)
+            return {false, 0.0, {}, false, "DOMAIN"};
+          std::vector<double> s = L;
+          std::sort(s.begin(), s.end());
+          res = (n % 2 == 1) ? s[n / 2]
+                             : (s[n / 2 - 1] + s[n / 2]) / 2.0;
         } else {  // StdDev / Variance — sample (n-1 denominator)
           if (n < 2)
             return {false, 0.0, {}, false, "DOMAIN"};

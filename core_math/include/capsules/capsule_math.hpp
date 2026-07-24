@@ -253,7 +253,18 @@ enum class Token {
   StdDev,
   Variance,
   ListSum,
-  ListProd
+  ListProd,
+  Median,
+
+  // seq(expr, var, start, end[, step]) — generates a list by evaluating
+  // `expr` for `var` stepped from start to end (Phase C Wave 3b). Like
+  // the calculus sum/prod it captures an unevaluated first argument, so
+  // it uses the deferred-call framework: `Seq` is the surface token
+  // (rewritten out before the shunting-yard) and `SeqCall` is the
+  // synthetic form the evaluator sees. Unlike sum/prod it returns a
+  // list, not a scalar.
+  Seq,
+  SeqCall
 };
 
 struct Matrix {

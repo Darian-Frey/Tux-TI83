@@ -1097,6 +1097,41 @@ int main(int argc, char *argv[]) {
     tux_ti83::MathStateMachine::listRegistry.clear();
   }
 
+  section("seq( and median( (Phase C — Wave 3b)");
+  {
+    tux_ti83::MathStateMachine::listRegistry.clear();
+
+    // seq( — 4-arg (default step 1) and 5-arg (explicit step).
+    check("seq(X,X,1,5) → {1,2,3,4,5}", eval(c, "seq(X,X,1,5)"), "{1,2,3,4,5}");
+    check("seq(X^2,X,1,4) → {1,4,9,16}", eval(c, "seq(X^2,X,1,4)"), "{1,4,9,16}");
+    check("seq(2X,X,1,3) → {2,4,6}", eval(c, "seq(2X,X,1,3)"), "{2,4,6}");
+    check("seq(X,X,1,10,2) → {1,3,5,7,9}",
+          eval(c, "seq(X,X,1,10,2)"), "{1,3,5,7,9}");
+    check("seq(X,X,5,1,-1) → {5,4,3,2,1} (negative step)",
+          eval(c, "seq(X,X,5,1,-1)"), "{5,4,3,2,1}");
+
+    // seq( composes with the reductions — the authentic TI-83
+    // sum(seq(...)) summation form.
+    check("sum(seq(X^2,X,1,4)) → 30", eval(c, "sum(seq(X^2,X,1,4))"), "30");
+    check("mean(seq(X,X,1,9)) → 5", eval(c, "mean(seq(X,X,1,9))"), "5");
+    // seq result stores into a list slot.
+    check("seq(X,X,1,4)→L1 → {1,2,3,4}", eval(c, "seq(X,X,1,4)→L1"), "{1,2,3,4}");
+    check("L1 after seq store → {1,2,3,4}", eval(c, "L1"), "{1,2,3,4}");
+
+    // seq( error paths.
+    check("seq(X,X,5,1) backwards → ERR:INVALID DIM",
+          eval(c, "seq(X,X,5,1)"), "ERR:INVALID DIM");
+    check("seq(X,X,1,3,0) step 0 → ERR:DOMAIN",
+          eval(c, "seq(X,X,1,3,0)"), "ERR:DOMAIN");
+
+    // median( — odd and even length.
+    check("median({3,1,2}) → 2", eval(c, "median({3,1,2})"), "2");
+    check("median({1,2,3,4}) → 2.5", eval(c, "median({1,2,3,4})"), "2.5");
+    check("median({7,7,7}) → 7", eval(c, "median({7,7,7})"), "7");
+
+    tux_ti83::MathStateMachine::listRegistry.clear();
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

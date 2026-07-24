@@ -61,6 +61,8 @@ Popup {
         { label: "mean(",     input: "mean(",     available: true },
         { label: "stdDev(",   input: "stdDev(",   available: true },
         { label: "variance(", input: "variance(", available: true },
+        { label: "median(",   input: "median(",   available: true },
+        { label: "seq(",      input: "seq(",      available: true },
         { label: "sinh(",  input: "sinh(",  available: true },
         { label: "cosh(",  input: "cosh(",  available: true },
         { label: "tanh(",  input: "tanh(",  available: true },
