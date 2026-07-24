@@ -763,6 +763,15 @@ ApplicationWindow {
 
     ListPopup {
         id: listPopup
+        onStatsRequested: (listName) => {
+            statResultsPopup.sourceLabel = listName
+            statResultsPopup.results = uiController.oneVarStats(listName)
+            statResultsPopup.open()
+        }
+    }
+
+    StatResultsPopup {
+        id: statResultsPopup
     }
 
     MathMenuPopup {

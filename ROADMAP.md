@@ -215,8 +215,8 @@ arithmetic, and `STO→` to a list are done in the engine and covered by
 
 ## Statistics & probability
 
-- 📅 1-variable stats (mean, median, mode, σ, σ², quartiles)
-- 📅 2-variable stats (correlation, regression coefficients)
+- ✅ 1-variable stats — Wave 4a, landed 2026-07-22. `UIController::oneVarStats(list)` computes n, x̄, Σx, Σx², Sx (sample sd), σx (pop sd), minX, Q1, Med, Q3, maxX (TI-83 median-of-halves quartiles); shown in a `StatResultsPopup` opened from the Stat editor's **1-VAR STATS** button. Blank editor cells are skipped, so an untouched list reports `ERR:UNDEFINED`. Not yet: mode, and stat-variable recall (`x̄`, `Sx`, … as usable variables).
+- 📅 2-variable stats (correlation, regression coefficients) — Wave 4b
 - 📅 `rand`, `randInt(`, `randNorm(`, `randBin(`
 - 📅 `nCr`, `nPr`, factorial `!`
 - 📅 Statistical regressions: `LinReg`, `QuadReg`, `CubicReg`, `QuartReg`, `LnReg`, `ExpReg`, `PwrReg`, `SinReg`, `Logistic`

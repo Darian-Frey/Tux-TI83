@@ -1132,6 +1132,44 @@ int main(int argc, char *argv[]) {
     tux_ti83::MathStateMachine::listRegistry.clear();
   }
 
+  section("1-Var Stats (Phase C — Wave 4a)");
+  {
+    tux_ti83::MathStateMachine::listRegistry.clear();
+    auto near = [](double a, double b) { return std::abs(a - b) < 1e-6; };
+
+    // Even n: {1..8}. sumX=36, sumX2=204, mean=4.5, Sx=√6, σx=√5.25,
+    // Q1=2.5, Med=4.5, Q3=6.5.
+    eval(c, "{1,2,3,4,5,6,7,8}→L1");
+    QVariantMap s = c.oneVarStats("L1");
+    checkTrue("1-var: no error", s["error"].toString().isEmpty());
+    checkTrue("1-var: n = 8", s["n"].toInt() == 8);
+    checkTrue("1-var: mean = 4.5", near(s["mean"].toDouble(), 4.5));
+    checkTrue("1-var: sumX = 36", near(s["sumX"].toDouble(), 36.0));
+    checkTrue("1-var: sumX2 = 204", near(s["sumX2"].toDouble(), 204.0));
+    checkTrue("1-var: Sx = sqrt(6)", near(s["Sx"].toDouble(), std::sqrt(6.0)));
+    checkTrue("1-var: sigmaX = sqrt(5.25)",
+              near(s["sigmaX"].toDouble(), std::sqrt(5.25)));
+    checkTrue("1-var: minX = 1", near(s["minX"].toDouble(), 1.0));
+    checkTrue("1-var: Q1 = 2.5", near(s["Q1"].toDouble(), 2.5));
+    checkTrue("1-var: median = 4.5", near(s["median"].toDouble(), 4.5));
+    checkTrue("1-var: Q3 = 6.5", near(s["Q3"].toDouble(), 6.5));
+    checkTrue("1-var: maxX = 8", near(s["maxX"].toDouble(), 8.0));
+
+    // Odd n quartiles (median excluded from halves): {1..5} →
+    // Q1=1.5, Med=3, Q3=4.5.
+    eval(c, "{1,2,3,4,5}→L2");
+    QVariantMap s2 = c.oneVarStats("L2");
+    checkTrue("1-var odd: Q1 = 1.5", near(s2["Q1"].toDouble(), 1.5));
+    checkTrue("1-var odd: median = 3", near(s2["median"].toDouble(), 3.0));
+    checkTrue("1-var odd: Q3 = 4.5", near(s2["Q3"].toDouble(), 4.5));
+
+    // Undefined list → error map.
+    QVariantMap s3 = c.oneVarStats("L5");
+    checkTrue("1-var undefined → error", !s3["error"].toString().isEmpty());
+
+    tux_ti83::MathStateMachine::listRegistry.clear();
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

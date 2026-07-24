@@ -235,6 +235,11 @@ public:
     // writes them into the registry.
     Q_INVOKABLE QVariantList getList(const QString& name) const;
     Q_INVOKABLE void updateList(const QString& name, const QVariantList& values);
+    // Phase C Wave 4a: 1-Var Stats over a list. Returns a map with keys
+    // n, mean, sumX, sumX2, Sx (sample sd), sigmaX (pop sd), minX, Q1,
+    // median, Q3, maxX — or {"error": "UNDEFINED"} for an unset/empty
+    // list. Quartiles use the TI-83 median-of-halves rule.
+    Q_INVOKABLE QVariantMap oneVarStats(const QString& name) const;
     Q_INVOKABLE QVariantList getMultiGraphPoints(int resolution);
     Q_INVOKABLE void pan(double dx, double dy, double vw, double vh);
     Q_INVOKABLE void zoom(double f, double mx, double my, double vw, double vh);

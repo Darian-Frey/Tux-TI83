@@ -7,6 +7,7 @@ HistoryPane 1.0 components/HistoryPane.qml
 WindowPopup 1.0 components/WindowPopup.qml
 MatrixPopup 1.0 components/MatrixPopup.qml
 ListPopup 1.0 components/ListPopup.qml
+StatResultsPopup 1.0 components/StatResultsPopup.qml
 FunctionSelector 1.0 components/FunctionSelector.qml
 GraphCanvas 1.0 components/GraphCanvas.qml
 MathMenuPopup 1.0 components/MathMenuPopup.qml

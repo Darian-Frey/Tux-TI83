@@ -37,6 +37,10 @@ Popup {
     property var cells: []
     readonly property int maxLen: 10
 
+    // Emitted when the user asks for 1-Var Stats on the selected list;
+    // Main.qml computes the bundle and shows the results popup.
+    signal statsRequested(string listName)
+
     function cellText(i) { return (i >= 0 && i < cells.length) ? cells[i] : "" }
     function setCell(i, t) { if (i >= 0 && i < cells.length) cells[i] = t }
 
@@ -135,13 +139,14 @@ Popup {
             }
             Item { Layout.fillWidth: true }
             Text {
-                anchors.verticalCenter: parent.verticalCenter
+                Layout.alignment: Qt.AlignVCenter
                 text: "len"
                 color: Style.textMuted
                 font.family: Style.monoFamily
                 font.pixelSize: Style.funcKeyLabelPixelSize
             }
             Rectangle {
+                Layout.alignment: Qt.AlignVCenter
                 width: 26; height: 26; radius: 4
                 color: decArea.containsMouse
                        ? Qt.lighter(Style.bgSection, 1.0 + Style.keyHoverLighten)
@@ -160,7 +165,8 @@ Popup {
                 }
             }
             Text {
-                width: 18
+                Layout.alignment: Qt.AlignVCenter
+                Layout.preferredWidth: 18
                 horizontalAlignment: Text.AlignHCenter
                 text: root.mLen
                 color: Style.textDisplay
@@ -168,6 +174,7 @@ Popup {
                 font.pixelSize: Style.keyLabelPixelSize
             }
             Rectangle {
+                Layout.alignment: Qt.AlignVCenter
                 width: 26; height: 26; radius: 4
                 color: incArea.containsMouse
                        ? Qt.lighter(Style.bgSection, 1.0 + Style.keyHoverLighten)
@@ -233,17 +240,56 @@ Popup {
 
         Item { Layout.fillHeight: true }
 
-        CalcKey {
-            label: "SAVE TO " + root.selectedList
-            keyType: "enter"
-            onPressed: {
-                var vals = []
-                for (var i = 0; i < root.mLen; i++) {
-                    var v = parseFloat(root.cells[i])
-                    vals.push(Number.isFinite(v) ? v : 0)
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 6
+            CalcKey {
+                Layout.fillWidth: true
+                label: "SAVE TO " + root.selectedList
+                keyType: "enter"
+                onPressed: {
+                    // Blank cells are skipped (not saved as 0) so the
+                    // stored list is exactly the values entered — the
+                    // same model the 1-VAR STATS button uses.
+                    var vals = []
+                    for (var i = 0; i < root.mLen; i++) {
+                        var raw = root.cells[i]
+                        if (raw === undefined || raw === "")
+                            continue
+                        var v = parseFloat(raw)
+                        if (Number.isFinite(v))
+                            vals.push(v)
+                    }
+                    if (vals.length > 0)
+                        uiController.updateList(root.selectedList, vals)
+                    root.close()
                 }
-                uiController.updateList(root.selectedList, vals)
-                root.close()
+            }
+            // 1-Var Stats over the currently selected list. Persists the
+            // filled cells first so the stats reflect unsaved edits.
+            // Blank cells are skipped (not treated as 0), so an untouched
+            // list stays undefined and reports ERR:UNDEFINED rather than
+            // silently becoming a list of zeros.
+            CalcKey {
+                Layout.fillWidth: true
+                label: "1-VAR STATS"
+                keyType: "function"
+                onPressed: {
+                    var vals = []
+                    for (var i = 0; i < root.mLen; i++) {
+                        var raw = root.cells[i]
+                        if (raw === undefined || raw === "")
+                            continue
+                        var v = parseFloat(raw)
+                        if (Number.isFinite(v))
+                            vals.push(v)
+                    }
+                    if (vals.length > 0)
+                        uiController.updateList(root.selectedList, vals)
+                    var name = root.selectedList
+                    root.close()
+                    root.statsRequested(name)
+                }
             }
         }
     }

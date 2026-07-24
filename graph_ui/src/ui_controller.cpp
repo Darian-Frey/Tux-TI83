@@ -1273,6 +1273,61 @@ void UIController::updateList(const QString &name,
   MathStateMachine::listRegistry[tok] = data;
 }
 
+QVariantMap UIController::oneVarStats(const QString &name) const {
+  QVariantMap out;
+  Token tok;
+  if (!listTokenForName(name, tok)) {
+    out["error"] = "UNDEFINED";
+    return out;
+  }
+  auto it = MathStateMachine::listRegistry.find(tok);
+  if (it == MathStateMachine::listRegistry.end() || it->second.empty()) {
+    out["error"] = "UNDEFINED";
+    return out;
+  }
+  std::vector<double> v = it->second;  // sorted copy below
+  const int n = static_cast<int>(v.size());
+
+  double sumX = 0.0, sumX2 = 0.0;
+  for (double x : v) { sumX += x; sumX2 += x * x; }
+  const double mean = sumX / n;
+  double ss = 0.0;
+  for (double x : v) ss += (x - mean) * (x - mean);
+  const double sigmaX = std::sqrt(ss / n);                      // population
+  const double Sx = (n >= 2) ? std::sqrt(ss / (n - 1)) : 0.0;   // sample
+
+  std::sort(v.begin(), v.end());
+  // Median of the half-open index range [lo, hi).
+  auto med = [&v](int lo, int hi) -> double {
+    const int m = hi - lo;
+    const int mid = lo + m / 2;
+    return (m % 2 == 1) ? v[static_cast<size_t>(mid)]
+                        : (v[static_cast<size_t>(mid - 1)] +
+                           v[static_cast<size_t>(mid)]) / 2.0;
+  };
+  const double median = med(0, n);
+  // Quartiles (TI-83 rule): split at the median; for odd n the median
+  // element is excluded from both halves.
+  const int lowHi = n / 2;
+  const int upLo  = (n % 2 == 0) ? n / 2 : n / 2 + 1;
+  const double Q1 = med(0, lowHi);
+  const double Q3 = med(upLo, n);
+
+  out["error"]  = "";
+  out["n"]      = n;
+  out["mean"]   = mean;
+  out["sumX"]   = sumX;
+  out["sumX2"]  = sumX2;
+  out["Sx"]     = Sx;
+  out["sigmaX"] = sigmaX;
+  out["minX"]   = v.front();
+  out["Q1"]     = Q1;
+  out["median"] = median;
+  out["Q3"]     = Q3;
+  out["maxX"]   = v.back();
+  return out;
+}
+
 QVariantMap UIController::getMatrix(const QString &name) const {
   QVariantMap out;
   QVariantList data;
