@@ -219,7 +219,7 @@ arithmetic, and `STO→` to a list are done in the engine and covered by
 - ✅ 2-variable stats (correlation, regression coefficients) — Wave 4b, landed 2026-07-22. `UIController::twoVarStats(xList, yList)` computes n, x̄, ȳ, Σx, Σy, Σxy, Σx², Σy², Sx, Sy plus least-squares linear regression a (slope), b (intercept), r, r² (degenerate X → regression omitted, stats kept; unequal lengths → `ERR:INVALID DIM`). Shown in the shared `StatResultsPopup` (now a scrollable `mode`-driven list) via the Stat editor's **2-VAR L1,L2** button (L1=Xlist, L2=Ylist, TI-83 defaults).
 - 📅 `rand`, `randInt(`, `randNorm(`, `randBin(`
 - 📅 `nCr`, `nPr`, factorial `!`
-- 📅 Statistical regressions: `LinReg`, `QuadReg`, `CubicReg`, `QuartReg`, `LnReg`, `ExpReg`, `PwrReg`, `SinReg`, `Logistic`
+- ✅ Statistical regressions (core set) — `LinReg` (Wave 4b), plus `QuadReg`, `CubicReg`, `ExpReg`, `LnReg`, `PwrReg` (Wave 4c, landed 2026-07-22). `UIController::regression(type, xList, yList)`: Quad/Cubic solve the least-squares normal equations by Gaussian elimination (with R²); Exp/Ln/Pwr are linear fits on transformed data with domain checks (positive X/Y as required) and r/r². Picked from the **RegMenuPopup** (REGRESSIONS ▸ in the Stat editor), shown in `StatResultsPopup`'s "reg" mode. `polyReg` already supports degree 4, so `QuartReg` is a one-line menu add when wanted. Still 📅: `QuartReg` (unexposed), `SinReg`, `Logistic`.
 - 📅 Distributions: `normalpdf(`, `normalcdf(`, `invNorm(`, `tpdf(`, `tcdf(`, `χ²pdf(`, `χ²cdf(`, `Fpdf(`, `Fcdf(`, `binompdf(`, `binomcdf(`, `poissonpdf(`, `poissoncdf(`, `geometpdf(`, `geometcdf(`
 - 📅 Stat plots (scatter, xy-line, histogram, box plot)
 

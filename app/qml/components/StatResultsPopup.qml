@@ -61,13 +61,38 @@ Popup {
         { key: "r",     label: "r" },
         { key: "r2",    label: "r²" }
     ]
-    readonly property var rows: mode === "twoVar" ? twoVarRows : oneVarRows
+    // Regression coefficient template — filtered to the keys actually
+    // present so e.g. an ExpReg (a, b) doesn't show empty c/d rows.
+    readonly property var regRowsAll: [
+        { key: "n",  label: "n" },
+        { key: "a",  label: "a" },
+        { key: "b",  label: "b" },
+        { key: "c",  label: "c" },
+        { key: "d",  label: "d" },
+        { key: "r",  label: "r" },
+        { key: "r2", label: "R²" }
+    ]
+    readonly property var regRows: {
+        var out = []
+        for (var i = 0; i < regRowsAll.length; ++i) {
+            var k = regRowsAll[i].key
+            if (results && results[k] !== undefined)
+                out.push(regRowsAll[i])
+        }
+        return out
+    }
+    readonly property var rows: mode === "twoVar" ? twoVarRows
+                              : mode === "reg"    ? regRows
+                                                  : oneVarRows
     readonly property string headerText: mode === "twoVar" ? "2-VAR / LINREG"
-                                                           : "1-VAR STATS"
+                              : mode === "reg"    ? "REGRESSION"
+                                                  : "1-VAR STATS"
     readonly property string errorText: {
         var e = (results && results.error) ? results.error : ""
         if (e === "DIM")
             return "ERR:INVALID DIM — Xlist and Ylist differ in length"
+        if (e === "DOMAIN")
+            return "ERR:DOMAIN — model needs enough points / positive data"
         if (e)
             return "ERR:UNDEFINED — empty or undefined list"
         return ""

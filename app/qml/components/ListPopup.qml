@@ -43,6 +43,8 @@ Popup {
     // Emitted for 2-Var Stats + LinReg over L1 (Xlist) and L2 (Ylist) —
     // the TI-83 defaults.
     signal twoVarRequested()
+    // Emitted to open the regression-model picker (also L1/L2).
+    signal regMenuRequested()
 
     function cellText(i) { return (i >= 0 && i < cells.length) ? cells[i] : "" }
     function setCell(i, t) { if (i >= 0 && i < cells.length) cells[i] = t }
@@ -295,6 +297,17 @@ Popup {
                         root.close()
                         root.twoVarRequested()
                     }
+                }
+            }
+            // Other regression models (Quad/Cubic/Exp/Ln/Pwr) over L1,L2.
+            CalcKey {
+                Layout.fillWidth: true
+                label: "REGRESSIONS ▸"
+                keyType: "function"
+                onPressed: {
+                    root.commitCells()
+                    root.close()
+                    root.regMenuRequested()
                 }
             }
         }

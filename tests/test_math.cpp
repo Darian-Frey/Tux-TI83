@@ -1219,6 +1219,72 @@ int main(int argc, char *argv[]) {
     tux_ti83::MathStateMachine::listRegistry.clear();
   }
 
+  section("Regression models (Phase C — Wave 4c)");
+  {
+    tux_ti83::MathStateMachine::listRegistry.clear();
+    auto near = [](double a, double b) { return std::abs(a - b) < 1e-5; };
+
+    // QuadReg: y = 2x² + 3x + 1 (exact → R²=1).
+    c.updateList("L1", QVariantList{0, 1, 2, 3});
+    c.updateList("L2", QVariantList{1, 6, 15, 28});
+    QVariantMap q = c.regression("quad", "L1", "L2");
+    checkTrue("QuadReg a = 2", near(q["a"].toDouble(), 2.0));
+    checkTrue("QuadReg b = 3", near(q["b"].toDouble(), 3.0));
+    checkTrue("QuadReg c = 1", near(q["c"].toDouble(), 1.0));
+    checkTrue("QuadReg R² = 1", near(q["r2"].toDouble(), 1.0));
+
+    // CubicReg: y = x³ - 2x² + x + 5 (exact).
+    c.updateList("L1", QVariantList{0, 1, 2, 3, 4});
+    c.updateList("L2", QVariantList{5, 5, 7, 17, 41});
+    QVariantMap cu = c.regression("cubic", "L1", "L2");
+    checkTrue("CubicReg a = 1", near(cu["a"].toDouble(), 1.0));
+    checkTrue("CubicReg b = -2", near(cu["b"].toDouble(), -2.0));
+    checkTrue("CubicReg c = 1", near(cu["c"].toDouble(), 1.0));
+    checkTrue("CubicReg d = 5", near(cu["d"].toDouble(), 5.0));
+    checkTrue("CubicReg R² = 1", near(cu["r2"].toDouble(), 1.0));
+
+    // ExpReg: y = 3·2ˣ.
+    c.updateList("L1", QVariantList{0, 1, 2, 3});
+    c.updateList("L2", QVariantList{3, 6, 12, 24});
+    QVariantMap e = c.regression("exp", "L1", "L2");
+    checkTrue("ExpReg a = 3", near(e["a"].toDouble(), 3.0));
+    checkTrue("ExpReg b = 2", near(e["b"].toDouble(), 2.0));
+    checkTrue("ExpReg r = 1", near(e["r"].toDouble(), 1.0));
+
+    // PwrReg: y = 2·x³.
+    c.updateList("L1", QVariantList{1, 2, 3, 4});
+    c.updateList("L2", QVariantList{2, 16, 54, 128});
+    QVariantMap p = c.regression("pwr", "L1", "L2");
+    checkTrue("PwrReg a = 2", near(p["a"].toDouble(), 2.0));
+    checkTrue("PwrReg b = 3", near(p["b"].toDouble(), 3.0));
+    checkTrue("PwrReg r = 1", near(p["r"].toDouble(), 1.0));
+
+    // LnReg: y = 2 + 3·ln x.
+    c.updateList("L1", QVariantList{1, 2, 3, 4});
+    c.updateList("L2", QVariantList{2.0, 2.0 + 3.0 * std::log(2.0),
+                                    2.0 + 3.0 * std::log(3.0),
+                                    2.0 + 3.0 * std::log(4.0)});
+    QVariantMap l = c.regression("ln", "L1", "L2");
+    checkTrue("LnReg a = 2", near(l["a"].toDouble(), 2.0));
+    checkTrue("LnReg b = 3", near(l["b"].toDouble(), 3.0));
+    checkTrue("LnReg r = 1", near(l["r"].toDouble(), 1.0));
+
+    // Domain error: ExpReg needs positive Y.
+    c.updateList("L1", QVariantList{1, 2, 3});
+    c.updateList("L2", QVariantList{1, -2, 3});
+    QVariantMap ed = c.regression("exp", "L1", "L2");
+    checkTrue("ExpReg non-positive Y → DOMAIN",
+              ed["error"].toString() == "DOMAIN");
+
+    // Dimension mismatch.
+    c.updateList("L1", QVariantList{1, 2});
+    c.updateList("L2", QVariantList{1, 2, 3});
+    QVariantMap dm = c.regression("quad", "L1", "L2");
+    checkTrue("reg dim mismatch → DIM", dm["error"].toString() == "DIM");
+
+    tux_ti83::MathStateMachine::listRegistry.clear();
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

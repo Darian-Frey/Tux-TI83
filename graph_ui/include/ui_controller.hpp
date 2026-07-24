@@ -247,6 +247,13 @@ public:
     // lists.
     Q_INVOKABLE QVariantMap twoVarStats(const QString& xName,
                                         const QString& yName) const;
+    // Phase C Wave 4c: regression models over a list pair. `type` is one
+    // of "quad", "cubic", "exp", "ln", "pwr". Returns n, the coefficients
+    // (a,b[,c,d] highest-degree first), and r/r2 where defined, or
+    // {"error": ...} on undefined/mismatched/out-of-domain data.
+    Q_INVOKABLE QVariantMap regression(const QString& type,
+                                       const QString& xName,
+                                       const QString& yName) const;
     Q_INVOKABLE QVariantList getMultiGraphPoints(int resolution);
     Q_INVOKABLE void pan(double dx, double dy, double vw, double vh);
     Q_INVOKABLE void zoom(double f, double mx, double my, double vw, double vh);

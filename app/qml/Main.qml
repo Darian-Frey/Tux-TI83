@@ -775,10 +775,21 @@ ApplicationWindow {
             statResultsPopup.results = uiController.twoVarStats("L1", "L2")
             statResultsPopup.open()
         }
+        onRegMenuRequested: () => regMenuPopup.open()
     }
 
     StatResultsPopup {
         id: statResultsPopup
+    }
+
+    RegMenuPopup {
+        id: regMenuPopup
+        onPicked: (type, label) => {
+            statResultsPopup.mode = "reg"
+            statResultsPopup.sourceLabel = label
+            statResultsPopup.results = uiController.regression(type, "L1", "L2")
+            statResultsPopup.open()
+        }
     }
 
     MathMenuPopup {

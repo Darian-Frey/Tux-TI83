@@ -1328,6 +1328,162 @@ QVariantMap UIController::oneVarStats(const QString &name) const {
   return out;
 }
 
+namespace {
+
+// Solve the square linear system A·x = b by Gaussian elimination with
+// partial pivoting. Returns false if the matrix is singular.
+bool solveLinear(std::vector<std::vector<double>> A, std::vector<double> b,
+                 std::vector<double> &x) {
+  const int n = static_cast<int>(b.size());
+  for (int col = 0; col < n; ++col) {
+    int piv = col;
+    for (int r = col + 1; r < n; ++r)
+      if (std::abs(A[r][col]) > std::abs(A[piv][col])) piv = r;
+    if (std::abs(A[piv][col]) < 1e-12) return false;
+    std::swap(A[col], A[piv]);
+    std::swap(b[col], b[piv]);
+    for (int r = 0; r < n; ++r) {
+      if (r == col) continue;
+      const double f = A[r][col] / A[col][col];
+      for (int c = col; c < n; ++c) A[r][c] -= f * A[col][c];
+      b[r] -= f * b[col];
+    }
+  }
+  x.assign(static_cast<size_t>(n), 0.0);
+  for (int i = 0; i < n; ++i) x[i] = b[i] / A[i][i];
+  return true;
+}
+
+// Least-squares polynomial fit of the given degree via the normal
+// equations. Fills a,b[,c,d] (highest-degree coefficient = a) and R².
+QVariantMap polyReg(const std::vector<double> &X, const std::vector<double> &Y,
+                    int deg) {
+  QVariantMap out;
+  const int n = static_cast<int>(X.size());
+  if (n < deg + 1) { out["error"] = "DOMAIN"; return out; }
+  const int m = deg + 1;
+  std::vector<double> powSum(static_cast<size_t>(2 * deg + 1), 0.0);
+  for (int k = 0; k <= 2 * deg; ++k) {
+    double s = 0.0;
+    for (double xv : X) s += std::pow(xv, k);
+    powSum[static_cast<size_t>(k)] = s;
+  }
+  std::vector<std::vector<double>> A(m, std::vector<double>(m));
+  std::vector<double> B(static_cast<size_t>(m), 0.0);
+  for (int i = 0; i < m; ++i) {
+    for (int j = 0; j < m; ++j) A[i][j] = powSum[static_cast<size_t>(i + j)];
+    double s = 0.0;
+    for (int p = 0; p < n; ++p) s += Y[p] * std::pow(X[p], i);
+    B[static_cast<size_t>(i)] = s;
+  }
+  std::vector<double> coef;
+  if (!solveLinear(A, B, coef)) { out["error"] = "DOMAIN"; return out; }
+
+  static const char *kNames[] = {"a", "b", "c", "d", "e"};
+  for (int k = 0; k <= deg; ++k) out[kNames[k]] = coef[deg - k];
+
+  double meanY = 0.0;
+  for (double yv : Y) meanY += yv;
+  meanY /= n;
+  double ssTot = 0.0, ssRes = 0.0;
+  for (int p = 0; p < n; ++p) {
+    double yhat = 0.0;
+    for (int k = 0; k <= deg; ++k) yhat += coef[k] * std::pow(X[p], k);
+    ssRes += (Y[p] - yhat) * (Y[p] - yhat);
+    ssTot += (Y[p] - meanY) * (Y[p] - meanY);
+  }
+  if (ssTot > 1e-12) out["r2"] = 1.0 - ssRes / ssTot;
+  out["error"] = "";
+  out["n"] = n;
+  return out;
+}
+
+// Least-squares straight-line fit; fills slope, intercept, and the
+// correlation r. Returns false when x has no spread.
+bool linFit(const std::vector<double> &x, const std::vector<double> &y,
+            double &slope, double &intercept, double &r) {
+  const int n = static_cast<int>(x.size());
+  double sx = 0, sy = 0, sxy = 0, sx2 = 0, sy2 = 0;
+  for (int i = 0; i < n; ++i) {
+    sx += x[i]; sy += y[i]; sxy += x[i] * y[i];
+    sx2 += x[i] * x[i]; sy2 += y[i] * y[i];
+  }
+  const double dx = n * sx2 - sx * sx;
+  if (std::abs(dx) < 1e-12) return false;
+  slope = (n * sxy - sx * sy) / dx;
+  intercept = (sy - slope * sx) / n;
+  const double dy = n * sy2 - sy * sy;
+  r = (dy > 1e-12) ? (n * sxy - sx * sy) / std::sqrt(dx * dy) : 0.0;
+  return true;
+}
+
+}  // namespace
+
+QVariantMap UIController::regression(const QString &type, const QString &xName,
+                                     const QString &yName) const {
+  QVariantMap out;
+  Token xt, yt;
+  if (!listTokenForName(xName, xt) || !listTokenForName(yName, yt)) {
+    out["error"] = "UNDEFINED";
+    return out;
+  }
+  auto xi = MathStateMachine::listRegistry.find(xt);
+  auto yi = MathStateMachine::listRegistry.find(yt);
+  if (xi == MathStateMachine::listRegistry.end() ||
+      yi == MathStateMachine::listRegistry.end() ||
+      xi->second.empty() || yi->second.empty()) {
+    out["error"] = "UNDEFINED";
+    return out;
+  }
+  const std::vector<double> &X = xi->second;
+  const std::vector<double> &Y = yi->second;
+  if (X.size() != Y.size()) {
+    out["error"] = "DIM";
+    return out;
+  }
+  const int n = static_cast<int>(X.size());
+  const QString t = type.toLower();
+
+  if (t == "quad") return polyReg(X, Y, 2);
+  if (t == "cubic") return polyReg(X, Y, 3);
+
+  // Linearised models: exp (y=a·bˣ), ln (y=a+b·lnx), pwr (y=a·xᵇ).
+  const bool needXpos = (t == "ln" || t == "pwr");
+  const bool needYpos = (t == "exp" || t == "pwr");
+  if (t != "exp" && t != "ln" && t != "pwr") {
+    out["error"] = "UNDEFINED";  // unknown model
+    return out;
+  }
+  for (int i = 0; i < n; ++i) {
+    if ((needXpos && X[i] <= 0.0) || (needYpos && Y[i] <= 0.0)) {
+      out["error"] = "DOMAIN";
+      return out;
+    }
+  }
+  std::vector<double> xt2(n), yt2(n);
+  for (int i = 0; i < n; ++i) {
+    xt2[i] = needXpos ? std::log(X[i]) : X[i];
+    yt2[i] = needYpos ? std::log(Y[i]) : Y[i];
+  }
+  double slope, intercept, r;
+  if (!linFit(xt2, yt2, slope, intercept, r)) {
+    out["error"] = "DOMAIN";
+    return out;
+  }
+  double a, b;
+  if (t == "exp")      { a = std::exp(intercept); b = std::exp(slope); }
+  else if (t == "ln")  { a = intercept;           b = slope;           }
+  else /* pwr */       { a = std::exp(intercept); b = slope;           }
+
+  out["error"] = "";
+  out["n"]  = n;
+  out["a"]  = a;
+  out["b"]  = b;
+  out["r"]  = r;
+  out["r2"] = r * r;
+  return out;
+}
+
 QVariantMap UIController::twoVarStats(const QString &xName,
                                       const QString &yName) const {
   QVariantMap out;
