@@ -131,6 +131,9 @@ bool EOSPrecedence::is_function(Token t) {
           t == Token::BinomPdfList || t == Token::BinomCdfList ||
           t == Token::PoissonPdf || t == Token::PoissonCdf ||
           t == Token::GeometPdf || t == Token::GeometCdf ||
+          t == Token::TPdf || t == Token::TCdf ||
+          t == Token::ChiPdf || t == Token::ChiCdf ||
+          t == Token::FPdf || t == Token::FCdf ||
           is_binary_function(t));
 }
 
@@ -171,7 +174,10 @@ bool EOSPrecedence::has_built_in_paren(Token t) {
           t == Token::BinomPdf || t == Token::BinomCdf ||
           t == Token::BinomPdfList || t == Token::BinomCdfList ||
           t == Token::PoissonPdf || t == Token::PoissonCdf ||
-          t == Token::GeometPdf || t == Token::GeometCdf);
+          t == Token::GeometPdf || t == Token::GeometCdf ||
+          t == Token::TPdf || t == Token::TCdf ||
+          t == Token::ChiPdf || t == Token::ChiCdf ||
+          t == Token::FPdf || t == Token::FCdf);
 }
 
 // --- MATRIX MATH HELPERS ---
@@ -727,6 +733,86 @@ double poissonPdfVal(double mu, long long x) {
   double t = std::exp(-mu);
   for (long long i = 1; i <= x; ++i) t *= mu / static_cast<double>(i);
   return t;
+}
+
+// --- Special functions for continuous-distribution CDFs (NR-style) ---
+
+// Regularized lower incomplete gamma P(a, x) = γ(a,x)/Γ(a). Series for
+// x < a+1, continued fraction (for Q) otherwise. Used by χ²cdf.
+double gammaP(double a, double x) {
+  if (x <= 0.0 || a <= 0.0) return 0.0;
+  const double gln = std::lgamma(a);
+  if (x < a + 1.0) {
+    double ap = a, del = 1.0 / a, sum = del;
+    for (int nn = 0; nn < 300; ++nn) {
+      ap += 1.0;
+      del *= x / ap;
+      sum += del;
+      if (std::abs(del) < std::abs(sum) * 1e-15) break;
+    }
+    return sum * std::exp(-x + a * std::log(x) - gln);
+  }
+  const double FPMIN = 1e-300;
+  double b = x + 1.0 - a, c = 1.0 / FPMIN, d = 1.0 / b, h = d;
+  for (int i = 1; i <= 300; ++i) {
+    const double an = -i * (i - a);
+    b += 2.0;
+    d = an * d + b; if (std::abs(d) < FPMIN) d = FPMIN;
+    c = b + an / c;  if (std::abs(c) < FPMIN) c = FPMIN;
+    d = 1.0 / d;
+    const double del = d * c;
+    h *= del;
+    if (std::abs(del - 1.0) < 1e-15) break;
+  }
+  const double Q = std::exp(-x + a * std::log(x) - gln) * h;
+  return 1.0 - Q;
+}
+
+// Continued fraction for the incomplete beta (Lentz's method).
+double betacf(double a, double b, double x) {
+  const double FPMIN = 1e-300, EPS = 1e-15;
+  const double qab = a + b, qap = a + 1.0, qam = a - 1.0;
+  double c = 1.0, d = 1.0 - qab * x / qap;
+  if (std::abs(d) < FPMIN) d = FPMIN;
+  d = 1.0 / d;
+  double h = d;
+  for (int m = 1; m <= 300; ++m) {
+    const int m2 = 2 * m;
+    double aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+    d = 1.0 + aa * d; if (std::abs(d) < FPMIN) d = FPMIN;
+    c = 1.0 + aa / c; if (std::abs(c) < FPMIN) c = FPMIN;
+    d = 1.0 / d; h *= d * c;
+    aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+    d = 1.0 + aa * d; if (std::abs(d) < FPMIN) d = FPMIN;
+    c = 1.0 + aa / c; if (std::abs(c) < FPMIN) c = FPMIN;
+    d = 1.0 / d;
+    const double del = d * c;
+    h *= del;
+    if (std::abs(del - 1.0) < EPS) break;
+  }
+  return h;
+}
+
+// Regularized incomplete beta I_x(a, b). Used by tcdf and Fcdf.
+double betai(double a, double b, double x) {
+  if (x <= 0.0) return 0.0;
+  if (x >= 1.0) return 1.0;
+  const double bt = std::exp(std::lgamma(a + b) - std::lgamma(a) -
+                             std::lgamma(b) + a * std::log(x) +
+                             b * std::log(1.0 - x));
+  if (x < (a + 1.0) / (a + b + 2.0))
+    return bt * betacf(a, b, x) / a;
+  return 1.0 - bt * betacf(b, a, 1.0 - x) / b;
+}
+
+// CDF evaluated at a single point for each continuous distribution.
+double chiCdfAt(double x, double k)  { return (x <= 0.0) ? 0.0 : gammaP(k / 2.0, x / 2.0); }
+double fCdfAt(double x, double d1, double d2) {
+  return (x <= 0.0) ? 0.0 : betai(d1 / 2.0, d2 / 2.0, d1 * x / (d1 * x + d2));
+}
+double tCdfAt(double x, double nu) {
+  const double ib = betai(nu / 2.0, 0.5, nu / (nu + x * x));
+  return (x >= 0.0) ? (1.0 - 0.5 * ib) : (0.5 * ib);
 }
 
 } // namespace
@@ -1566,6 +1652,77 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
           stack.push({false, std::pow(1.0 - p, static_cast<double>(x - 1)) * p, {}});
         else  // cdf: 1 − (1−p)^x
           stack.push({false, 1.0 - std::pow(1.0 - p, static_cast<double>(x)), {}});
+        continue;
+      }
+
+      // Continuous distributions (t / χ² / F). Fixed arity; df params > 0.
+      if (t == Token::TPdf) {
+        if (stack.size() < 2) return {false, 0.0, {}, false, "Error"};
+        std::vector<double> v;  // v[0]=ν, v[1]=x
+        if (!popScalars(2, v)) return {false, 0.0, {}, false, "Type Error"};
+        const double nu = v[0], x = v[1];
+        if (nu <= 0.0) return {false, 0.0, {}, false, "DOMAIN"};
+        const double coef = std::exp(std::lgamma((nu + 1.0) / 2.0) -
+                                     std::lgamma(nu / 2.0)) /
+                            std::sqrt(nu * M_PI);
+        stack.push({false,
+                    coef * std::pow(1.0 + x * x / nu, -(nu + 1.0) / 2.0), {}});
+        continue;
+      }
+      if (t == Token::TCdf) {
+        if (stack.size() < 3) return {false, 0.0, {}, false, "Error"};
+        std::vector<double> v;  // v[0]=ν, v[1]=upper, v[2]=lower
+        if (!popScalars(3, v)) return {false, 0.0, {}, false, "Type Error"};
+        const double nu = v[0];
+        if (nu <= 0.0) return {false, 0.0, {}, false, "DOMAIN"};
+        stack.push({false, tCdfAt(v[1], nu) - tCdfAt(v[2], nu), {}});
+        continue;
+      }
+      if (t == Token::ChiPdf) {
+        if (stack.size() < 2) return {false, 0.0, {}, false, "Error"};
+        std::vector<double> v;  // v[0]=k, v[1]=x
+        if (!popScalars(2, v)) return {false, 0.0, {}, false, "Type Error"};
+        const double k = v[0], x = v[1];
+        if (k <= 0.0) return {false, 0.0, {}, false, "DOMAIN"};
+        if (x <= 0.0) { stack.push({false, 0.0, {}}); continue; }
+        stack.push({false,
+                    std::exp((k / 2.0 - 1.0) * std::log(x) - x / 2.0 -
+                             (k / 2.0) * std::log(2.0) - std::lgamma(k / 2.0)),
+                    {}});
+        continue;
+      }
+      if (t == Token::ChiCdf) {
+        if (stack.size() < 3) return {false, 0.0, {}, false, "Error"};
+        std::vector<double> v;  // v[0]=k, v[1]=upper, v[2]=lower
+        if (!popScalars(3, v)) return {false, 0.0, {}, false, "Type Error"};
+        const double k = v[0];
+        if (k <= 0.0) return {false, 0.0, {}, false, "DOMAIN"};
+        stack.push({false, chiCdfAt(v[1], k) - chiCdfAt(v[2], k), {}});
+        continue;
+      }
+      if (t == Token::FPdf) {
+        if (stack.size() < 3) return {false, 0.0, {}, false, "Error"};
+        std::vector<double> v;  // v[0]=d2, v[1]=d1, v[2]=x
+        if (!popScalars(3, v)) return {false, 0.0, {}, false, "Type Error"};
+        const double d2 = v[0], d1 = v[1], x = v[2];
+        if (d1 <= 0.0 || d2 <= 0.0) return {false, 0.0, {}, false, "DOMAIN"};
+        if (x <= 0.0) { stack.push({false, 0.0, {}}); continue; }
+        const double lg = std::lgamma((d1 + d2) / 2.0) -
+                          std::lgamma(d1 / 2.0) - std::lgamma(d2 / 2.0);
+        stack.push({false,
+                    std::exp(lg) * std::pow(d1 / d2, d1 / 2.0) *
+                        std::pow(x, d1 / 2.0 - 1.0) *
+                        std::pow(1.0 + d1 * x / d2, -(d1 + d2) / 2.0),
+                    {}});
+        continue;
+      }
+      if (t == Token::FCdf) {
+        if (stack.size() < 4) return {false, 0.0, {}, false, "Error"};
+        std::vector<double> v;  // v[0]=d2, v[1]=d1, v[2]=upper, v[3]=lower
+        if (!popScalars(4, v)) return {false, 0.0, {}, false, "Type Error"};
+        const double d2 = v[0], d1 = v[1];
+        if (d1 <= 0.0 || d2 <= 0.0) return {false, 0.0, {}, false, "DOMAIN"};
+        stack.push({false, fCdfAt(v[2], d1, d2) - fCdfAt(v[3], d1, d2), {}});
         continue;
       }
 

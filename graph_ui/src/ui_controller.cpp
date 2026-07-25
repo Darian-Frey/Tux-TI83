@@ -174,6 +174,16 @@ constexpr TokenSpec kTokens[] = {
     {"poissoncdf(", Token::PoissonCdf, "poissoncdf("},
     {"geometpdf(",  Token::GeometPdf,  "geometpdf("},
     {"geometcdf(",  Token::GeometCdf,  "geometcdf("},
+    // Continuous distributions. χ² also accepts the ASCII alias `chi2`
+    // (χ is awkward to type); both display as `χ²…`.
+    {"tpdf(",     Token::TPdf,   "tpdf("},
+    {"tcdf(",     Token::TCdf,   "tcdf("},
+    {"χ²pdf(",    Token::ChiPdf, "χ²pdf("},
+    {"χ²cdf(",    Token::ChiCdf, "χ²cdf("},
+    {"chi2pdf(",  Token::ChiPdf, "χ²pdf("},
+    {"chi2cdf(",  Token::ChiCdf, "χ²cdf("},
+    {"Fpdf(",     Token::FPdf,   "Fpdf("},
+    {"Fcdf(",     Token::FCdf,   "Fcdf("},
 
     // Factorial — unary postfix
     {"!", Token::Fact, "!"},

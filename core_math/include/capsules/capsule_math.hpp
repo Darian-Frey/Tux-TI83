@@ -299,7 +299,17 @@ enum class Token {
   PoissonPdf,
   PoissonCdf,
   GeometPdf,
-  GeometCdf
+  GeometCdf,
+
+  // Continuous distributions. tpdf/χ²pdf take 2 args, tcdf/χ²cdf and
+  // Fpdf take 3, Fcdf takes 4 — all fixed arity. CDFs use the
+  // regularized incomplete gamma (χ²) and beta (t, F) functions.
+  TPdf,
+  TCdf,
+  ChiPdf,
+  ChiCdf,
+  FPdf,
+  FCdf
 };
 
 struct Matrix {

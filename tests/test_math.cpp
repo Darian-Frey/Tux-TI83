@@ -1473,6 +1473,40 @@ int main(int argc, char *argv[]) {
     tux_ti83::MathStateMachine::listRegistry.clear();
   }
 
+  section("Distributions — continuous t/χ²/F (Phase C follow-on)");
+  {
+    auto near = [](double a, double b) { return std::abs(a - b) < 1e-5; };
+
+    // Student's t.
+    checkTrue("tpdf(0,1) = 1/π",
+              near(eval(c, "tpdf(0,1)").toDouble(), 0.31830988618));
+    checkTrue("tcdf(-1e6,0,5) = 0.5 (median)",
+              near(eval(c, "tcdf(-1000000,0,5)").toDouble(), 0.5));
+    checkTrue("tcdf(-1e3,1.8125,10) ≈ 0.95",
+              near(eval(c, "tcdf(-1000,1.8125,10)").toDouble(), 0.95000317));
+
+    // Chi-square (df=2 is Exponential(1/2)).
+    checkTrue("χ²pdf(2,2) = 0.5·e⁻¹",
+              near(eval(c, "chi2pdf(2,2)").toDouble(), 0.18393972059));
+    checkTrue("χ²cdf(0,2,2) = 1−e⁻¹",
+              near(eval(c, "chi2cdf(0,2,2)").toDouble(), 0.63212055883));
+    // Unicode token also tokenises.
+    checkTrue("χ²cdf unicode token → ~1",
+              near(eval(c, QString::fromUtf8("χ²cdf(0,1000000,5)")).toDouble(),
+                   1.0));
+
+    // F distribution — F(5,5) has median 1, so Fcdf(0,1,5,5)=0.5.
+    checkTrue("Fcdf(0,1,5,5) = 0.5",
+              near(eval(c, "Fcdf(0,1,5,5)").toDouble(), 0.5));
+    checkTrue("Fpdf(1,5,5) ≈ 0.4244132",
+              near(eval(c, "Fpdf(1,5,5)").toDouble(), 0.42441318));
+
+    // Domain errors (df params must be > 0).
+    check("tpdf ν≤0 → DOMAIN", eval(c, "tpdf(0,0)"), "ERR:DOMAIN");
+    check("χ²pdf k≤0 → DOMAIN", eval(c, "chi2pdf(1,-1)"), "ERR:DOMAIN");
+    check("Fcdf d1≤0 → DOMAIN", eval(c, "Fcdf(0,2,0,5)"), "ERR:DOMAIN");
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 
