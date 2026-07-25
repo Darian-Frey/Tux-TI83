@@ -1285,6 +1285,61 @@ int main(int argc, char *argv[]) {
     tux_ti83::MathStateMachine::listRegistry.clear();
   }
 
+  section("Random functions (Phase C — Wave 5)");
+  {
+    // Determinism: reseeding reproduces the sequence exactly.
+    tux_ti83::MathStateMachine::seedRandom(12345);
+    QString r1 = eval(c, "rand");
+    QString r2 = eval(c, "randInt(1,6)");
+    tux_ti83::MathStateMachine::seedRandom(12345);
+    checkTrue("rand deterministic under seed", eval(c, "rand") == r1);
+    checkTrue("randInt deterministic under seed", eval(c, "randInt(1,6)") == r2);
+
+    // rand ∈ [0, 1) over many draws.
+    bool randOk = true;
+    for (int i = 0; i < 200; ++i) {
+      double v = eval(c, "rand").toDouble();
+      if (v < 0.0 || v >= 1.0) randOk = false;
+    }
+    checkTrue("rand ∈ [0,1)", randOk);
+
+    // randInt(1,6) ∈ {1..6}, integer.
+    bool diceOk = true;
+    for (int i = 0; i < 200; ++i) {
+      double v = eval(c, "randInt(1,6)").toDouble();
+      if (v < 1.0 || v > 6.0 || v != std::floor(v)) diceOk = false;
+    }
+    checkTrue("randInt(1,6) ∈ [1,6] integers", diceOk);
+
+    // randBin(10,0.5) ∈ [0,10], integer.
+    bool binOk = true;
+    for (int i = 0; i < 100; ++i) {
+      double v = eval(c, "randBin(10,0.5)").toDouble();
+      if (v < 0.0 || v > 10.0 || v != std::floor(v)) binOk = false;
+    }
+    checkTrue("randBin(10,0.5) ∈ [0,10]", binOk);
+
+    // randNorm returns a finite scalar.
+    checkTrue("randNorm(5,2) finite",
+              std::isfinite(eval(c, "randNorm(5,2)").toDouble()));
+
+    // List form: randInt(1,6,5) → a 5-element list.
+    QString lst = eval(c, "randInt(1,6,5)");
+    checkTrue("randInt list form is a list",
+              lst.startsWith("{") && lst.endsWith("}"));
+    checkTrue("randInt(1,6,5) has 5 elements", lst.count(',') == 4);
+
+    // Composition with list reductions — all-1 list has mean 1.
+    checkTrue("mean(randInt(1,1,10)) = 1",
+              std::abs(eval(c, "mean(randInt(1,1,10))").toDouble() - 1.0) < 1e-9);
+
+    // Domain errors.
+    check("randInt(5,1) lo>hi → ERR:DOMAIN", eval(c, "randInt(5,1)"), "ERR:DOMAIN");
+    check("randNorm(0,-1) sd≤0 → ERR:DOMAIN", eval(c, "randNorm(0,-1)"), "ERR:DOMAIN");
+    check("randBin(-1,0.5) → ERR:DOMAIN", eval(c, "randBin(-1,0.5)"), "ERR:DOMAIN");
+    check("randInt(1,6,0) count<1 → ERR:DOMAIN", eval(c, "randInt(1,6,0)"), "ERR:DOMAIN");
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

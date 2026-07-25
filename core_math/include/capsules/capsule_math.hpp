@@ -2,6 +2,7 @@
 #include <array>
 #include <functional>
 #include <map>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -264,7 +265,20 @@ enum class Token {
   // synthetic form the evaluator sees. Unlike sum/prod it returns a
   // list, not a scalar.
   Seq,
-  SeqCall
+  SeqCall,
+
+  // --- Random functions (Phase C Wave 5) ---
+  // `Rand` is a bare leaf value in [0,1). The others are functions:
+  // the 2-arg scalar forms (RandInt/RandNorm/RandBin) and the 3-arg
+  // list forms (…List), which a preprocessing pass selects by counting
+  // the arguments (a 3rd `count` argument → the list variant).
+  Rand,
+  RandInt,
+  RandNorm,
+  RandBin,
+  RandIntList,
+  RandNormList,
+  RandBinList
 };
 
 struct Matrix {
@@ -343,6 +357,12 @@ public:
   // List storage L1..L6 (Phase C). Keyed by the L1..L6 token. A slot
   // absent from the map is an undefined list (ERR:UNDEFINED on read).
   static std::map<Token, std::vector<double>> listRegistry;
+
+  // Shared PRNG for the random functions (Phase C Wave 5). Seeded from
+  // std::random_device at startup; seedRandom() forces a deterministic
+  // sequence (used by the test suite).
+  static std::mt19937 rng;
+  static void seedRandom(unsigned int seed);
 
   // Scalar variable registry A..Z. Zero-initialised on program start;
   // mutated via Sto. Errors don't overwrite — the evaluator writes to

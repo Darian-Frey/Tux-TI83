@@ -156,6 +156,13 @@ constexpr TokenSpec kTokens[] = {
     // seq(expr,var,start,end[,step]) — generates a list (Wave 3b).
     {"seq(",      Token::Seq,      "seq("},
 
+    // Random functions (Phase C Wave 5). `rand` is a bare value; the
+    // others take 2 args (scalar) or 3 (list, via the arg-count rewrite).
+    {"rand",      Token::Rand,     "rand"},
+    {"randInt(",  Token::RandInt,  "randInt("},
+    {"randNorm(", Token::RandNorm, "randNorm("},
+    {"randBin(",  Token::RandBin,  "randBin("},
+
     // Factorial — unary postfix
     {"!", Token::Fact, "!"},
 

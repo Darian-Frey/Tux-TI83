@@ -10,6 +10,9 @@ namespace tux_ti83 {
 
 std::map<Token, Matrix> MathStateMachine::matrixRegistry;
 std::map<Token, std::vector<double>> MathStateMachine::listRegistry;
+std::mt19937 MathStateMachine::rng{std::random_device{}()};
+
+void MathStateMachine::seedRandom(unsigned int seed) { rng.seed(seed); }
 std::array<double, 26> MathStateMachine::varRegistry{};
 AngleMode MathStateMachine::angleMode = AngleMode::Radian;
 NumberNotation MathStateMachine::notation = NumberNotation::Normal;
@@ -119,6 +122,9 @@ bool EOSPrecedence::is_function(Token t) {
           t == Token::Mean || t == Token::StdDev || t == Token::Variance ||
           t == Token::ListSum || t == Token::ListProd || t == Token::Median ||
           t == Token::SeqCall ||
+          t == Token::RandInt || t == Token::RandNorm || t == Token::RandBin ||
+          t == Token::RandIntList || t == Token::RandNormList ||
+          t == Token::RandBinList ||
           is_binary_function(t));
 }
 
@@ -150,7 +156,10 @@ bool EOSPrecedence::has_built_in_paren(Token t) {
           t == Token::ASinh || t == Token::ACosh || t == Token::ATanh ||
           t == Token::Mean || t == Token::StdDev || t == Token::Variance ||
           t == Token::ListSum || t == Token::ListProd || t == Token::Median ||
-          t == Token::SeqCall);
+          t == Token::SeqCall ||
+          t == Token::RandInt || t == Token::RandNorm || t == Token::RandBin ||
+          t == Token::RandIntList || t == Token::RandNormList ||
+          t == Token::RandBinList);
 }
 
 // --- MATRIX MATH HELPERS ---
@@ -549,6 +558,38 @@ std::vector<Token> rewriteDeferredCalls(const std::vector<Token> &tokens,
   return out;
 }
 
+// Select the scalar vs list variant of randInt/randNorm/randBin by
+// counting arguments: a 3rd (`count`) argument switches to the list
+// form. Only the function token is swapped in place — the arguments are
+// left untouched, so no re-emission is needed. Runs before the
+// shunting-yard while the comma structure is intact.
+std::vector<Token> rewriteRandCalls(const std::vector<Token> &tokens) {
+  std::vector<Token> out = tokens;
+  for (size_t i = 0; i < out.size(); ++i) {
+    Token listVariant;
+    switch (out[i]) {
+      case Token::RandInt:  listVariant = Token::RandIntList;  break;
+      case Token::RandNorm: listVariant = Token::RandNormList; break;
+      case Token::RandBin:  listVariant = Token::RandBinList;  break;
+      default: continue;
+    }
+    // These are built-in-paren functions, so the scope is already open
+    // right after the token. Count top-level commas up to the match.
+    int depth = 1, commas = 0;
+    for (size_t j = i + 1; j < out.size(); ++j) {
+      const Token u = out[j];
+      if (opensParenScope(u) || u == Token::LeftBrace) ++depth;
+      else if (u == Token::RightParen || u == Token::RightBrace) {
+        if (--depth == 0) break;
+      } else if (u == Token::Comma && depth == 1) {
+        ++commas;
+      }
+    }
+    if (commas == 2) out[i] = listVariant;  // 3 args → list form
+  }
+  return out;
+}
+
 } // namespace
 
 // --- CORE EVALUATOR ---
@@ -571,6 +612,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
   std::vector<Token> rewritten = rewriteDeferredCalls(tokensIn, rewriteOk);
   if (!rewriteOk)
     return {false, 0.0, {}, false, "Syntax Error"};
+  rewritten = rewriteRandCalls(rewritten);
   const std::vector<Token> &tokens = rewritten;
 
   if (tokens.empty())
@@ -752,6 +794,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
              (t >= Token::VarA && t <= Token::VarZ) ||
              (t >= Token::L1 && t <= Token::L6) ||
              t == Token::Pi || t == Token::E || t == Token::Ans ||
+             t == Token::Rand ||
              t == Token::Y1 || t == Token::Y2 || t == Token::Y3)
       rpn.push_back({t, 0.0});
     else if (t == Token::Fact) {
@@ -878,6 +921,9 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
       stack.push({false, M_PI, {}});
     else if (t == Token::E)
       stack.push({false, M_E, {}});
+    else if (t == Token::Rand)
+      stack.push({false,
+                  std::uniform_real_distribution<double>(0.0, 1.0)(rng), {}});
     else if (t == Token::Ans) {
       // Recall the last successful evaluation result. Defaults to the
       // scalar 0 on first use (matches TI-83 power-on state).
@@ -1181,6 +1227,73 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
         result *= i;
       stack.push({false, result, {}});
     } else if (EOSPrecedence::is_function(t)) {
+      // Random functions (Phase C Wave 5). Scalar 2-arg forms and 3-arg
+      // list forms, handled explicitly (custom arity) before the generic
+      // binary/unary dispatch below. A helper draws one sample given the
+      // two distribution parameters.
+      auto randSample = [&](Token kind, double p1, double p2,
+                            bool &okDraw) -> double {
+        okDraw = true;
+        if (kind == Token::RandInt || kind == Token::RandIntList) {
+          long long lo = static_cast<long long>(std::floor(p1));
+          long long hi = static_cast<long long>(std::floor(p2));
+          if (lo > hi) { okDraw = false; return 0.0; }
+          return static_cast<double>(
+              std::uniform_int_distribution<long long>(lo, hi)(rng));
+        }
+        if (kind == Token::RandNorm || kind == Token::RandNormList) {
+          if (p2 <= 0.0) { okDraw = false; return 0.0; }  // sd must be > 0
+          return std::normal_distribution<double>(p1, p2)(rng);
+        }
+        // RandBin: p1 = trials n (≥0 integer), p2 = probability [0,1].
+        long long trials = static_cast<long long>(std::floor(p1));
+        if (trials < 0 || p2 < 0.0 || p2 > 1.0) { okDraw = false; return 0.0; }
+        return static_cast<double>(
+            std::binomial_distribution<long long>(trials, p2)(rng));
+      };
+
+      if (t == Token::RandInt || t == Token::RandNorm ||
+          t == Token::RandBin) {
+        if (stack.size() < 2)
+          return {false, 0.0, {}, false, "Error"};
+        Operand b = stack.top(); stack.pop();
+        Operand a = stack.top(); stack.pop();
+        if (a.isMat || b.isMat || a.isList || b.isList)
+          return {false, 0.0, {}, false, "Type Error"};
+        bool okDraw = true;
+        double v = randSample(t, a.val, b.val, okDraw);
+        if (!okDraw) return {false, 0.0, {}, false, "DOMAIN"};
+        stack.push({false, v, {}});
+        continue;
+      }
+      if (t == Token::RandIntList || t == Token::RandNormList ||
+          t == Token::RandBinList) {
+        if (stack.size() < 3)
+          return {false, 0.0, {}, false, "Error"};
+        Operand cOp = stack.top(); stack.pop();  // count (3rd arg)
+        Operand b = stack.top(); stack.pop();
+        Operand a = stack.top(); stack.pop();
+        if (a.isMat || b.isMat || cOp.isMat ||
+            a.isList || b.isList || cOp.isList)
+          return {false, 0.0, {}, false, "Type Error"};
+        const long long count = static_cast<long long>(std::floor(cOp.val));
+        if (count < 1 || count > 100000)
+          return {false, 0.0, {}, false, "DOMAIN"};
+        std::vector<double> lst;
+        lst.reserve(static_cast<size_t>(count));
+        for (long long k = 0; k < count; ++k) {
+          bool okDraw = true;
+          double v = randSample(t, a.val, b.val, okDraw);
+          if (!okDraw) return {false, 0.0, {}, false, "DOMAIN"};
+          lst.push_back(v);
+        }
+        Operand o;
+        o.isMat = false; o.val = 0.0; o.isList = true;
+        o.list = std::move(lst);
+        stack.push(o);
+        continue;
+      }
+
       // min(/max( list overload (Phase C): when the top operand is a
       // list, this is the single-arg list reduction (min/max element),
       // not the two-scalar form. Peek before the binary pop so `min(L1)`
