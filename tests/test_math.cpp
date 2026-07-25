@@ -1397,6 +1397,44 @@ int main(int argc, char *argv[]) {
     tux_ti83::MathStateMachine::listRegistry.clear();
   }
 
+  section("Distributions — normal family (Phase C follow-on)");
+  {
+    auto near = [](double a, double b) { return std::abs(a - b) < 1e-6; };
+
+    // normalpdf — default (0,1) and explicit args agree.
+    checkTrue("normalpdf(0) = 1/√(2π)",
+              near(eval(c, "normalpdf(0)").toDouble(), 0.39894228040));
+    checkTrue("normalpdf default = explicit",
+              eval(c, "normalpdf(0)") == eval(c, "normalpdf(0,0,1)"));
+    checkTrue("normalpdf(1,0,2) ≈ 0.17603",
+              near(eval(c, "normalpdf(1,0,2)").toDouble(), 0.17603266338));
+
+    // normalcdf — 2-arg (defaults) and 4-arg forms.
+    checkTrue("normalcdf(-1,1) ≈ 0.6826895",
+              near(eval(c, "normalcdf(-1,1)").toDouble(), 0.68268949));
+    checkTrue("normalcdf(-1.96,1.96) ≈ 0.95",
+              near(eval(c, "normalcdf(-1.96,1.96)").toDouble(), 0.95000421));
+    checkTrue("normalcdf(0,1) ≈ 0.3413447",
+              near(eval(c, "normalcdf(0,1)").toDouble(), 0.34134475));
+
+    // invNorm — quantiles.
+    checkTrue("invNorm(0.975) ≈ 1.959964",
+              near(eval(c, "invNorm(0.975)").toDouble(), 1.95996399));
+    checkTrue("invNorm(0.5) = 0", near(eval(c, "invNorm(0.5)").toDouble(), 0.0));
+    checkTrue("invNorm(0.9,100,15) ≈ 119.223",
+              near(eval(c, "invNorm(0.9,100,15)").toDouble(), 119.2232735));
+
+    // Nested calls round-trip (padding recurses into arguments).
+    checkTrue("normalcdf(-50, invNorm(0.9)) ≈ 0.9",
+              near(eval(c, "normalcdf(-50,invNorm(0.9))").toDouble(), 0.9));
+
+    // Domain errors.
+    check("normalpdf σ≤0 → DOMAIN", eval(c, "normalpdf(0,0,-1)"), "ERR:DOMAIN");
+    check("normalcdf σ≤0 → DOMAIN", eval(c, "normalcdf(0,1,0,0)"), "ERR:DOMAIN");
+    check("invNorm(1) → DOMAIN", eval(c, "invNorm(1)"), "ERR:DOMAIN");
+    check("invNorm(0) → DOMAIN", eval(c, "invNorm(0)"), "ERR:DOMAIN");
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

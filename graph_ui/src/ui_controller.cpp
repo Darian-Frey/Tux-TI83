@@ -163,6 +163,11 @@ constexpr TokenSpec kTokens[] = {
     {"randNorm(", Token::RandNorm, "randNorm("},
     {"randBin(",  Token::RandBin,  "randBin("},
 
+    // Distributions (Phase C follow-on). μ/σ optional (default 0/1).
+    {"normalpdf(", Token::NormalPdf, "normalpdf("},
+    {"normalcdf(", Token::NormalCdf, "normalcdf("},
+    {"invNorm(",   Token::InvNorm,   "invNorm("},
+
     // Factorial — unary postfix
     {"!", Token::Fact, "!"},
 

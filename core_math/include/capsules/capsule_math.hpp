@@ -278,7 +278,16 @@ enum class Token {
   RandBin,
   RandIntList,
   RandNormList,
-  RandBinList
+  RandBinList,
+
+  // --- Distributions (Phase C follow-on) ---
+  // Normal family. μ/σ are optional (default 0/1); a preprocessing pass
+  // pads the missing arguments so the evaluator sees a fixed arity —
+  // normalpdf/invNorm take 3 (x/area, μ, σ), normalcdf takes 4
+  // (lower, upper, μ, σ).
+  NormalPdf,
+  NormalCdf,
+  InvNorm
 };
 
 struct Matrix {
