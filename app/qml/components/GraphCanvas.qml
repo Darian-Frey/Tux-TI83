@@ -131,6 +131,77 @@ Rectangle {
                 }
             }
 
+            // Stat plot (Phase C Wave 5b) — drawn over the function
+            // curves, under the trace marker. Rendered in the result-green
+            // accent so it reads as data rather than a function curve.
+            const sp = uiController.getStatPlotData()
+            if (sp.on && !sp.error) {
+                const spCol = Style.textResult
+                if (sp.type === 0 || sp.type === 1) {
+                    const pts = sp.points
+                    if (sp.type === 1 && pts.length > 1) {
+                        // xyLine — connect points (already x-sorted)
+                        ctx.beginPath()
+                        ctx.strokeStyle = spCol
+                        ctx.lineWidth = 1.5
+                        for (let i = 0; i < pts.length; i++) {
+                            const p = toPx(pts[i].x, pts[i].y)
+                            if (i === 0) ctx.moveTo(p.x, p.y)
+                            else ctx.lineTo(p.x, p.y)
+                        }
+                        ctx.stroke()
+                    }
+                    // markers (small filled squares)
+                    ctx.fillStyle = spCol
+                    for (let i = 0; i < pts.length; i++) {
+                        const p = toPx(pts[i].x, pts[i].y)
+                        ctx.fillRect(p.x - 2, p.y - 2, 4, 4)
+                    }
+                } else if (sp.type === 2) {
+                    // histogram — bars, frequency (count) on the y-axis
+                    ctx.fillStyle = spCol
+                    ctx.strokeStyle = Style.bgShell
+                    ctx.lineWidth = 1
+                    for (let i = 0; i < sp.bins.length; i++) {
+                        const b = sp.bins[i]
+                        const p0 = toPx(b.lo, 0)
+                        const p1 = toPx(b.hi, b.count)
+                        const bx = Math.min(p0.x, p1.x)
+                        const bw = Math.abs(p1.x - p0.x)
+                        const by = Math.min(p0.y, p1.y)
+                        const bhh = Math.abs(p0.y - p1.y)
+                        if (b.count > 0) {
+                            ctx.fillRect(bx, by, bw, bhh)
+                            ctx.strokeRect(bx, by, bw, bhh)
+                        }
+                    }
+                } else if (sp.type === 3) {
+                    // box plot at a fixed screen y (1-D — only x matters)
+                    const b = sp.box
+                    const yc = height * 0.5
+                    const bh = 24
+                    const xMinP = toPx(b.min, 0).x
+                    const xMaxP = toPx(b.max, 0).x
+                    const q1P = toPx(b.q1, 0).x
+                    const q3P = toPx(b.q3, 0).x
+                    const medP = toPx(b.med, 0).x
+                    ctx.strokeStyle = spCol
+                    ctx.lineWidth = 1.5
+                    ctx.beginPath()
+                    // whiskers + caps
+                    ctx.moveTo(xMinP, yc); ctx.lineTo(q1P, yc)
+                    ctx.moveTo(q3P, yc); ctx.lineTo(xMaxP, yc)
+                    ctx.moveTo(xMinP, yc - 8); ctx.lineTo(xMinP, yc + 8)
+                    ctx.moveTo(xMaxP, yc - 8); ctx.lineTo(xMaxP, yc + 8)
+                    ctx.stroke()
+                    // box + median
+                    ctx.strokeRect(q1P, yc - bh / 2, q3P - q1P, bh)
+                    ctx.beginPath()
+                    ctx.moveTo(medP, yc - bh / 2); ctx.lineTo(medP, yc + bh / 2)
+                    ctx.stroke()
+                }
+            }
+
             // Trace marker + readout (drawn last so it sits on top).
             if (traceActive) {
                 const tx = uiController.traceX
@@ -212,6 +283,7 @@ Rectangle {
             function onActiveFunctionIndexChanged() { canvas.requestPaint() }
             function onDrawModeChanged() { canvas.requestPaint() }
             function onGraphModeSettingChanged() { canvas.requestPaint() }
+            function onStatPlotChanged() { canvas.requestPaint() }
             function onTraceChanged() { canvas.requestPaint() }
         }
     }

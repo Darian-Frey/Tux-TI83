@@ -525,6 +525,11 @@ ApplicationWindow {
                             uiController.toggleTableMode()
                         return
                     }
+                    if (label === "Y=") {
+                        // 2ND+Y= → STAT PLOT setup (TI-83 layout).
+                        statPlotPopup.open()
+                        return
+                    }
                     // 2ND+<unmapped> falls through to primary action.
                 }
 
@@ -790,6 +795,10 @@ ApplicationWindow {
             statResultsPopup.results = uiController.regression(type, "L1", "L2")
             statResultsPopup.open()
         }
+    }
+
+    StatPlotPopup {
+        id: statPlotPopup
     }
 
     MathMenuPopup {

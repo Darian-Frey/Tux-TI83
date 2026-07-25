@@ -1340,6 +1340,63 @@ int main(int argc, char *argv[]) {
     check("randInt(1,6,0) count<1 → ERR:DOMAIN", eval(c, "randInt(1,6,0)"), "ERR:DOMAIN");
   }
 
+  section("Stat plots (Phase C — Wave 5b)");
+  {
+    tux_ti83::MathStateMachine::listRegistry.clear();
+    auto near = [](double a, double b) { return std::abs(a - b) < 1e-9; };
+
+    c.updateList("L1", QVariantList{3, 1, 2});
+    c.updateList("L2", QVariantList{30, 10, 20});
+    c.setProperty("statPlotOn", true);
+    c.setProperty("statPlotXList", "L1");
+    c.setProperty("statPlotYList", "L2");
+
+    // Scatter — points in list order.
+    c.setProperty("statPlotType", 0);
+    QVariantMap sc = c.getStatPlotData();
+    checkTrue("scatter: on + no error",
+              sc["on"].toBool() && sc["error"].toString().isEmpty());
+    QVariantList pts = sc["points"].toList();
+    checkTrue("scatter: 3 points", pts.size() == 3);
+    checkTrue("scatter: first point (3,30)",
+              near(pts[0].toMap()["x"].toDouble(), 3.0) &&
+              near(pts[0].toMap()["y"].toDouble(), 30.0));
+
+    // xyLine — points sorted by x.
+    c.setProperty("statPlotType", 1);
+    QVariantList xy = c.getStatPlotData()["points"].toList();
+    checkTrue("xyLine: sorted first x = 1",
+              near(xy[0].toMap()["x"].toDouble(), 1.0));
+    checkTrue("xyLine: sorted last x = 3",
+              near(xy[2].toMap()["x"].toDouble(), 3.0));
+
+    // Histogram — bin counts sum to n.
+    c.setProperty("statPlotType", 2);
+    QVariantList bins = c.getStatPlotData()["bins"].toList();
+    int total = 0;
+    for (const auto &b : bins) total += b.toMap()["count"].toInt();
+    checkTrue("hist: counts sum to n=3", total == 3);
+
+    // Box — five-number summary of {1,2,3}.
+    c.setProperty("statPlotType", 3);
+    QVariantMap bx = c.getStatPlotData()["box"].toMap();
+    checkTrue("box: min = 1", near(bx["min"].toDouble(), 1.0));
+    checkTrue("box: med = 2", near(bx["med"].toDouble(), 2.0));
+    checkTrue("box: max = 3", near(bx["max"].toDouble(), 3.0));
+
+    // Scatter with mismatched lists → DIM.
+    c.updateList("L2", QVariantList{1, 2});
+    c.setProperty("statPlotType", 0);
+    checkTrue("scatter dim mismatch → DIM",
+              c.getStatPlotData()["error"].toString() == "DIM");
+
+    // Off → on = false, no error.
+    c.setProperty("statPlotOn", false);
+    checkTrue("plot off → on=false", !c.getStatPlotData()["on"].toBool());
+
+    tux_ti83::MathStateMachine::listRegistry.clear();
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

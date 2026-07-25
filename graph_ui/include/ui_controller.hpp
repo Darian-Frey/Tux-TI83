@@ -77,6 +77,14 @@ private:
     // by setGraphMode. In Pol mode the function buffers are read as
     // r1/r2/r3 and the sweep variable X stands in for θ.
     Q_PROPERTY(int graphMode READ graphMode WRITE setGraphMode NOTIFY graphModeSettingChanged)
+
+    // Stat plot (Phase C Wave 5b). A single Plot1: on/off, type
+    // (0 scatter, 1 xyLine, 2 histogram, 3 box), and the source list
+    // names. Rendered on the graph canvas when on + in graph mode.
+    Q_PROPERTY(bool statPlotOn MEMBER m_statPlotOn NOTIFY statPlotChanged)
+    Q_PROPERTY(int statPlotType MEMBER m_statPlotType NOTIFY statPlotChanged)
+    Q_PROPERTY(QString statPlotXList MEMBER m_statPlotXList NOTIFY statPlotChanged)
+    Q_PROPERTY(QString statPlotYList MEMBER m_statPlotYList NOTIFY statPlotChanged)
     // TRACE soft-key state. When true, the graph canvas draws a
     // crosshair on the active function's curve at `traceX` and shows
     // an X / Y readout. Left/Right arrow input is routed to
@@ -254,6 +262,11 @@ public:
     Q_INVOKABLE QVariantMap regression(const QString& type,
                                        const QString& xName,
                                        const QString& yName) const;
+    // Render-ready stat-plot data for the current Plot1 config. Returns
+    // {on, type, error, ...} where the payload depends on type: `points`
+    // (scatter/xyLine), `bins`+`maxCount` (histogram), or `box` (box
+    // plot). Empty/undefined/mismatched lists set `error`.
+    Q_INVOKABLE QVariantMap getStatPlotData() const;
     Q_INVOKABLE QVariantList getMultiGraphPoints(int resolution);
     Q_INVOKABLE void pan(double dx, double dy, double vw, double vh);
     Q_INVOKABLE void zoom(double f, double mx, double my, double vw, double vh);
@@ -275,6 +288,7 @@ signals:
     void insertModeChanged();
     void drawModeChanged();
     void graphModeSettingChanged();
+    void statPlotChanged();
     void traceChanged();
 
 private:
@@ -325,6 +339,11 @@ private:
     // Graph type: 0 = Func, 2 = Pol (option-index encoding). See the
     // graphMode property above.
     int m_graphMode = 0;
+    // Stat plot (Plot1) config — see the statPlot* properties above.
+    bool m_statPlotOn = false;
+    int m_statPlotType = 0;
+    QString m_statPlotXList = QStringLiteral("L1");
+    QString m_statPlotYList = QStringLiteral("L2");
     // TRACE state. When `m_isTracing` is true the graph canvas paints
     // a crosshair at (m_traceX, evaluated Y) on the active function.
     // m_traceX is reset to viewport centre on every toggleTrace(true).

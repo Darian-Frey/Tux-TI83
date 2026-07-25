@@ -30,17 +30,25 @@ has that we haven't built yet.
 
 ## Current focus
 
-**Phase A complete (2026-04-07).** All legacy features are now ported
-into the new component-based UI: history pane, WINDOW popup, matrix
-editor (NAMES/MATH/EDIT tabs), graph mode (canvas + Y1/Y2/Y3 selector +
-mode toggle), x² CalcKey wired. The legacy `graph_ui/qml/Main.qml` has
-been audited and deleted. Group A engine cleanup also landed in this
-phase, taking the open-bugs count from 6 to 0.
+**Phase C complete (2026-07-25).** Lists, statistics, and probability
+are done end to end: lists `L1`–`L6` with a Stat editor; element-wise
+arithmetic; list functions (`sum`/`prod`/`mean`/`median`/`min`/`max`/
+`stdDev`/`variance`/`seq`); 1-Var and 2-Var stats; six regression models
+(Lin/Quad/Cubic/Exp/Ln/Pwr); random functions (`rand`/`randInt`/
+`randNorm`/`randBin`); and stat plots (scatter/xyLine/histogram/box).
+Phases A, B, C are complete; E is largely done; F is partially done
+(calculus + polar landed).
 
-Next-up work is the no-op CalcKeys that depend on infrastructure not
-yet built: 2ND modifier system, ALPHA modifier system (see
-[IMP-003](IMPROVEMENTS.md)), MATH menu, MODE menu, Ans recall (needs a
-`core_math/` change to add `Token::Ans`).
+At this point the test suite stands at **419 passing / 0 open bugs**.
+
+Candidate next areas (no commitment):
+- **Phase D graphing maturity** — a full Y-editor (Y1–Y0 with on/off +
+  styles), the rest of the Zoom menu, DRAW menu, Format menu.
+- **Distributions** (`normalpdf(`, `normalcdf(`, `invNorm(`, …) — the
+  natural follow-on to the stats work.
+- **CATALOG** completeness, MEM menu, remaining MODE rows (each fronts a
+  larger feature — parametric/sequence graphing, complex numbers,
+  split-screen).
 
 ---
 
@@ -221,7 +229,7 @@ arithmetic, and `STO→` to a list are done in the engine and covered by
 - 📅 `nCr`, `nPr`, factorial `!`
 - ✅ Statistical regressions (core set) — `LinReg` (Wave 4b), plus `QuadReg`, `CubicReg`, `ExpReg`, `LnReg`, `PwrReg` (Wave 4c, landed 2026-07-22). `UIController::regression(type, xList, yList)`: Quad/Cubic solve the least-squares normal equations by Gaussian elimination (with R²); Exp/Ln/Pwr are linear fits on transformed data with domain checks (positive X/Y as required) and r/r². Picked from the **RegMenuPopup** (REGRESSIONS ▸ in the Stat editor), shown in `StatResultsPopup`'s "reg" mode. `polyReg` already supports degree 4, so `QuartReg` is a one-line menu add when wanted. Still 📅: `QuartReg` (unexposed), `SinReg`, `Logistic`.
 - 📅 Distributions: `normalpdf(`, `normalcdf(`, `invNorm(`, `tpdf(`, `tcdf(`, `χ²pdf(`, `χ²cdf(`, `Fpdf(`, `Fcdf(`, `binompdf(`, `binomcdf(`, `poissonpdf(`, `poissoncdf(`, `geometpdf(`, `geometcdf(`
-- 📅 Stat plots (scatter, xy-line, histogram, box plot)
+- ✅ Stat plots (scatter, xy-line, histogram, box plot) — Wave 5b, landed 2026-07-25. A single Plot1 (`UIController::getStatPlotData()` → render-ready data), configured in the `StatPlotPopup` (2ND+Y=): on/off, type, Xlist/Ylist. Rendered on the graph canvas over any function curves — scatter/xyLine as points (xyLine x-sorted), histogram as auto-binned frequency bars, box plot as a five-number box-and-whisker. Persisted in `state.json`. **This completes Phase C.**
 
 ## Graphing
 

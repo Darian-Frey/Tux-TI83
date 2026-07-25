@@ -353,6 +353,10 @@ void UIController::saveState() const {
   mode["numberBase"]  = static_cast<int>(MathStateMachine::numberBase);
   mode["drawMode"]    = m_drawMode;
   mode["graphMode"]   = m_graphMode;
+  mode["statPlotOn"]    = m_statPlotOn;
+  mode["statPlotType"]  = m_statPlotType;
+  mode["statPlotXList"] = m_statPlotXList;
+  mode["statPlotYList"] = m_statPlotYList;
   root["mode"] = mode;
 
   // TBLSET (TABLE mode settings — separate object since they're
@@ -457,6 +461,16 @@ void UIController::loadState() {
     m_drawMode = (mode["drawMode"].toInt() == 1) ? 1 : 0;
   if (mode.contains("graphMode"))
     m_graphMode = (mode["graphMode"].toInt() == 2) ? 2 : 0;
+  if (mode.contains("statPlotOn"))
+    m_statPlotOn = mode["statPlotOn"].toBool();
+  if (mode.contains("statPlotType")) {
+    int tp = mode["statPlotType"].toInt(0);
+    m_statPlotType = (tp >= 0 && tp <= 3) ? tp : 0;
+  }
+  if (mode.contains("statPlotXList"))
+    m_statPlotXList = mode["statPlotXList"].toString();
+  if (mode.contains("statPlotYList"))
+    m_statPlotYList = mode["statPlotYList"].toString();
 
   // TBLSET restore. Step must be non-zero — guard against bad data.
   QJsonObject table = root.value("table").toObject();
@@ -538,6 +552,10 @@ void UIController::resetAll() {
   m_isTableMode = false;
   m_drawMode = 0;
   m_graphMode = 0;
+  m_statPlotOn = false;
+  m_statPlotType = 0;
+  m_statPlotXList = QStringLiteral("L1");
+  m_statPlotYList = QStringLiteral("L2");
   m_insertMode = true;
   m_isTracing = false;
   m_traceX = 0.0;
@@ -557,6 +575,7 @@ void UIController::resetAll() {
   emit viewportChanged();
   emit graphModeChanged();
   emit graphModeSettingChanged();
+  emit statPlotChanged();
   emit tableModeChanged();
   emit tableSettingsChanged();
   emit displayStateChanged();
@@ -1488,6 +1507,97 @@ QVariantMap UIController::regression(const QString &type, const QString &xName,
   out["b"]  = b;
   out["r"]  = r;
   out["r2"] = r * r;
+  return out;
+}
+
+QVariantMap UIController::getStatPlotData() const {
+  QVariantMap out;
+  out["on"] = m_statPlotOn;
+  out["type"] = m_statPlotType;
+  out["error"] = "";
+  if (!m_statPlotOn)
+    return out;
+
+  Token xt;
+  if (!listTokenForName(m_statPlotXList, xt)) { out["error"] = "UNDEFINED"; return out; }
+  auto xi = MathStateMachine::listRegistry.find(xt);
+  if (xi == MathStateMachine::listRegistry.end() || xi->second.empty()) {
+    out["error"] = "UNDEFINED";
+    return out;
+  }
+  const std::vector<double> &X = xi->second;
+  const int n = static_cast<int>(X.size());
+
+  if (m_statPlotType == 0 || m_statPlotType == 1) {
+    // Scatter / xyLine — pair with Ylist (equal length required).
+    Token yt;
+    if (!listTokenForName(m_statPlotYList, yt)) { out["error"] = "UNDEFINED"; return out; }
+    auto yi = MathStateMachine::listRegistry.find(yt);
+    if (yi == MathStateMachine::listRegistry.end() || yi->second.empty()) {
+      out["error"] = "UNDEFINED";
+      return out;
+    }
+    const std::vector<double> &Y = yi->second;
+    if (X.size() != Y.size()) { out["error"] = "DIM"; return out; }
+    std::vector<std::pair<double, double>> pts;
+    pts.reserve(static_cast<size_t>(n));
+    for (int i = 0; i < n; ++i) pts.push_back({X[i], Y[i]});
+    if (m_statPlotType == 1)  // xyLine: connect in x-order
+      std::sort(pts.begin(), pts.end());
+    QVariantList points;
+    for (auto &p : pts) {
+      QVariantMap m;
+      m["x"] = p.first;
+      m["y"] = p.second;
+      points.append(m);
+    }
+    out["points"] = points;
+  } else if (m_statPlotType == 2) {
+    // Histogram — auto-binned across [min, max]; frequency on the y-axis.
+    double mn = X[0], mx = X[0];
+    for (double v : X) { mn = std::min(mn, v); mx = std::max(mx, v); }
+    int nbins = std::clamp(static_cast<int>(std::ceil(std::sqrt((double)n))), 1, 20);
+    if (mx <= mn) { nbins = 1; mx = mn + 1.0; }  // degenerate — single bin
+    const double width = (mx - mn) / nbins;
+    std::vector<int> counts(static_cast<size_t>(nbins), 0);
+    for (double v : X) {
+      int b = static_cast<int>(std::floor((v - mn) / width));
+      if (b < 0) b = 0;
+      if (b >= nbins) b = nbins - 1;
+      counts[static_cast<size_t>(b)]++;
+    }
+    int maxCount = 0;
+    for (int c : counts) maxCount = std::max(maxCount, c);
+    QVariantList bins;
+    for (int b = 0; b < nbins; ++b) {
+      QVariantMap m;
+      m["lo"] = mn + b * width;
+      m["hi"] = mn + (b + 1) * width;
+      m["count"] = counts[static_cast<size_t>(b)];
+      bins.append(m);
+    }
+    out["bins"] = bins;
+    out["maxCount"] = maxCount;
+  } else {
+    // Box plot — five-number summary (TI-83 median-of-halves quartiles).
+    std::vector<double> v = X;
+    std::sort(v.begin(), v.end());
+    auto med = [&v](int lo, int hi) -> double {
+      const int m = hi - lo, mid = lo + m / 2;
+      return (m % 2 == 1) ? v[static_cast<size_t>(mid)]
+                          : (v[static_cast<size_t>(mid - 1)] +
+                             v[static_cast<size_t>(mid)]) / 2.0;
+    };
+    const int lowHi = n / 2;
+    const int upLo = (n % 2 == 0) ? n / 2 : n / 2 + 1;
+    QVariantMap box;
+    box["min"] = v.front();
+    box["q1"]  = med(0, lowHi);
+    box["med"] = med(0, n);
+    box["q3"]  = med(upLo, n);
+    box["max"] = v.back();
+    out["box"] = box;
+  }
   return out;
 }
 
