@@ -1435,6 +1435,44 @@ int main(int argc, char *argv[]) {
     check("invNorm(0) → DOMAIN", eval(c, "invNorm(0)"), "ERR:DOMAIN");
   }
 
+  section("Distributions — discrete (Phase C follow-on)");
+  {
+    tux_ti83::MathStateMachine::listRegistry.clear();
+    auto near = [](double a, double b) { return std::abs(a - b) < 1e-6; };
+
+    // Binomial — scalar pdf/cdf.
+    checkTrue("binompdf(10,0.5,5) = 0.24609375",
+              near(eval(c, "binompdf(10,0.5,5)").toDouble(), 0.24609375));
+    checkTrue("binomcdf(10,0.5,5) = 0.623046875",
+              near(eval(c, "binomcdf(10,0.5,5)").toDouble(), 0.623046875));
+    checkTrue("binompdf(5,0.5,10) = 0 (x>n)",
+              near(eval(c, "binompdf(5,0.5,10)").toDouble(), 0.0));
+    // Binomial — 2-arg list form: 11 values summing to 1.
+    checkTrue("sum(binompdf(10,0.5)) = 1",
+              near(eval(c, "sum(binompdf(10,0.5))").toDouble(), 1.0));
+    checkTrue("binomcdf(10,0.5) last element = 1",
+              near(eval(c, "max(binomcdf(10,0.5))").toDouble(), 1.0));
+
+    // Poisson.
+    checkTrue("poissonpdf(3,2) ≈ 0.2240418",
+              near(eval(c, "poissonpdf(3,2)").toDouble(), 0.22404180));
+    checkTrue("poissoncdf(3,2) ≈ 0.4231901",
+              near(eval(c, "poissoncdf(3,2)").toDouble(), 0.42319008));
+
+    // Geometric.
+    checkTrue("geometpdf(0.5,3) = 0.125",
+              near(eval(c, "geometpdf(0.5,3)").toDouble(), 0.125));
+    checkTrue("geometcdf(0.5,3) = 0.875",
+              near(eval(c, "geometcdf(0.5,3)").toDouble(), 0.875));
+
+    // Domain errors.
+    check("binompdf p>1 → DOMAIN", eval(c, "binompdf(10,1.5,3)"), "ERR:DOMAIN");
+    check("poissonpdf μ<0 → DOMAIN", eval(c, "poissonpdf(-1,2)"), "ERR:DOMAIN");
+    check("geometpdf p=0 → DOMAIN", eval(c, "geometpdf(0,3)"), "ERR:DOMAIN");
+
+    tux_ti83::MathStateMachine::listRegistry.clear();
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

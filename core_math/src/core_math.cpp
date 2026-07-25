@@ -127,6 +127,10 @@ bool EOSPrecedence::is_function(Token t) {
           t == Token::RandBinList ||
           t == Token::NormalPdf || t == Token::NormalCdf ||
           t == Token::InvNorm ||
+          t == Token::BinomPdf || t == Token::BinomCdf ||
+          t == Token::BinomPdfList || t == Token::BinomCdfList ||
+          t == Token::PoissonPdf || t == Token::PoissonCdf ||
+          t == Token::GeometPdf || t == Token::GeometCdf ||
           is_binary_function(t));
 }
 
@@ -163,7 +167,11 @@ bool EOSPrecedence::has_built_in_paren(Token t) {
           t == Token::RandIntList || t == Token::RandNormList ||
           t == Token::RandBinList ||
           t == Token::NormalPdf || t == Token::NormalCdf ||
-          t == Token::InvNorm);
+          t == Token::InvNorm ||
+          t == Token::BinomPdf || t == Token::BinomCdf ||
+          t == Token::BinomPdfList || t == Token::BinomCdfList ||
+          t == Token::PoissonPdf || t == Token::PoissonCdf ||
+          t == Token::GeometPdf || t == Token::GeometCdf);
 }
 
 // --- MATRIX MATH HELPERS ---
@@ -594,6 +602,34 @@ std::vector<Token> rewriteRandCalls(const std::vector<Token> &tokens) {
   return out;
 }
 
+// binompdf/binomcdf select the whole-distribution list form when called
+// with 2 arguments (n, p) instead of 3 (n, p, x). Mirrors
+// rewriteRandCalls but with the opposite threshold: 1 top-level comma
+// (2 args) → the …List variant.
+std::vector<Token> rewriteBinomCalls(const std::vector<Token> &tokens) {
+  std::vector<Token> out = tokens;
+  for (size_t i = 0; i < out.size(); ++i) {
+    Token listVariant;
+    switch (out[i]) {
+      case Token::BinomPdf: listVariant = Token::BinomPdfList; break;
+      case Token::BinomCdf: listVariant = Token::BinomCdfList; break;
+      default: continue;
+    }
+    int depth = 1, commas = 0;
+    for (size_t j = i + 1; j < out.size(); ++j) {
+      const Token u = out[j];
+      if (opensParenScope(u) || u == Token::LeftBrace) ++depth;
+      else if (u == Token::RightParen || u == Token::RightBrace) {
+        if (--depth == 0) break;
+      } else if (u == Token::Comma && depth == 1) {
+        ++commas;
+      }
+    }
+    if (commas == 1) out[i] = listVariant;  // 2 args → list form
+  }
+  return out;
+}
+
 // Pad the optional (μ, σ) arguments of the normal-distribution functions
 // so the evaluator always sees a fixed arity. normalpdf/invNorm → 3
 // args, normalcdf → 4. A missing final argument defaults to σ=1; any
@@ -667,6 +703,32 @@ double invNormStd(double p) {
          ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1.0);
 }
 
+// Binomial coefficient C(n, k) computed multiplicatively to avoid
+// overflowing an intermediate factorial. 0 for k outside [0, n].
+double nCk(long long n, long long k) {
+  if (k < 0 || k > n) return 0.0;
+  if (k > n - k) k = n - k;
+  double r = 1.0;
+  for (long long i = 0; i < k; ++i)
+    r = r * static_cast<double>(n - i) / static_cast<double>(i + 1);
+  return r;
+}
+
+// P(X = x) for Binomial(n, p): C(n,x) pˣ (1-p)^(n-x). 0 outside [0, n].
+double binomPdfVal(long long n, double p, long long x) {
+  if (x < 0 || x > n) return 0.0;
+  return nCk(n, x) * std::pow(p, static_cast<double>(x)) *
+         std::pow(1.0 - p, static_cast<double>(n - x));
+}
+
+// P(X = x) for Poisson(μ): e^{-μ} μˣ / x!, built iteratively for stability.
+double poissonPdfVal(double mu, long long x) {
+  if (x < 0) return 0.0;
+  double t = std::exp(-mu);
+  for (long long i = 1; i <= x; ++i) t *= mu / static_cast<double>(i);
+  return t;
+}
+
 } // namespace
 
 // --- CORE EVALUATOR ---
@@ -690,6 +752,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
   if (!rewriteOk)
     return {false, 0.0, {}, false, "Syntax Error"};
   rewritten = rewriteRandCalls(rewritten);
+  rewritten = rewriteBinomCalls(rewritten);
   rewritten = rewriteDistCalls(rewritten);
   const std::vector<Token> &tokens = rewritten;
 
@@ -1416,6 +1479,93 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
           return 0.5 * (1.0 + std::erf((v - mu) / (sigma * std::sqrt(2.0))));
         };
         stack.push({false, Phi(uOp.val) - Phi(lOp.val), {}});
+        continue;
+      }
+
+      // Discrete distributions (Phase C follow-on). Cap on n / x sums so
+      // a giant parameter can't wedge the engine.
+      constexpr long long kDistCap = 100000;
+      // Pop a fixed count of scalar operands (top → bottom into vals[0..]),
+      // rejecting matrices/lists. Returns false on type error.
+      auto popScalars = [&](int count, std::vector<double> &vals) -> bool {
+        vals.assign(static_cast<size_t>(count), 0.0);
+        for (int k = 0; k < count; ++k) {
+          Operand o = stack.top(); stack.pop();
+          if (o.isMat || o.isList) return false;
+          vals[static_cast<size_t>(k)] = o.val;  // vals[0] = top
+        }
+        return true;
+      };
+
+      if (t == Token::BinomPdf || t == Token::BinomCdf) {
+        if (stack.size() < 3) return {false, 0.0, {}, false, "Error"};
+        std::vector<double> v;  // v[0]=x, v[1]=p, v[2]=n
+        if (!popScalars(3, v)) return {false, 0.0, {}, false, "Type Error"};
+        const long long n = static_cast<long long>(std::floor(v[2]));
+        const double p = v[1];
+        const long long x = static_cast<long long>(std::floor(v[0]));
+        if (n < 0 || n > kDistCap || p < 0.0 || p > 1.0)
+          return {false, 0.0, {}, false, "DOMAIN"};
+        if (t == Token::BinomPdf) {
+          stack.push({false, binomPdfVal(n, p, x), {}});
+        } else {
+          double acc = 0.0;
+          for (long long k = 0; k <= x && k <= n; ++k) acc += binomPdfVal(n, p, k);
+          stack.push({false, (x >= n) ? 1.0 : (x < 0 ? 0.0 : acc), {}});
+        }
+        continue;
+      }
+      if (t == Token::BinomPdfList || t == Token::BinomCdfList) {
+        if (stack.size() < 2) return {false, 0.0, {}, false, "Error"};
+        std::vector<double> v;  // v[0]=p, v[1]=n
+        if (!popScalars(2, v)) return {false, 0.0, {}, false, "Type Error"};
+        const long long n = static_cast<long long>(std::floor(v[1]));
+        const double p = v[0];
+        if (n < 0 || n > kDistCap || p < 0.0 || p > 1.0)
+          return {false, 0.0, {}, false, "DOMAIN"};
+        std::vector<double> lst;
+        lst.reserve(static_cast<size_t>(n + 1));
+        double cum = 0.0;
+        for (long long k = 0; k <= n; ++k) {
+          const double pk = binomPdfVal(n, p, k);
+          cum += pk;
+          lst.push_back(t == Token::BinomCdfList ? cum : pk);
+        }
+        Operand o; o.isMat = false; o.val = 0.0; o.isList = true;
+        o.list = std::move(lst);
+        stack.push(o);
+        continue;
+      }
+      if (t == Token::PoissonPdf || t == Token::PoissonCdf) {
+        if (stack.size() < 2) return {false, 0.0, {}, false, "Error"};
+        std::vector<double> v;  // v[0]=x, v[1]=μ
+        if (!popScalars(2, v)) return {false, 0.0, {}, false, "Type Error"};
+        const double mu = v[1];
+        const long long x = static_cast<long long>(std::floor(v[0]));
+        if (mu < 0.0) return {false, 0.0, {}, false, "DOMAIN"};
+        if (t == Token::PoissonPdf) {
+          stack.push({false, poissonPdfVal(mu, x), {}});
+        } else {
+          if (x < 0) { stack.push({false, 0.0, {}}); continue; }
+          if (x > kDistCap) return {false, 0.0, {}, false, "DOMAIN"};
+          double acc = 0.0;
+          for (long long k = 0; k <= x; ++k) acc += poissonPdfVal(mu, k);
+          stack.push({false, acc, {}});
+        }
+        continue;
+      }
+      if (t == Token::GeometPdf || t == Token::GeometCdf) {
+        if (stack.size() < 2) return {false, 0.0, {}, false, "Error"};
+        std::vector<double> v;  // v[0]=x, v[1]=p
+        if (!popScalars(2, v)) return {false, 0.0, {}, false, "Type Error"};
+        const double p = v[1];
+        const long long x = static_cast<long long>(std::floor(v[0]));
+        if (p <= 0.0 || p > 1.0) return {false, 0.0, {}, false, "DOMAIN"};
+        if (x < 1) { stack.push({false, 0.0, {}}); continue; }
+        if (t == Token::GeometPdf)
+          stack.push({false, std::pow(1.0 - p, static_cast<double>(x - 1)) * p, {}});
+        else  // cdf: 1 − (1−p)^x
+          stack.push({false, 1.0 - std::pow(1.0 - p, static_cast<double>(x)), {}});
         continue;
       }
 

@@ -287,7 +287,19 @@ enum class Token {
   // (lower, upper, μ, σ).
   NormalPdf,
   NormalCdf,
-  InvNorm
+  InvNorm,
+
+  // Discrete distributions. binom takes 3 args (scalar P/cumulative at x)
+  // or 2 (the …List variant — the whole distribution over x=0..n, chosen
+  // by an arg-counting pass). Poisson and geometric are 2-arg scalars.
+  BinomPdf,
+  BinomCdf,
+  BinomPdfList,
+  BinomCdfList,
+  PoissonPdf,
+  PoissonCdf,
+  GeometPdf,
+  GeometCdf
 };
 
 struct Matrix {

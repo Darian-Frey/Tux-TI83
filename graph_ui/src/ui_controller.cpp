@@ -167,6 +167,13 @@ constexpr TokenSpec kTokens[] = {
     {"normalpdf(", Token::NormalPdf, "normalpdf("},
     {"normalcdf(", Token::NormalCdf, "normalcdf("},
     {"invNorm(",   Token::InvNorm,   "invNorm("},
+    // Discrete distributions. binompdf/binomcdf take (n,p,x) or (n,p).
+    {"binompdf(",   Token::BinomPdf,   "binompdf("},
+    {"binomcdf(",   Token::BinomCdf,   "binomcdf("},
+    {"poissonpdf(", Token::PoissonPdf, "poissonpdf("},
+    {"poissoncdf(", Token::PoissonCdf, "poissoncdf("},
+    {"geometpdf(",  Token::GeometPdf,  "geometpdf("},
+    {"geometcdf(",  Token::GeometCdf,  "geometcdf("},
 
     // Factorial — unary postfix
     {"!", Token::Fact, "!"},
