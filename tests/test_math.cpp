@@ -1507,6 +1507,36 @@ int main(int argc, char *argv[]) {
     check("Fcdf d1≤0 → DOMAIN", eval(c, "Fcdf(0,2,0,5)"), "ERR:DOMAIN");
   }
 
+  section("MEM menu — memInfo + targeted clears");
+  {
+    tux_ti83::MathStateMachine::listRegistry.clear();
+    tux_ti83::MathStateMachine::matrixRegistry.clear();
+    tux_ti83::MathStateMachine::varRegistry.fill(0.0);
+
+    eval(c, "5→A");
+    c.updateMatrix("[A]", 2, 2, QVariantList{1, 2, 3, 4});
+    c.updateList("L1", QVariantList{1, 2, 3});
+
+    QVariantMap mi = c.memInfo();
+    checkTrue("memInfo: 1 var defined", mi["vars"].toInt() == 1);
+    checkTrue("memInfo: 1 matrix", mi["matrices"].toInt() == 1);
+    checkTrue("memInfo: 1 list", mi["lists"].toInt() == 1);
+
+    c.clearAllLists();
+    checkTrue("clearAllLists → 0 lists", c.memInfo()["lists"].toInt() == 0);
+    c.clearAllMatrices();
+    checkTrue("clearAllMatrices → 0 matrices",
+              c.memInfo()["matrices"].toInt() == 0);
+    c.clearAllVars();
+    checkTrue("clearAllVars → 0 vars", c.memInfo()["vars"].toInt() == 0);
+    c.clearEntries();
+    checkTrue("clearEntries → 0 entries", c.memInfo()["entries"].toInt() == 0);
+
+    tux_ti83::MathStateMachine::listRegistry.clear();
+    tux_ti83::MathStateMachine::matrixRegistry.clear();
+    tux_ti83::MathStateMachine::varRegistry.fill(0.0);
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

@@ -203,6 +203,14 @@ public:
     // arming flags) likewise resets. No confirmation prompt — the
     // trigger is a deliberate click in the MODE popup.
     Q_INVOKABLE void resetAll();
+    // MEM menu (2ND++): targeted clearing + a memory summary. Each
+    // clears one category; memInfo() reports how much is currently in
+    // use ({vars, matrices, lists, functions, entries}).
+    Q_INVOKABLE void clearAllLists();
+    Q_INVOKABLE void clearAllMatrices();
+    Q_INVOKABLE void clearAllVars();
+    Q_INVOKABLE void clearEntries();
+    Q_INVOKABLE QVariantMap memInfo() const;
     // Token-level cursor movement. Left/Right step by one token
     // (matches TI-83 behaviour: `sin(` is one visual step, not four);
     // Home/End jump to the extremes. All four are no-ops outside

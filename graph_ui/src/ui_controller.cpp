@@ -611,6 +611,46 @@ void UIController::resetAll() {
   emit traceChanged();
 }
 
+void UIController::clearAllLists() {
+  CrashLogger::logEvent(QStringLiteral("clearAllLists"));
+  MathStateMachine::listRegistry.clear();
+  emit statPlotChanged();  // a stat plot may reference a cleared list
+}
+
+void UIController::clearAllMatrices() {
+  CrashLogger::logEvent(QStringLiteral("clearAllMatrices"));
+  MathStateMachine::matrixRegistry.clear();
+}
+
+void UIController::clearAllVars() {
+  CrashLogger::logEvent(QStringLiteral("clearAllVars"));
+  MathStateMachine::varRegistry.fill(0.0);
+}
+
+void UIController::clearEntries() {
+  CrashLogger::logEvent(QStringLiteral("clearEntries"));
+  m_history.clear();
+  m_entryHistory.clear();
+  m_recallCycleIdx = -1;
+  emit historyChanged();
+}
+
+QVariantMap UIController::memInfo() const {
+  QVariantMap out;
+  int vars = 0;
+  for (double v : MathStateMachine::varRegistry)
+    if (v != 0.0) ++vars;
+  int fns = 0;
+  for (const auto &b : m_functionBuffers)
+    if (!b.empty()) ++fns;
+  out["vars"] = vars;
+  out["matrices"] = static_cast<int>(MathStateMachine::matrixRegistry.size());
+  out["lists"] = static_cast<int>(MathStateMachine::listRegistry.size());
+  out["functions"] = fns;
+  out["entries"] = static_cast<int>(m_history.size());
+  return out;
+}
+
 void UIController::setAngleMode(int m) {
   CrashLogger::logEvent(QStringLiteral("setAngleMode: ") + QString::number(m));
   // Clamp to the two valid values. Anything else becomes Radian — the

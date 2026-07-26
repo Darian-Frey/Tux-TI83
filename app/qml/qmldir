@@ -10,6 +10,7 @@ ListPopup 1.0 components/ListPopup.qml
 StatResultsPopup 1.0 components/StatResultsPopup.qml
 RegMenuPopup 1.0 components/RegMenuPopup.qml
 StatPlotPopup 1.0 components/StatPlotPopup.qml
+MEMPopup 1.0 components/MEMPopup.qml
 FunctionSelector 1.0 components/FunctionSelector.qml
 GraphCanvas 1.0 components/GraphCanvas.qml
 MathMenuPopup 1.0 components/MathMenuPopup.qml

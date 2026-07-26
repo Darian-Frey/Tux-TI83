@@ -180,6 +180,11 @@ ApplicationWindow {
                 catalogPopup.open()
                 return
             }
+            // 2ND + + opens the MEM (memory management) menu.
+            if (primary === "+") {
+                memPopup.open()
+                return
+            }
             if (secondMap.hasOwnProperty(primary)) {
                 uiController.processExpression(secondMap[primary])
                 return
@@ -707,7 +712,7 @@ ApplicationWindow {
             CalcKey { label: "2";  keyType: "numeric"; secondLabel: "L2"; alphaLabel: "Z"; onPressed: root.handleKey("2") }
             CalcKey { label: "3";  keyType: "numeric"; secondLabel: "L3"; onPressed: root.handleKey("3") }
             CalcKey { label: "Ans"; keyType: "function"; onPressed: root.handleKey("Ans") }
-            CalcKey { label: "+";  keyType: "operator"; alphaLabel: "\""; onPressed: root.handleKey("+") }
+            CalcKey { label: "+";  keyType: "operator"; secondLabel: "MEM"; alphaLabel: "\""; onPressed: root.handleKey("+") }
 
             // Row 5
             CalcKey { label: "0";   keyType: "numeric"; secondLabel: "CATALOG"; onPressed: root.handleKey("0") }
@@ -799,6 +804,10 @@ ApplicationWindow {
 
     StatPlotPopup {
         id: statPlotPopup
+    }
+
+    MEMPopup {
+        id: memPopup
     }
 
     MathMenuPopup {
