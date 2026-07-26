@@ -67,15 +67,24 @@ Rectangle {
             ctx.font = "10px " + Style.monoFamily
             ctx.fillStyle = Style.textMuted
 
-            // Vertical grid lines + x-axis labels.
+            // FORMAT flags (2ND+ZOOM): gate grid lines, axes, and labels.
+            const gridOn = uiController.gridOn
+            const axesOn = uiController.axesOn
+            const labelOn = uiController.labelOn
+
+            // Vertical grid lines + x-axis labels. The x≈0 line is the
+            // (y-)axis; others are grid.
             for (let x = Math.floor(xMin / step) * step; x <= xMax; x += step) {
                 const px = toPx(x, 0)
-                ctx.strokeStyle = (Math.abs(x) < 0.0001) ? Style.textMuted : Style.bgSection
-                ctx.beginPath()
-                ctx.moveTo(px.x, 0)
-                ctx.lineTo(px.x, height)
-                ctx.stroke()
-                if (Math.abs(x) > 0.0001) {
+                const isAxis = Math.abs(x) < 0.0001
+                if (isAxis ? axesOn : gridOn) {
+                    ctx.strokeStyle = isAxis ? Style.textMuted : Style.bgSection
+                    ctx.beginPath()
+                    ctx.moveTo(px.x, 0)
+                    ctx.lineTo(px.x, height)
+                    ctx.stroke()
+                }
+                if (!isAxis && labelOn) {
                     ctx.fillText(x.toFixed(1), px.x + 2, height - 5)
                 }
             }
@@ -83,12 +92,15 @@ Rectangle {
             // Horizontal grid lines + y-axis labels.
             for (let y = Math.floor(yMin / step) * step; y <= yMax; y += step) {
                 const py = toPx(0, y)
-                ctx.strokeStyle = (Math.abs(y) < 0.0001) ? Style.textMuted : Style.bgSection
-                ctx.beginPath()
-                ctx.moveTo(0, py.y)
-                ctx.lineTo(width, py.y)
-                ctx.stroke()
-                if (Math.abs(y) > 0.0001) {
+                const isAxis = Math.abs(y) < 0.0001
+                if (isAxis ? axesOn : gridOn) {
+                    ctx.strokeStyle = isAxis ? Style.textMuted : Style.bgSection
+                    ctx.beginPath()
+                    ctx.moveTo(0, py.y)
+                    ctx.lineTo(width, py.y)
+                    ctx.stroke()
+                }
+                if (!isAxis && labelOn) {
                     ctx.fillText(y.toFixed(1), 5, py.y - 2)
                 }
             }
@@ -235,22 +247,26 @@ Rectangle {
                 // formatScalar so the readout respects the user's
                 // MODE Notation (Normal/Sci/Eng) and Decimal (Float
                 // /Fix N) settings.
-                const readout = "Y" + (activeIdx + 1) +
-                                "  X=" + uiController.formatScalar(tx) +
-                                "  Y=" + (isFinite(ty)
-                                          ? uiController.formatScalar(ty)
-                                          : "—")
-                ctx.font = "11px " + Style.monoFamily
-                const textW = ctx.measureText(readout).width
-                const padX = 6, padY = 4
-                const rectW = textW + padX * 2
-                const rectH = 18
-                ctx.fillStyle = Style.bgShell
-                ctx.globalAlpha = 0.85
-                ctx.fillRect(0, height - rectH, rectW, rectH)
-                ctx.globalAlpha = 1.0
-                ctx.fillStyle = traceColour
-                ctx.fillText(readout, padX, height - padY - 1)
+                // Coordinate readout — gated by FORMAT → Coord. The
+                // crosshair above always shows; only the numbers hide.
+                if (uiController.coordOn) {
+                    const readout = "Y" + (activeIdx + 1) +
+                                    "  X=" + uiController.formatScalar(tx) +
+                                    "  Y=" + (isFinite(ty)
+                                              ? uiController.formatScalar(ty)
+                                              : "—")
+                    ctx.font = "11px " + Style.monoFamily
+                    const textW = ctx.measureText(readout).width
+                    const padX = 6, padY = 4
+                    const rectW = textW + padX * 2
+                    const rectH = 18
+                    ctx.fillStyle = Style.bgShell
+                    ctx.globalAlpha = 0.85
+                    ctx.fillRect(0, height - rectH, rectW, rectH)
+                    ctx.globalAlpha = 1.0
+                    ctx.fillStyle = traceColour
+                    ctx.fillText(readout, padX, height - padY - 1)
+                }
             }
         }
 
@@ -284,6 +300,7 @@ Rectangle {
             function onDrawModeChanged() { canvas.requestPaint() }
             function onGraphModeSettingChanged() { canvas.requestPaint() }
             function onStatPlotChanged() { canvas.requestPaint() }
+            function onFormatChanged() { canvas.requestPaint() }
             function onTraceChanged() { canvas.requestPaint() }
         }
     }

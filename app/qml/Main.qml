@@ -535,6 +535,11 @@ ApplicationWindow {
                         statPlotPopup.open()
                         return
                     }
+                    if (label === "ZOOM") {
+                        // 2ND+ZOOM → FORMAT menu (TI-83 layout).
+                        formatPopup.open()
+                        return
+                    }
                     // 2ND+<unmapped> falls through to primary action.
                 }
 
@@ -808,6 +813,10 @@ ApplicationWindow {
 
     MEMPopup {
         id: memPopup
+    }
+
+    FormatPopup {
+        id: formatPopup
     }
 
     MathMenuPopup {

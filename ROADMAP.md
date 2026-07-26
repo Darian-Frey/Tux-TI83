@@ -288,12 +288,17 @@ arithmetic, and `STO→` to a list are done in the engine and covered by
 - 📅 `ClrDraw`
 
 ### Format menu
-- 📅 `RectGC` / `PolarGC` (rectangular vs polar coords for cursor)
-- 📅 `CoordOn` / `CoordOff`
-- 📅 `GridOn` / `GridOff`
-- 📅 `AxesOn` / `AxesOff`
-- 📅 `LabelOn` / `LabelOff`
-- 📅 `ExprOn` / `ExprOff`
+
+**FORMAT menu landed 2026-07-26** (Phase D slice 1) — `FormatPopup` on
+2ND+ZOOM, four persisted flags (`gridOn`/`axesOn`/`coordOn`/`labelOn`,
+default on) gating the graph canvas. RESET restores them.
+
+- ✅ `CoordOn` / `CoordOff` — toggles the trace coordinate readout (crosshair still shown).
+- ✅ `GridOn` / `GridOff` — toggles the grid lines.
+- ✅ `AxesOn` / `AxesOff` — toggles the x/y = 0 axis lines.
+- ✅ `LabelOn` / `LabelOff` — toggles the tick-number labels.
+- 📅 `RectGC` / `PolarGC` (rectangular vs polar coords for the cursor) — deferred (needs a polar trace readout).
+- 📅 `ExprOn` / `ExprOff` (show the expression while tracing) — deferred.
 
 ### Other graphing modes
 - 💭 Parametric mode (X1T, Y1T)

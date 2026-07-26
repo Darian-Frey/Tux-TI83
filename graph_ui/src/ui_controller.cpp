@@ -379,6 +379,10 @@ void UIController::saveState() const {
   mode["statPlotType"]  = m_statPlotType;
   mode["statPlotXList"] = m_statPlotXList;
   mode["statPlotYList"] = m_statPlotYList;
+  mode["gridOn"]  = m_gridOn;
+  mode["axesOn"]  = m_axesOn;
+  mode["coordOn"] = m_coordOn;
+  mode["labelOn"] = m_labelOn;
   root["mode"] = mode;
 
   // TBLSET (TABLE mode settings — separate object since they're
@@ -493,6 +497,10 @@ void UIController::loadState() {
     m_statPlotXList = mode["statPlotXList"].toString();
   if (mode.contains("statPlotYList"))
     m_statPlotYList = mode["statPlotYList"].toString();
+  if (mode.contains("gridOn"))  m_gridOn  = mode["gridOn"].toBool();
+  if (mode.contains("axesOn"))  m_axesOn  = mode["axesOn"].toBool();
+  if (mode.contains("coordOn")) m_coordOn = mode["coordOn"].toBool();
+  if (mode.contains("labelOn")) m_labelOn = mode["labelOn"].toBool();
 
   // TBLSET restore. Step must be non-zero — guard against bad data.
   QJsonObject table = root.value("table").toObject();
@@ -578,6 +586,10 @@ void UIController::resetAll() {
   m_statPlotType = 0;
   m_statPlotXList = QStringLiteral("L1");
   m_statPlotYList = QStringLiteral("L2");
+  m_gridOn = true;
+  m_axesOn = true;
+  m_coordOn = true;
+  m_labelOn = true;
   m_insertMode = true;
   m_isTracing = false;
   m_traceX = 0.0;
@@ -598,6 +610,7 @@ void UIController::resetAll() {
   emit graphModeChanged();
   emit graphModeSettingChanged();
   emit statPlotChanged();
+  emit formatChanged();
   emit tableModeChanged();
   emit tableSettingsChanged();
   emit displayStateChanged();

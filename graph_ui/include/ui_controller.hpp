@@ -85,6 +85,14 @@ private:
     Q_PROPERTY(int statPlotType MEMBER m_statPlotType NOTIFY statPlotChanged)
     Q_PROPERTY(QString statPlotXList MEMBER m_statPlotXList NOTIFY statPlotChanged)
     Q_PROPERTY(QString statPlotYList MEMBER m_statPlotYList NOTIFY statPlotChanged)
+
+    // Graph FORMAT flags (2ND+ZOOM). Toggle grid lines, axes, the trace
+    // coordinate readout, and the tick-number labels. All default on to
+    // preserve the pre-Format-menu appearance.
+    Q_PROPERTY(bool gridOn MEMBER m_gridOn NOTIFY formatChanged)
+    Q_PROPERTY(bool axesOn MEMBER m_axesOn NOTIFY formatChanged)
+    Q_PROPERTY(bool coordOn MEMBER m_coordOn NOTIFY formatChanged)
+    Q_PROPERTY(bool labelOn MEMBER m_labelOn NOTIFY formatChanged)
     // TRACE soft-key state. When true, the graph canvas draws a
     // crosshair on the active function's curve at `traceX` and shows
     // an X / Y readout. Left/Right arrow input is routed to
@@ -297,6 +305,7 @@ signals:
     void drawModeChanged();
     void graphModeSettingChanged();
     void statPlotChanged();
+    void formatChanged();
     void traceChanged();
 
 private:
@@ -352,6 +361,11 @@ private:
     int m_statPlotType = 0;
     QString m_statPlotXList = QStringLiteral("L1");
     QString m_statPlotYList = QStringLiteral("L2");
+    // FORMAT flags — see the gridOn/axesOn/coordOn/labelOn properties.
+    bool m_gridOn = true;
+    bool m_axesOn = true;
+    bool m_coordOn = true;
+    bool m_labelOn = true;
     // TRACE state. When `m_isTracing` is true the graph canvas paints
     // a crosshair at (m_traceX, evaluated Y) on the active function.
     // m_traceX is reset to viewport centre on every toggleTrace(true).
