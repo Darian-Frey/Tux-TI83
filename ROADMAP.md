@@ -246,10 +246,10 @@ arithmetic, and `STO→` to a list are done in the engine and covered by
 - ✅ ZOOM soft-key — `ZoomPopup` landed 2026-05-08 (ZStandard / Zoom In / Zoom Out / ZFit, see Window settings entry below)
 - ✅ TRACE soft-key — landed 2026-05-08 (movable crosshair on the active curve, X/Y readout that respects the user's Notation/Decimal MODE settings; ←/→ steps along the curve in 1/100-of-viewport increments; ↑/↓ cycles through Y1/Y2/Y3 while tracing)
 - ✅ Tag function curves with their Y index in the canvas legend — fixed via [BUG-012](BUGS.md) on 2026-05-08; `getMultiGraphPoints()` now emits one entry per slot so colour-by-index is stable
-- 📅 Y-editor screen (visual list of Y1–Y9, Y0 with on/off toggles, styles)
-- 📅 Function on/off toggling
-- 📅 Function styles (thin, thick, dotted, shaded above/below, animate)
-- 📅 Extend Y-editor to Y1–Y9 + Y0 (10 functions, TI-83 standard)
+- ✅ Y-editor screen — `YEditorPopup` on the Y= soft-key (Phase D, 2026-07-26): a scrollable list of all 10 slots (`Yn = expr`, per-slot on/off toggle, line-style cycle), each `Yn` shown in its curve colour; tapping a row's expression makes that slot active for keypad editing.
+- ✅ Function on/off toggling — per-slot `enabled` flag; `getMultiGraphPoints` skips disabled slots; persisted.
+- ✅ Function styles — thin / thick / dotted, per slot, applied on the canvas (line width + dash); persisted. (Shaded above/below and animate not implemented.)
+- ✅ Extend Y-editor to Y1–Y9 + Y0 (10 functions) — buffers/display-strings/enabled/style all sized to 10; a shared 10-colour palette (`Style.graphColors`) covers the canvas, trace, and editor. Caveat: cross-*referencing* Y4–Y0 inside another expression still needs engine tokens (only Y1–Y3 are referenceable so far); defining and plotting all 10 works.
 
 ### Window settings
 - ✅ Xmin/Xmax/Ymin/Ymax editable in the new UI's `WindowPopup` (reintegrated 2026-04-07; opened from the WINDOW soft-key)
@@ -398,7 +398,7 @@ A natural ordering, smallest meaningful chunk first:
 ### Phase D — graphing maturity
 21. Trace mode
 22. Tables (`TABLE`, `TBLSET`)
-23. Y-editor with 10 functions, on/off, styles
+23. Y-editor with 10 functions, on/off, styles ✅
 24. Full Zoom menu
 25. DRAW menu
 26. Format menu

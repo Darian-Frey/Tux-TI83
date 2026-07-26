@@ -284,8 +284,10 @@ constexpr int kStateSchemaVersion = 1;
 } // namespace
 
 UIController::UIController(QObject *parent) : QObject(parent), m_activeIdx(0) {
-  m_functionBuffers.resize(3);
-  m_displayStrings.resize(3, "");
+  m_functionBuffers.resize(kFunctionCount);
+  m_displayStrings.resize(kFunctionCount, "");
+  m_functionEnabled.assign(kFunctionCount, true);
+  m_functionStyle.assign(kFunctionCount, 0);
   // Note: persisted state is NOT auto-loaded here. The GUI's
   // main.cpp calls loadState() explicitly post-construction so the
   // CLI / REPL / test binaries (which all instantiate a controller
@@ -355,6 +357,12 @@ void UIController::saveState() const {
   QJsonArray functions;
   for (const auto &str : m_displayStrings) functions.append(str);
   root["functions"] = functions;
+  // Y-editor per-slot on/off and line style.
+  QJsonArray fnEnabled, fnStyle;
+  for (bool b : m_functionEnabled) fnEnabled.append(b);
+  for (int s : m_functionStyle) fnStyle.append(s);
+  root["fnEnabled"] = fnEnabled;
+  root["fnStyle"] = fnStyle;
 
   // Active function slot index.
   root["activeFunction"] = m_activeIdx;
@@ -533,13 +541,23 @@ void UIController::loadState() {
   // insertions land in the right buffer.
   QJsonArray functions = root.value("functions").toArray();
   const int saved_active = root.value("activeFunction").toInt(0);
-  for (int slot = 0; slot < functions.size() && slot < 3; ++slot) {
+  for (int slot = 0; slot < functions.size() && slot < kFunctionCount; ++slot) {
     QString expr = functions[slot].toString();
     if (expr.isEmpty()) continue;
     m_activeIdx = slot;
     processExpression(expr);
   }
-  m_activeIdx = (saved_active >= 0 && saved_active < 3) ? saved_active : 0;
+  m_activeIdx = (saved_active >= 0 && saved_active < kFunctionCount) ? saved_active : 0;
+
+  // Y-editor per-slot on/off and line style.
+  QJsonArray fnEnabled = root.value("fnEnabled").toArray();
+  for (int i = 0; i < fnEnabled.size() && i < kFunctionCount; ++i)
+    m_functionEnabled[i] = fnEnabled[i].toBool(true);
+  QJsonArray fnStyle = root.value("fnStyle").toArray();
+  for (int i = 0; i < fnStyle.size() && i < kFunctionCount; ++i) {
+    int s = fnStyle[i].toInt(0);
+    m_functionStyle[i] = (s >= 0 && s <= 2) ? s : 0;
+  }
 
   // Treat the loaded display content as a "previous result" — next
   // keypress should clear and start fresh (state-machine rule:
@@ -560,6 +578,7 @@ void UIController::loadState() {
   emit displayChanged();
   emit displayStateChanged();
   emit activeFunctionIndexChanged();
+  emit functionsChanged();
 
   CrashLogger::logEvent(QStringLiteral("loadState ok"));
 }
@@ -580,6 +599,8 @@ void UIController::resetAll() {
   // Controller-owned state.
   for (auto &buf : m_functionBuffers) buf.clear();
   for (auto &s   : m_displayStrings)  s.clear();
+  std::fill(m_functionEnabled.begin(), m_functionEnabled.end(), true);
+  std::fill(m_functionStyle.begin(), m_functionStyle.end(), 0);
   m_history.clear();
   m_entryHistory.clear();
   m_recallCycleIdx = -1;
@@ -631,6 +652,7 @@ void UIController::resetAll() {
   emit insertModeChanged();
   emit drawModeChanged();
   emit traceChanged();
+  emit functionsChanged();
 }
 
 void UIController::clearAllLists() {
@@ -2036,7 +2058,10 @@ QVariantList UIController::getMultiGraphPoints(int resolution) {
 
   for (size_t f = 0; f < m_functionBuffers.size(); ++f) {
     QVariantList points;
-    if (!m_functionBuffers[f].empty()) {
+    // Skip disabled slots (Y-editor on/off) — an empty inner list keeps
+    // the slot index → colour mapping stable (BUG-012).
+    const bool on = (f < m_functionEnabled.size()) ? m_functionEnabled[f] : true;
+    if (on && !m_functionBuffers[f].empty()) {
       for (int i = 0; i <= resolution; ++i) {
         double s = sweepMin + (i * step);
         CalculationResult res = msm.evaluate(m_functionBuffers[f], s);

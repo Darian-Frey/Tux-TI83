@@ -166,6 +166,35 @@ public:
     // `processExpression` so insertion uses the unified token table.
     Q_INVOKABLE QStringList catalogEntries() const;
     Q_INVOKABLE void setActiveFunction(int index) { m_activeIdx = index; emit activeFunctionIndexChanged(); }
+
+    // Y-editor (Phase D): 10 function slots Y1..Y9, Y0. Each has an
+    // enabled (on/off) flag and a line style (0 thin, 1 thick, 2 dotted).
+    Q_INVOKABLE int functionCount() const { return kFunctionCount; }
+    Q_INVOKABLE bool functionEnabled(int i) const {
+        return (i >= 0 && i < static_cast<int>(m_functionEnabled.size()))
+                   ? m_functionEnabled[i] : false;
+    }
+    Q_INVOKABLE void toggleFunctionEnabled(int i) {
+        if (i >= 0 && i < static_cast<int>(m_functionEnabled.size())) {
+            m_functionEnabled[i] = !m_functionEnabled[i];
+            emit functionsChanged();
+        }
+    }
+    Q_INVOKABLE int functionStyle(int i) const {
+        return (i >= 0 && i < static_cast<int>(m_functionStyle.size()))
+                   ? m_functionStyle[i] : 0;
+    }
+    Q_INVOKABLE void cycleFunctionStyle(int i) {
+        if (i >= 0 && i < static_cast<int>(m_functionStyle.size())) {
+            m_functionStyle[i] = (m_functionStyle[i] + 1) % 3;
+            emit functionsChanged();
+        }
+    }
+    // The display string (expression preview) for slot i.
+    Q_INVOKABLE QString functionExpr(int i) const {
+        return (i >= 0 && i < static_cast<int>(m_displayStrings.size()))
+                   ? m_displayStrings[i] : QString();
+    }
     Q_INVOKABLE void toggleGraphMode() {
         m_isGraphMode = !m_isGraphMode;
         // Mutually exclusive with TABLE mode.
@@ -330,6 +359,7 @@ signals:
     void displayChanged();
     void historyChanged();
     void activeFunctionIndexChanged();
+    void functionsChanged();
     void viewportChanged();
     void graphModeChanged();
     void tableModeChanged();
@@ -364,8 +394,12 @@ private:
     void convertDisplayToFraction();
     void convertDisplayToDecimal();
 
+    static constexpr int kFunctionCount = 10;  // Y1..Y9, Y0
     std::vector<std::vector<Token>> m_functionBuffers;
     std::vector<QString> m_displayStrings;
+    // Per-slot on/off (default on) and line style (0 thin/1 thick/2 dot).
+    std::vector<bool> m_functionEnabled;
+    std::vector<int> m_functionStyle;
     QStringList m_history;
     int m_activeIdx;
     bool m_isGraphMode = false;

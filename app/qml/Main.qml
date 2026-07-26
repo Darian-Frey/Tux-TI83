@@ -557,11 +557,13 @@ ApplicationWindow {
                     if (!uiController.isGraphMode)
                         uiController.toggleGraphMode()
                 } else if (label === "Y=") {
-                    // Return to keypad from any graph/table mode.
+                    // Return to the keypad from any graph/table mode, then
+                    // open the Y= editor (the 10-function list).
                     if (uiController.isGraphMode)
                         uiController.toggleGraphMode()
                     if (uiController.isTableMode)
                         uiController.toggleTableMode()
+                    yEditorPopup.open()
                 }
             }
         }
@@ -817,6 +819,10 @@ ApplicationWindow {
 
     FormatPopup {
         id: formatPopup
+    }
+
+    YEditorPopup {
+        id: yEditorPopup
     }
 
     MathMenuPopup {

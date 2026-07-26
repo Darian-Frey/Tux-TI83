@@ -1580,6 +1580,37 @@ int main(int argc, char *argv[]) {
     tux_ti83::MathStateMachine::listRegistry.clear();
   }
 
+  section("Y-editor: 10 functions + on/off (Phase D)");
+  {
+    checkTrue("functionCount == 10", c.functionCount() == 10);
+    checkTrue("all slots default enabled",
+              c.functionEnabled(0) && c.functionEnabled(9));
+    checkTrue("default style thin (0)", c.functionStyle(4) == 0);
+
+    // Define Y1 and Y8 (index 7), disable Y1: only Y8 should plot.
+    c.setActiveFunction(0); eval(c, "X");
+    c.setActiveFunction(7); eval(c, "2X");
+    c.toggleFunctionEnabled(0);  // Y1 off
+    QVariantList pts = c.getMultiGraphPoints(10);
+    checkTrue("10 slot-lists returned", pts.size() == 10);
+    checkTrue("Y1 disabled → empty list", pts[0].toList().isEmpty());
+    checkTrue("Y8 enabled+defined → has points", !pts[7].toList().isEmpty());
+    c.toggleFunctionEnabled(0);  // back on
+    checkTrue("Y1 re-enabled → has points",
+              !c.getMultiGraphPoints(10)[0].toList().isEmpty());
+
+    // Style cycles thin → thick → dotted → thin.
+    c.cycleFunctionStyle(2);
+    checkTrue("style cycles to thick(1)", c.functionStyle(2) == 1);
+    c.cycleFunctionStyle(2); c.cycleFunctionStyle(2);
+    checkTrue("style wraps back to thin(0)", c.functionStyle(2) == 0);
+
+    // Clean up the buffers we defined.
+    c.setActiveFunction(0); c.processInput("CLEAR");
+    c.setActiveFunction(7); c.processInput("CLEAR");
+    c.setActiveFunction(0);
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

@@ -37,9 +37,7 @@ Rectangle {
         id: canvas
         anchors.fill: parent
 
-        // Function-curve palette. Three slots match Y1/Y2/Y3 in the
-        // common case (all three functions defined and contiguous).
-        readonly property var fnColors: [Style.textExpr, Style.textError, Style.textResult]
+        // Curve colours come from Style.graphColors (10 slots, Y1..Y0).
 
         onPaint: {
             const ctx = getContext("2d")
@@ -116,12 +114,16 @@ Rectangle {
             // segments between adjacent samples; Dot mode draws one
             // filled circle per sample with no connecting strokes —
             // matches TI-83 MODE → Connected/Dot.
+            // Function curves. The global MODE → Dot draws every curve as
+            // dots; otherwise each slot uses its Y-editor line style
+            // (0 thin / 1 thick / 2 dotted).
             const multiPts = uiController.getMultiGraphPoints(600)
             const dotMode = uiController.drawMode === 1
             for (let f = 0; f < multiPts.length; f++) {
                 const pts = multiPts[f]
                 if (!pts || pts.length === 0) continue
-                const colour = canvas.fnColors[f % canvas.fnColors.length]
+                const colour = Style.graphColors[f % Style.graphColors.length]
+                const fstyle = uiController.functionStyle(f)
                 if (dotMode) {
                     ctx.fillStyle = colour
                     for (let i = 0; i < pts.length; i++) {
@@ -133,13 +135,15 @@ Rectangle {
                 } else {
                     ctx.beginPath()
                     ctx.strokeStyle = colour
-                    ctx.lineWidth = 2
+                    ctx.lineWidth = (fstyle === 1) ? 4 : 2  // thick vs thin
+                    ctx.setLineDash(fstyle === 2 ? [2, 4] : [])  // dotted
                     for (let i = 0; i < pts.length; i++) {
                         const p = toPx(pts[i].x, pts[i].y)
                         if (i === 0) ctx.moveTo(p.x, p.y)
                         else ctx.lineTo(p.x, p.y)
                     }
                     ctx.stroke()
+                    ctx.setLineDash([])
                 }
             }
 
@@ -219,7 +223,7 @@ Rectangle {
                 const tx = uiController.traceX
                 const ty = uiController.traceY
                 const activeIdx = uiController.activeFunctionIndex
-                const traceColour = canvas.fnColors[activeIdx % canvas.fnColors.length]
+                const traceColour = Style.graphColors[activeIdx % Style.graphColors.length]
 
                 // Marker — only if traceY is finite and on-screen.
                 if (isFinite(ty)) {
@@ -345,6 +349,7 @@ Rectangle {
             function onGraphModeSettingChanged() { canvas.requestPaint() }
             function onStatPlotChanged() { canvas.requestPaint() }
             function onFormatChanged() { canvas.requestPaint() }
+            function onFunctionsChanged() { canvas.requestPaint() }
             function onTraceChanged() { canvas.requestPaint() }
         }
     }

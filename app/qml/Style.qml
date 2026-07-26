@@ -17,6 +17,14 @@ QtObject {
     readonly property color textResult:    "#4ade80"
     readonly property color textError:     "#f87171"
 
+    // Graph curve palette — 10 distinct colours for Y1..Y0 (Y-editor).
+    // The first three match textExpr / textError / textResult so
+    // existing Y1/Y2/Y3 colours are unchanged.
+    readonly property var graphColors: [
+        "#3b82f6", "#f87171", "#4ade80", "#fbbf24", "#a78bfa",
+        "#22d3ee", "#f472b6", "#fb923c", "#2dd4bf", "#a3e635"
+    ]
+
     // ── Semantic key colours ──────────────────────────────
     readonly property color opBorder:     "#1e3a5f"
     readonly property color opBg:         "#163354"
