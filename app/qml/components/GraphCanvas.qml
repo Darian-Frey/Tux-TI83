@@ -268,21 +268,65 @@ Rectangle {
                     ctx.fillText(readout, padX, height - padY - 1)
                 }
             }
+
+            // ZBox rubber-band rectangle (drawn last, on top).
+            if (dragArea.boxing) {
+                const rx = Math.min(dragArea.boxX0, dragArea.boxX1)
+                const ry = Math.min(dragArea.boxY0, dragArea.boxY1)
+                const rw = Math.abs(dragArea.boxX1 - dragArea.boxX0)
+                const rh = Math.abs(dragArea.boxY1 - dragArea.boxY0)
+                ctx.fillStyle = Style.textExpr
+                ctx.globalAlpha = 0.15
+                ctx.fillRect(rx, ry, rw, rh)
+                ctx.globalAlpha = 1.0
+                ctx.strokeStyle = Style.textExpr
+                ctx.lineWidth = 1
+                ctx.strokeRect(rx, ry, rw, rh)
+            }
         }
 
         MouseArea {
+            id: dragArea
             anchors.fill: parent
             property real lastX: 0
             property real lastY: 0
+            // ZBox rubber-band state (active while uiController.zoomBoxArm).
+            property bool boxing: false
+            property real boxX0: 0
+            property real boxY0: 0
+            property real boxX1: 0
+            property real boxY1: 0
+
+            // Pixel → data-coordinate conversion (inverse of toPx).
+            function dataX(px) { return uiController.xMin + px / width * (uiController.xMax - uiController.xMin) }
+            function dataY(py) { return uiController.yMin + (height - py) / height * (uiController.yMax - uiController.yMin) }
+
             onPressed: (mouse) => {
-                lastX = mouse.x
-                lastY = mouse.y
+                if (uiController.zoomBoxArm) {
+                    boxing = true
+                    boxX0 = boxX1 = mouse.x
+                    boxY0 = boxY1 = mouse.y
+                } else {
+                    lastX = mouse.x
+                    lastY = mouse.y
+                }
             }
             onPositionChanged: (mouse) => {
-                if (pressed) {
+                if (boxing) {
+                    boxX1 = mouse.x
+                    boxY1 = mouse.y
+                    canvas.requestPaint()
+                } else if (pressed) {
                     uiController.pan(mouse.x - lastX, mouse.y - lastY, width, height)
                     lastX = mouse.x
                     lastY = mouse.y
+                }
+            }
+            onReleased: (mouse) => {
+                if (boxing) {
+                    boxing = false
+                    uiController.zoomBox(dataX(boxX0), dataY(boxY0),
+                                         dataX(mouse.x), dataY(mouse.y))
                 }
             }
             onWheel: (wheel) => {

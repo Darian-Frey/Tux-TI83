@@ -1537,6 +1537,49 @@ int main(int argc, char *argv[]) {
     tux_ti83::MathStateMachine::varRegistry.fill(0.0);
   }
 
+  section("Zoom menu completion (Phase D)");
+  {
+    auto near = [](double a, double b) { return std::abs(a - b) < 1e-6; };
+    auto X0 = [&]() { return c.property("xMin").toDouble(); };
+    auto X1 = [&]() { return c.property("xMax").toDouble(); };
+    auto Y0 = [&]() { return c.property("yMin").toDouble(); };
+    auto Y1 = [&]() { return c.property("yMax").toDouble(); };
+
+    // ZBox normalises its corners into the new window.
+    c.resetViewport();
+    c.zoomBox(3, 4, 1, 2);
+    checkTrue("zoomBox → [1,3]×[2,4]",
+              near(X0(), 1) && near(X1(), 3) && near(Y0(), 2) && near(Y1(), 4));
+
+    // ZoomPrevious restores the pre-box window (standard −10..10).
+    c.zoomPrevious();
+    checkTrue("zoomPrevious → back to standard",
+              near(X0(), -10) && near(X1(), 10) && near(Y0(), -10) && near(Y1(), 10));
+
+    // ZoomMemory: store a window, change it, recall it.
+    c.resetViewport();
+    c.zoomBox(0, 0, 5, 5);
+    c.zoomStore();
+    c.resetViewport();
+    c.zoomRecall();
+    checkTrue("zoomRecall → stored [0,5]×[0,5]",
+              near(X0(), 0) && near(X1(), 5) && near(Y0(), 0) && near(Y1(), 5));
+
+    // ZoomStat fits Xlist (x) / Ylist (y) with 10% padding.
+    tux_ti83::MathStateMachine::listRegistry.clear();
+    c.updateList("L1", QVariantList{0, 10});
+    c.updateList("L2", QVariantList{0, 20});
+    c.setProperty("statPlotType", 0);
+    c.setProperty("statPlotXList", "L1");
+    c.setProperty("statPlotYList", "L2");
+    c.zoomStat();
+    checkTrue("zoomStat x → [-1,11]", near(X0(), -1) && near(X1(), 11));
+    checkTrue("zoomStat y → [-2,22]", near(Y0(), -2) && near(Y1(), 22));
+
+    c.resetViewport();
+    tux_ti83::MathStateMachine::listRegistry.clear();
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

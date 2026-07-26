@@ -365,6 +365,11 @@ void UIController::saveState() const {
   viewport["xMax"] = m_xMax;
   viewport["yMin"] = m_yMin;
   viewport["yMax"] = m_yMax;
+  // ZoomMemory stored window.
+  viewport["savedXMin"] = m_savedXMin;
+  viewport["savedXMax"] = m_savedXMax;
+  viewport["savedYMin"] = m_savedYMin;
+  viewport["savedYMax"] = m_savedYMax;
   root["viewport"] = viewport;
 
   // MODE settings.
@@ -517,6 +522,10 @@ void UIController::loadState() {
   if (viewport.contains("xMax")) m_xMax = viewport["xMax"].toDouble();
   if (viewport.contains("yMin")) m_yMin = viewport["yMin"].toDouble();
   if (viewport.contains("yMax")) m_yMax = viewport["yMax"].toDouble();
+  if (viewport.contains("savedXMin")) m_savedXMin = viewport["savedXMin"].toDouble();
+  if (viewport.contains("savedXMax")) m_savedXMax = viewport["savedXMax"].toDouble();
+  if (viewport.contains("savedYMin")) m_savedYMin = viewport["savedYMin"].toDouble();
+  if (viewport.contains("savedYMax")) m_savedYMax = viewport["savedYMax"].toDouble();
 
   // Function buffers — replay the display strings through
   // processExpression so the tokeniser handles dispatch. Each slot
@@ -1924,6 +1933,54 @@ void UIController::zoomInteger() {
     const double cy = (m_yMin + m_yMax) * 0.5;
     m_yMin = cy - 1.0; m_yMax = cy + 1.0;
   }
+  emit viewportChanged();
+}
+
+void UIController::zoomBox(double x1, double y1, double x2, double y2) {
+  CrashLogger::logEvent(QStringLiteral("zoomBox"));
+  m_zoomBoxArm = false;
+  emit zoomBoxArmChanged();
+  const double xlo = std::min(x1, x2), xhi = std::max(x1, x2);
+  const double ylo = std::min(y1, y2), yhi = std::max(y1, y2);
+  // Ignore a degenerate (near-zero-area) box — e.g. a stray click.
+  if (xhi - xlo < 1e-9 || yhi - ylo < 1e-9)
+    return;
+  savePrevViewport();
+  m_xMin = xlo; m_xMax = xhi; m_yMin = ylo; m_yMax = yhi;
+  emit viewportChanged();
+}
+
+void UIController::zoomStat() {
+  CrashLogger::logEvent(QStringLiteral("zoomStat"));
+  // Fit the viewport to the stat-plot lists: x from Xlist, y from Ylist
+  // (scatter/xyLine) or from Xlist otherwise. No-op if Xlist is empty.
+  Token xt;
+  if (!listTokenForName(m_statPlotXList, xt))
+    return;
+  auto xi = MathStateMachine::listRegistry.find(xt);
+  if (xi == MathStateMachine::listRegistry.end() || xi->second.empty())
+    return;
+  const std::vector<double> &X = xi->second;
+
+  const std::vector<double> *Y = &X;
+  if (m_statPlotType == 0 || m_statPlotType == 1) {
+    Token yt;
+    if (listTokenForName(m_statPlotYList, yt)) {
+      auto yi = MathStateMachine::listRegistry.find(yt);
+      if (yi != MathStateMachine::listRegistry.end() && !yi->second.empty())
+        Y = &yi->second;
+    }
+  }
+
+  double xlo = X[0], xhi = X[0];
+  for (double v : X) { xlo = std::min(xlo, v); xhi = std::max(xhi, v); }
+  double ylo = (*Y)[0], yhi = (*Y)[0];
+  for (double v : *Y) { ylo = std::min(ylo, v); yhi = std::max(yhi, v); }
+
+  double xpad = (xhi - xlo) * 0.1; if (xpad <= 0.0) xpad = 1.0;
+  double ypad = (yhi - ylo) * 0.1; if (ypad <= 0.0) ypad = 1.0;
+  m_xMin = xlo - xpad; m_xMax = xhi + xpad;
+  m_yMin = ylo - ypad; m_yMax = yhi + ypad;
   emit viewportChanged();
 }
 

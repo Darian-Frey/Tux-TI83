@@ -263,17 +263,14 @@ arithmetic, and `STO→` to a list are done in the engine and covered by
 - ✅ `TABLE` view — function values for a sequence of x's, opened via 2ND+GRAPH; scrollable X | Y1 | Y2 | Y3 with ↑/↓ stepping; see [IMP-035](IMPROVEMENTS.md)
 - ✅ `TBLSET` (start, step) — popup opened via 2ND+WINDOW; auto/ask not yet implemented (currently auto-only)
 
-### Zoom menu (full TI-83 set)
+### Zoom menu (full TI-83 set) — **complete (2026-07-26)**
+All 13 entries in the `ZoomPopup` (scrollable):
 - ✅ ZStandard, ZoomFit
-- 📅 ZBox (zoom to a user-drawn rectangle)
-- 📅 Zoom In, Zoom Out
-- 📅 ZDecimal (nice round decimal coords)
-- 📅 ZSquare (equal x/y scaling)
-- 📅 ZTrig (trig-friendly window: -2π..2π)
-- 📅 ZInteger (integer x coords)
-- 📅 ZoomStat (fit current stat plot data)
-- 📅 ZoomPrevious
-- 📅 ZoomMemory (save/recall window settings)
+- ✅ Zoom In, Zoom Out, ZSquare, ZTrig, ZDecimal, ZInteger (IMP-039)
+- ✅ ZBox (drag a rubber-band rectangle on the canvas → `armZoomBox`/`zoomBox`) — Phase D
+- ✅ ZoomStat (fit the stat-plot Xlist/Ylist with 10% padding) — Phase D
+- ✅ ZoomPrevious (swap with the pre-zoom window; the popup snapshots before each menu zoom) — Phase D
+- ✅ ZoomMemory (ZoomSto / ZoomRcl — store & recall a window, persisted in state.json) — Phase D
 
 ### DRAW menu
 - 📅 `Pt-On(`, `Pt-Off(`, `Pt-Change(`

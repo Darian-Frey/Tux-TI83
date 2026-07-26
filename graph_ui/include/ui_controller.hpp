@@ -89,6 +89,8 @@ private:
     // Graph FORMAT flags (2ND+ZOOM). Toggle grid lines, axes, the trace
     // coordinate readout, and the tick-number labels. All default on to
     // preserve the pre-Format-menu appearance.
+    // ZBox arm flag — while true, a canvas drag defines the zoom box.
+    Q_PROPERTY(bool zoomBoxArm MEMBER m_zoomBoxArm NOTIFY zoomBoxArmChanged)
     Q_PROPERTY(bool gridOn MEMBER m_gridOn NOTIFY formatChanged)
     Q_PROPERTY(bool axesOn MEMBER m_axesOn NOTIFY formatChanged)
     Q_PROPERTY(bool coordOn MEMBER m_coordOn NOTIFY formatChanged)
@@ -249,6 +251,43 @@ public:
     // ZInteger: snap the current viewport edges to the nearest
     // integers. Useful when stepping through integer X values.
     Q_INVOKABLE void zoomInteger();
+
+    // --- Zoom menu completion (Phase D) ---
+    // Snapshot the current viewport as the "previous" one. Called by the
+    // ZOOM popup before each menu zoom so ZoomPrevious can undo it (pan
+    // and scroll-zoom deliberately don't snapshot).
+    Q_INVOKABLE void savePrevViewport() {
+        m_prevXMin = m_xMin; m_prevXMax = m_xMax;
+        m_prevYMin = m_yMin; m_prevYMax = m_yMax;
+    }
+    // ZoomPrevious — swap current ↔ previous (so it's reversible).
+    Q_INVOKABLE void zoomPrevious() {
+        std::swap(m_xMin, m_prevXMin); std::swap(m_xMax, m_prevXMax);
+        std::swap(m_yMin, m_prevYMin); std::swap(m_yMax, m_prevYMax);
+        emit viewportChanged();
+    }
+    // ZoomMemory: store the current window / recall the stored one.
+    Q_INVOKABLE void zoomStore() {
+        m_savedXMin = m_xMin; m_savedXMax = m_xMax;
+        m_savedYMin = m_yMin; m_savedYMax = m_yMax;
+    }
+    Q_INVOKABLE void zoomRecall() {
+        savePrevViewport();
+        m_xMin = m_savedXMin; m_xMax = m_savedXMax;
+        m_yMin = m_savedYMin; m_yMax = m_savedYMax;
+        emit viewportChanged();
+    }
+    // ZBox: arm box-select; the next click-drag on the canvas defines the
+    // zoom rectangle, which is committed via zoomBox() (data coords).
+    Q_INVOKABLE void armZoomBox() {
+        m_isGraphMode = true;
+        m_zoomBoxArm = true;
+        emit graphModeChanged();
+        emit zoomBoxArmChanged();
+    }
+    Q_INVOKABLE void zoomBox(double x1, double y1, double x2, double y2);
+    // ZoomStat: fit the viewport to the stat-plot lists.
+    Q_INVOKABLE void zoomStat();
     Q_INVOKABLE void updateMatrix(const QString& name, int rows, int cols, const QVariantList& values);
     // IMP-007: read a stored matrix back for the EDIT tab. Returns
     // {"rows": int, "cols": int, "data": [doubles]}. Undefined/unknown
@@ -306,6 +345,7 @@ signals:
     void graphModeSettingChanged();
     void statPlotChanged();
     void formatChanged();
+    void zoomBoxArmChanged();
     void traceChanged();
 
 private:
@@ -333,6 +373,11 @@ private:
     double m_tblStart = 0.0;
     double m_tblStep  = 1.0;
     double m_xMin = -10, m_xMax = 10, m_yMin = -10, m_yMax = 10;
+    // Zoom-menu state: previous viewport (ZoomPrevious), stored viewport
+    // (ZoomMemory), and the ZBox arm flag.
+    double m_prevXMin = -10, m_prevXMax = 10, m_prevYMin = -10, m_prevYMax = 10;
+    double m_savedXMin = -10, m_savedXMax = 10, m_savedYMin = -10, m_savedYMax = 10;
+    bool m_zoomBoxArm = false;
     DisplayState m_displayState = Inputting;
     QString m_displayExpression;
     // Entry-recall ring buffer. Newest at back; oldest evicted when
