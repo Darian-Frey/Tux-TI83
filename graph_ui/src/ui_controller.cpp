@@ -363,6 +363,8 @@ void UIController::saveState() const {
   for (int s : m_functionStyle) fnStyle.append(s);
   root["fnEnabled"] = fnEnabled;
   root["fnStyle"] = fnStyle;
+  // DRAW overlays.
+  root["draw"] = QJsonArray::fromVariantList(m_drawObjects);
 
   // Active function slot index.
   root["activeFunction"] = m_activeIdx;
@@ -558,6 +560,7 @@ void UIController::loadState() {
     int s = fnStyle[i].toInt(0);
     m_functionStyle[i] = (s >= 0 && s <= 2) ? s : 0;
   }
+  m_drawObjects = root.value("draw").toArray().toVariantList();
 
   // Treat the loaded display content as a "previous result" — next
   // keypress should clear and start fresh (state-machine rule:
@@ -579,6 +582,7 @@ void UIController::loadState() {
   emit displayStateChanged();
   emit activeFunctionIndexChanged();
   emit functionsChanged();
+  emit drawObjectsChanged();
 
   CrashLogger::logEvent(QStringLiteral("loadState ok"));
 }
@@ -601,6 +605,7 @@ void UIController::resetAll() {
   for (auto &s   : m_displayStrings)  s.clear();
   std::fill(m_functionEnabled.begin(), m_functionEnabled.end(), true);
   std::fill(m_functionStyle.begin(), m_functionStyle.end(), 0);
+  m_drawObjects.clear();
   m_history.clear();
   m_entryHistory.clear();
   m_recallCycleIdx = -1;
@@ -653,6 +658,7 @@ void UIController::resetAll() {
   emit drawModeChanged();
   emit traceChanged();
   emit functionsChanged();
+  emit drawObjectsChanged();
 }
 
 void UIController::clearAllLists() {
@@ -2004,6 +2010,61 @@ void UIController::zoomStat() {
   m_xMin = xlo - xpad; m_xMax = xhi + xpad;
   m_yMin = ylo - ypad; m_yMax = yhi + ypad;
   emit viewportChanged();
+}
+
+void UIController::drawLine(double x1, double y1, double x2, double y2) {
+  QVariantMap o;
+  o["type"] = "line"; o["a"] = x1; o["b"] = y1; o["c"] = x2; o["d"] = y2;
+  m_drawObjects.append(o);
+  emit drawObjectsChanged();
+}
+
+void UIController::drawCircle(double x, double y, double r) {
+  QVariantMap o;
+  o["type"] = "circle"; o["a"] = x; o["b"] = y; o["c"] = r;
+  m_drawObjects.append(o);
+  emit drawObjectsChanged();
+}
+
+void UIController::drawHorizontal(double y) {
+  QVariantMap o;
+  o["type"] = "hline"; o["a"] = y;
+  m_drawObjects.append(o);
+  emit drawObjectsChanged();
+}
+
+void UIController::drawVertical(double x) {
+  QVariantMap o;
+  o["type"] = "vline"; o["a"] = x;
+  m_drawObjects.append(o);
+  emit drawObjectsChanged();
+}
+
+void UIController::drawPoint(double x, double y) {
+  QVariantMap o;
+  o["type"] = "point"; o["a"] = x; o["b"] = y;
+  m_drawObjects.append(o);
+  emit drawObjectsChanged();
+}
+
+void UIController::drawText(double x, double y, const QString &text) {
+  QVariantMap o;
+  o["type"] = "text"; o["a"] = x; o["b"] = y; o["text"] = text;
+  m_drawObjects.append(o);
+  emit drawObjectsChanged();
+}
+
+void UIController::clrDraw() {
+  CrashLogger::logEvent(QStringLiteral("clrDraw"));
+  m_drawObjects.clear();
+  emit drawObjectsChanged();
+}
+
+void UIController::deleteDrawObject(int index) {
+  if (index >= 0 && index < m_drawObjects.size()) {
+    m_drawObjects.removeAt(index);
+    emit drawObjectsChanged();
+  }
 }
 
 QVariantList UIController::getTableRows(int count, double xStart) {

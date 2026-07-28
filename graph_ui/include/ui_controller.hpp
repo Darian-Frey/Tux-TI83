@@ -317,6 +317,22 @@ public:
     Q_INVOKABLE void zoomBox(double x1, double y1, double x2, double y2);
     // ZoomStat: fit the viewport to the stat-plot lists.
     Q_INVOKABLE void zoomStat();
+
+    // --- DRAW menu (Phase D) ---
+    // Persistent graph overlays. Each is stored as a QVariantMap
+    // {type, a, b, c, d, text} and rendered by the canvas over the
+    // curves. getDrawObjects() feeds the canvas; the draw* methods add
+    // one; clrDraw() removes all.
+    Q_INVOKABLE QVariantList getDrawObjects() const { return m_drawObjects; }
+    Q_INVOKABLE void drawLine(double x1, double y1, double x2, double y2);
+    Q_INVOKABLE void drawCircle(double x, double y, double r);
+    Q_INVOKABLE void drawHorizontal(double y);
+    Q_INVOKABLE void drawVertical(double x);
+    Q_INVOKABLE void drawPoint(double x, double y);
+    Q_INVOKABLE void drawText(double x, double y, const QString& text);
+    Q_INVOKABLE void clrDraw();
+    // Delete a single overlay by index (from the DRAW popup's list).
+    Q_INVOKABLE void deleteDrawObject(int index);
     Q_INVOKABLE void updateMatrix(const QString& name, int rows, int cols, const QVariantList& values);
     // IMP-007: read a stored matrix back for the EDIT tab. Returns
     // {"rows": int, "cols": int, "data": [doubles]}. Undefined/unknown
@@ -360,6 +376,7 @@ signals:
     void historyChanged();
     void activeFunctionIndexChanged();
     void functionsChanged();
+    void drawObjectsChanged();
     void viewportChanged();
     void graphModeChanged();
     void tableModeChanged();
@@ -400,6 +417,8 @@ private:
     // Per-slot on/off (default on) and line style (0 thin/1 thick/2 dot).
     std::vector<bool> m_functionEnabled;
     std::vector<int> m_functionStyle;
+    // DRAW-menu overlays (each a QVariantMap {type, a, b, c, d, text}).
+    QVariantList m_drawObjects;
     QStringList m_history;
     int m_activeIdx;
     bool m_isGraphMode = false;

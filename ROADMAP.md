@@ -36,7 +36,12 @@ arithmetic; list functions (`sum`/`prod`/`mean`/`median`/`min`/`max`/
 `stdDev`/`variance`/`seq`); 1-Var and 2-Var stats; six regression models
 (Lin/Quad/Cubic/Exp/Ln/Pwr); random functions (`rand`/`randInt`/
 `randNorm`/`randBin`); and stat plots (scatter/xyLine/histogram/box).
-Phases A, B, C are complete; E is largely done; F is partially done
+**Phase D complete (2026-07-26)** too — graphing maturity: Trace,
+Tables, the full Zoom menu, the FORMAT menu, the 10-function Y-editor
+(Y1–Y0 with on/off + line styles), and the DRAW menu (Line/Circle/
+Horizontal/Vertical/Pt-On/Text/ClrDraw with per-element delete).
+
+Phases A, B, C, D are complete; E is largely done; F is partially done
 (calculus + polar landed).
 
 At this point the test suite stands at **419 passing / 0 open bugs**.
@@ -272,17 +277,21 @@ All 13 entries in the `ZoomPopup` (scrollable):
 - ✅ ZoomPrevious (swap with the pre-zoom window; the popup snapshots before each menu zoom) — Phase D
 - ✅ ZoomMemory (ZoomSto / ZoomRcl — store & recall a window, persisted in state.json) — Phase D
 
-### DRAW menu
-- 📅 `Pt-On(`, `Pt-Off(`, `Pt-Change(`
-- 📅 `Line(`, `Vertical`, `Horizontal`
-- 📅 `Circle(`
-- 📅 `Tangent(`
-- 📅 `Pen` (freehand draw)
-- 📅 `Text(` (overlay text on graph)
-- 📅 `Shade(`
-- 📅 `DrawF` (draw a function expression)
-- 📅 `DrawInv` (draw inverse of a function)
-- 📅 `ClrDraw`
+### DRAW menu — **core set landed 2026-07-26** (Phase D)
+
+`DRAWPopup` on 2ND+TRACE (TI-83 uses 2ND+PRGM, which this keypad lacks):
+pick a command, fill in the (data-coordinate) arg fields, DRAW adds a
+persistent overlay. Overlays are stored as `QVariantMap`s, rendered by
+the canvas over the curves (circles as a 60-point polygon so they're
+true circles in data coords), and persisted in `state.json`. The popup
+lists the current drawings with a per-item ✕ delete; CLRDRAW clears all.
+
+- ✅ `Pt-On(` — point marker. (Pt-Off/Pt-Change deferred.)
+- ✅ `Line(`, `Horizontal`, `Vertical`
+- ✅ `Circle(`
+- ✅ `Text(` (overlay text on graph)
+- ✅ `ClrDraw` + per-element delete (delete one / clear all)
+- 📅 `Tangent(`, `Pen` (freehand), `Shade(`, `DrawF`, `DrawInv` — deferred
 
 ### Format menu
 

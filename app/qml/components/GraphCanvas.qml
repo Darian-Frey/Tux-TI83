@@ -218,6 +218,46 @@ Rectangle {
                 }
             }
 
+            // DRAW-menu overlays (Phase D) — persistent shapes over the
+            // curves, in a neutral light colour. Circles are drawn as a
+            // 60-point polygon so they respect both axis scales (a true
+            // circle in data coords) rather than an on-screen ellipse.
+            const draws = uiController.getDrawObjects()
+            if (draws.length > 0) {
+                ctx.strokeStyle = Style.textDisplay
+                ctx.fillStyle = Style.textDisplay
+                ctx.lineWidth = 1.5
+                ctx.setLineDash([])
+                for (let d = 0; d < draws.length; d++) {
+                    const o = draws[d]
+                    if (o.type === "line") {
+                        const p1 = toPx(o.a, o.b), p2 = toPx(o.c, o.d)
+                        ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke()
+                    } else if (o.type === "hline") {
+                        const py = toPx(0, o.a).y
+                        ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(width, py); ctx.stroke()
+                    } else if (o.type === "vline") {
+                        const px = toPx(o.a, 0).x
+                        ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, height); ctx.stroke()
+                    } else if (o.type === "circle") {
+                        ctx.beginPath()
+                        for (let k = 0; k <= 60; k++) {
+                            const t = k / 60 * 2 * Math.PI
+                            const p = toPx(o.a + o.c * Math.cos(t), o.b + o.c * Math.sin(t))
+                            if (k === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y)
+                        }
+                        ctx.stroke()
+                    } else if (o.type === "point") {
+                        const p = toPx(o.a, o.b)
+                        ctx.fillRect(p.x - 2, p.y - 2, 4, 4)
+                    } else if (o.type === "text") {
+                        const p = toPx(o.a, o.b)
+                        ctx.font = "11px " + Style.monoFamily
+                        ctx.fillText(o.text, p.x + 2, p.y - 2)
+                    }
+                }
+            }
+
             // Trace marker + readout (drawn last so it sits on top).
             if (traceActive) {
                 const tx = uiController.traceX
@@ -350,6 +390,7 @@ Rectangle {
             function onStatPlotChanged() { canvas.requestPaint() }
             function onFormatChanged() { canvas.requestPaint() }
             function onFunctionsChanged() { canvas.requestPaint() }
+            function onDrawObjectsChanged() { canvas.requestPaint() }
             function onTraceChanged() { canvas.requestPaint() }
         }
     }

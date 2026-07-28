@@ -1611,6 +1611,43 @@ int main(int argc, char *argv[]) {
     c.setActiveFunction(0);
   }
 
+  section("DRAW menu overlays (Phase D)");
+  {
+    c.clrDraw();
+    checkTrue("clrDraw → 0 objects", c.getDrawObjects().isEmpty());
+
+    c.drawLine(1, 2, 3, 4);
+    c.drawCircle(0, 0, 5);
+    c.drawHorizontal(3);
+    c.drawVertical(-2);
+    c.drawPoint(7, 8);
+    c.drawText(1, 1, "hi");
+    QVariantList objs = c.getDrawObjects();
+    checkTrue("6 draw objects added", objs.size() == 6);
+    checkTrue("first is a line at (1,2,3,4)",
+              objs[0].toMap()["type"].toString() == "line" &&
+              objs[0].toMap()["a"].toDouble() == 1.0 &&
+              objs[0].toMap()["d"].toDouble() == 4.0);
+    checkTrue("circle radius recorded",
+              objs[1].toMap()["type"].toString() == "circle" &&
+              objs[1].toMap()["c"].toDouble() == 5.0);
+    checkTrue("text string recorded",
+              objs[5].toMap()["type"].toString() == "text" &&
+              objs[5].toMap()["text"].toString() == "hi");
+
+    // Delete one element (the circle at index 1); the rest shift down.
+    c.deleteDrawObject(1);
+    QVariantList after = c.getDrawObjects();
+    checkTrue("deleteDrawObject → 5 left", after.size() == 5);
+    checkTrue("index 1 is now the horiz line",
+              after[1].toMap()["type"].toString() == "hline");
+    checkTrue("out-of-range delete is a no-op",
+              (c.deleteDrawObject(99), c.getDrawObjects().size() == 5));
+
+    c.clrDraw();
+    checkTrue("clrDraw clears all", c.getDrawObjects().isEmpty());
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

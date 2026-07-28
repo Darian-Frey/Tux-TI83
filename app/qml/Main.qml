@@ -540,6 +540,12 @@ ApplicationWindow {
                         formatPopup.open()
                         return
                     }
+                    if (label === "TRACE") {
+                        // 2ND+TRACE → DRAW menu (our binding; TI-83 uses
+                        // 2ND+PRGM, which this keypad doesn't have).
+                        drawPopup.open()
+                        return
+                    }
                     // 2ND+<unmapped> falls through to primary action.
                 }
 
@@ -557,13 +563,18 @@ ApplicationWindow {
                     if (!uiController.isGraphMode)
                         uiController.toggleGraphMode()
                 } else if (label === "Y=") {
-                    // Return to the keypad from any graph/table mode, then
-                    // open the Y= editor (the 10-function list).
-                    if (uiController.isGraphMode)
-                        uiController.toggleGraphMode()
-                    if (uiController.isTableMode)
-                        uiController.toggleTableMode()
-                    yEditorPopup.open()
+                    // Contextual: if we're in graph/table mode, Y= just
+                    // returns to the keypad (so it also exits Trace)
+                    // without popping the editor. Only when already on
+                    // the keypad does Y= open the Y= editor.
+                    if (uiController.isGraphMode || uiController.isTableMode) {
+                        if (uiController.isGraphMode)
+                            uiController.toggleGraphMode()
+                        if (uiController.isTableMode)
+                            uiController.toggleTableMode()
+                    } else {
+                        yEditorPopup.open()
+                    }
                 }
             }
         }
@@ -823,6 +834,10 @@ ApplicationWindow {
 
     YEditorPopup {
         id: yEditorPopup
+    }
+
+    DRAWPopup {
+        id: drawPopup
     }
 
     MathMenuPopup {
