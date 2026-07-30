@@ -1798,12 +1798,20 @@ int main(int argc, char *argv[]) {
     check("seed Ans = 2+3i", eval(c, "2+3i"), "2+3i");
     check("Ans+1 = 3+3i", evalChained(c, "Ans+1"), "3+3i");
 
-    // √ of a negative: Real mode errors, a+bi mode gives a complex root.
+    // Complex transcendentals (radian): sin/cos/exp/ln on complex.
+    check("sin(i) = i·sinh(1)", eval(c, "sin(i)"), "1.175201194i");
+    check("cos(i) = cosh(1) (real via snap)", eval(c, "cos(i)"), "1.543080635");
+    check("e^(i) = cos1+isin1", eval(c, "e^(i)"), "0.5403023059+0.8414709848i");
+    check("ln(i) = iπ/2", eval(c, "ln(i)"), "1.570796327i");
+    check("Euler: e^(iπ) = -1", eval(c, "e^(iπ)"), "-1");
+
+    // √ / ln of a negative: Real errors, a+bi gives a complex result.
     MathStateMachine::complexMode = ComplexMode::Real;
     check("√(-4) Real → ERR:NONREAL ANS", eval(c, "√(-4)"), "ERR:NONREAL ANS");
     MathStateMachine::complexMode = ComplexMode::Rect;
     check("√(-4) a+bi → 2i", eval(c, "√(-4)"), "2i");
     check("√(-1) a+bi → i", eval(c, "√(-1)"), "i");
+    check("ln(-1) a+bi → iπ", eval(c, "ln(-1)"), "3.141592654i");
     MathStateMachine::complexMode = ComplexMode::Real;  // restore default
   }
 

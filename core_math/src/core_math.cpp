@@ -1886,23 +1886,45 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
         stack.push({false, ang, {}}); continue;
       }
       if (isComplex(a)) {
+        // abs is the magnitude (a real result); everything else maps a
+        // complex → complex via std::complex. Complex trig/exp/log are
+        // radian-only (the angle-mode conversion is real-only).
         if (t == Token::Abs) {
           stack.push({false, std::hypot(a.val, a.imag), {}}); continue;
         }
-        if (t == Token::Neg) {
-          Operand o; o.val = -a.val; o.imag = -a.imag; stack.push(o); continue;
-        }
-        if (t == Token::Sqrt) {
-          std::complex<double> z = std::sqrt(toC(a));
-          Operand o; o.val = z.real(); o.imag = z.imag(); stack.push(o); continue;
-        }
-        // Other unary functions on a complex operand aren't supported yet.
-        return {false, 0.0, {}, false, "Type Error"};
+        const std::complex<double> z = toC(a);
+        std::complex<double> r;
+        bool ok = true;
+        if (t == Token::Neg)        r = -z;
+        else if (t == Token::Sqrt)  r = std::sqrt(z);
+        else if (t == Token::Sin)   r = std::sin(z);
+        else if (t == Token::Cos)   r = std::cos(z);
+        else if (t == Token::Tan)   r = std::tan(z);
+        else if (t == Token::ASin)  r = std::asin(z);
+        else if (t == Token::ACos)  r = std::acos(z);
+        else if (t == Token::ATan)  r = std::atan(z);
+        else if (t == Token::Exp)   r = std::exp(z);   // e^(
+        else if (t == Token::Ln)    r = std::log(z);
+        else if (t == Token::Log)   r = std::log10(z);
+        else if (t == Token::Sinh)  r = std::sinh(z);
+        else if (t == Token::Cosh)  r = std::cosh(z);
+        else if (t == Token::Tanh)  r = std::tanh(z);
+        else ok = false;
+        if (!ok)
+          return {false, 0.0, {}, false, "Type Error"};
+        Operand o; o.val = r.real(); o.imag = r.imag(); stack.push(o);
+        continue;
       }
-      // √ of a negative real → complex when not in Real mode.
-      if (t == Token::Sqrt && a.val < 0.0 &&
-          MathStateMachine::complexMode != ComplexMode::Real) {
-        Operand o; o.val = 0.0; o.imag = std::sqrt(-a.val); stack.push(o); continue;
+      // √ / ln / log of a negative real → complex when not in Real mode.
+      if (a.val < 0.0 &&
+          MathStateMachine::complexMode != ComplexMode::Real &&
+          (t == Token::Sqrt || t == Token::Ln || t == Token::Log)) {
+        const std::complex<double> z(a.val, 0.0);
+        const std::complex<double> r = (t == Token::Sqrt) ? std::sqrt(z)
+                                     : (t == Token::Ln)   ? std::log(z)
+                                                          : std::log10(z);
+        Operand o; o.val = r.real(); o.imag = r.imag(); stack.push(o);
+        continue;
       }
 
       // Handle functions based on type

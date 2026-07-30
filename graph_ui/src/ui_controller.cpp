@@ -876,6 +876,12 @@ void UIController::setComplexMode(int m) {
 // settings apply. In Polar (re^θi) mode a non-real value shows as
 // magnitude∠angle instead.
 QString UIController::formatComplex(double re, double im) const {
+  // Snap floating-point noise from transcendental complex results (e.g.
+  // e^(iπ) = -1 + 1e-16 i) so the display reads cleanly. Only reached
+  // for complex results, so this can't zero a genuine real value.
+  const double eps = 1e-10 * std::max({1.0, std::abs(re), std::abs(im)});
+  if (std::abs(im) < eps) im = 0.0;
+  if (std::abs(re) < eps) re = 0.0;
   if (im == 0.0)
     return formatScalar(re);
   if (MathStateMachine::complexMode == ComplexMode::Polar) {
