@@ -424,6 +424,9 @@ QJsonObject UIController::buildStateJson() const {
   mode["axesOn"]  = m_axesOn;
   mode["coordOn"] = m_coordOn;
   mode["labelOn"] = m_labelOn;
+  mode["paramTMin"]  = m_paramTMin;
+  mode["paramTMax"]  = m_paramTMax;
+  mode["paramTStep"] = m_paramTStep;
   mode["seqNMax"]  = m_seqNMax;
   mode["seqInitU"] = m_seqInitU;
   mode["seqInitV"] = m_seqInitV;
@@ -555,6 +558,9 @@ void UIController::applyStateJson(const QJsonObject &root) {
     const int g = mode["graphMode"].toInt();
     m_graphMode = (g >= 1 && g <= 3) ? g : 0;
   }
+  if (mode.contains("paramTMin"))  m_paramTMin  = mode["paramTMin"].toDouble(0.0);
+  if (mode.contains("paramTMax"))  m_paramTMax  = mode["paramTMax"].toDouble(6.283185307179586);
+  if (mode.contains("paramTStep")) m_paramTStep = mode["paramTStep"].toDouble(0.02);
   if (mode.contains("seqNMax"))  m_seqNMax  = mode["seqNMax"].toDouble(10.0);
   if (mode.contains("seqInitU")) m_seqInitU = mode["seqInitU"].toDouble(1.0);
   if (mode.contains("seqInitV")) m_seqInitV = mode["seqInitV"].toDouble(1.0);
@@ -728,6 +734,9 @@ void UIController::resetAll() {
   m_axesOn = true;
   m_coordOn = true;
   m_labelOn = true;
+  m_paramTMin = 0.0;
+  m_paramTMax = 6.283185307179586;
+  m_paramTStep = 0.02;
   m_seqNMax = 10.0;
   m_seqInitU = 1.0;
   m_seqInitV = 1.0;
@@ -753,6 +762,7 @@ void UIController::resetAll() {
   emit graphModeSettingChanged();
   emit statPlotChanged();
   emit formatChanged();
+  emit paramWindowChanged();
   emit tableModeChanged();
   emit tableSettingsChanged();
   emit displayStateChanged();
@@ -817,6 +827,15 @@ void UIController::setAngleMode(int m) {
   if (MathStateMachine::angleMode == newMode)
     return;
   MathStateMachine::angleMode = newMode;
+  // Reset the parametric/polar parameter window to a full turn in the
+  // new angle unit (mirrors the TI-83, which rescales the window when
+  // the angle mode changes). loadState sets the static directly, so this
+  // reset only fires on a genuine user-initiated change.
+  const bool deg = (newMode == AngleMode::Degree);
+  m_paramTMin = 0.0;
+  m_paramTMax = deg ? 360.0 : 6.283185307179586;
+  m_paramTStep = m_paramTMax / 314.0;
+  emit paramWindowChanged();
   emit angleModeChanged();
 }
 
@@ -2261,9 +2280,18 @@ QVariantList UIController::getMultiGraphPoints(int resolution) {
   // turn (X stands in for t, like polar's θ) and plot (X_nT(t),Y_nT(t)).
   // Each pair's points land at its even (X) slot so colour-by-index and
   // per-slot style still work; the odd (Y) slot stays empty.
+  // Parametric/polar parameter window: sweep paramTMin..paramTMax; the
+  // point count comes from paramTStep (clamped so a tiny/degenerate step
+  // can't wedge or over-sample the engine).
+  const double pMin = m_paramTMin;
+  const double pSpan = m_paramTMax - m_paramTMin;
+  int pSteps = (m_paramTStep > 0.0)
+      ? static_cast<int>(std::llround(std::abs(pSpan) / m_paramTStep))
+      : resolution;
+  pSteps = std::clamp(pSteps, 1, 20000);
+  const double pStep = pSpan / pSteps;
+
   if (m_graphMode == 1) {
-    const double tMax = degreeMode ? 360.0 : 2.0 * M_PI;
-    const double tStep = tMax / resolution;
     for (int slot = 0; slot < static_cast<int>(m_functionBuffers.size()); ++slot) {
       QVariantList points;
       const int yslot = slot + 1;
@@ -2273,8 +2301,8 @@ QVariantList UIController::getMultiGraphPoints(int resolution) {
           !m_functionBuffers[slot].empty() && !m_functionBuffers[yslot].empty() &&
           m_functionEnabled[slot] && m_functionEnabled[yslot];
       if (ok) {
-        for (int i = 0; i <= resolution; ++i) {
-          const double t = i * tStep;
+        for (int i = 0; i <= pSteps; ++i) {
+          const double t = pMin + i * pStep;
           CalculationResult rx = msm.evaluate(m_functionBuffers[slot], t);
           CalculationResult ry = msm.evaluate(m_functionBuffers[yslot], t);
           if (rx.success && !rx.isMatrix && !rx.isList &&
@@ -2342,10 +2370,11 @@ QVariantList UIController::getMultiGraphPoints(int resolution) {
   // stay consistent. Func mode (0) sweeps x across the viewport.
   const bool polar = (m_graphMode == 2);
   const bool degree = (MathStateMachine::angleMode == AngleMode::Degree);
-  const double sweepMin = polar ? 0.0 : m_xMin;
-  const double sweepMax =
-      polar ? (degree ? 360.0 : 2.0 * M_PI) : m_xMax;
-  const double step = (sweepMax - sweepMin) / resolution;
+  // Polar sweeps the θ window (paramTMin/Max/Step); Func sweeps x across
+  // the viewport.
+  const int nSteps = polar ? pSteps : resolution;
+  const double sweepMin = polar ? pMin : m_xMin;
+  const double step = polar ? pStep : ((m_xMax - m_xMin) / resolution);
 
   for (size_t f = 0; f < m_functionBuffers.size(); ++f) {
     QVariantList points;
@@ -2353,7 +2382,7 @@ QVariantList UIController::getMultiGraphPoints(int resolution) {
     // the slot index → colour mapping stable (BUG-012).
     const bool on = (f < m_functionEnabled.size()) ? m_functionEnabled[f] : true;
     if (on && !m_functionBuffers[f].empty()) {
-      for (int i = 0; i <= resolution; ++i) {
+      for (int i = 0; i <= nSteps; ++i) {
         double s = sweepMin + (i * step);
         CalculationResult res = msm.evaluate(m_functionBuffers[f], s);
         if (res.success && !res.isMatrix) {

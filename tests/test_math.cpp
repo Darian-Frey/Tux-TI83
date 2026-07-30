@@ -1815,6 +1815,38 @@ int main(int argc, char *argv[]) {
     MathStateMachine::complexMode = ComplexMode::Real;  // restore default
   }
 
+  section("Parametric/polar T-window (Phase F follow-up)");
+  {
+    auto near = [](double a, double b) { return std::abs(a - b) < 1e-9; };
+    c.setGraphMode(1);                    // parametric
+    c.setActiveFunction(0); eval(c, "X"); // X1T = t
+    c.setActiveFunction(1); eval(c, "X"); // Y1T = t
+    c.setProperty("paramTMin", 0.0);
+    c.setProperty("paramTMax", 10.0);
+    c.setProperty("paramTStep", 1.0);
+    QVariantList pts = c.getMultiGraphPoints(600)[0].toList();
+    checkTrue("T-window: 11 points (t=0..10 step 1)", pts.size() == 11);
+    checkTrue("T-window: first t=0", near(pts[0].toMap()["x"].toDouble(), 0.0));
+    checkTrue("T-window: last t=10", near(pts[10].toMap()["x"].toDouble(), 10.0));
+
+    // Non-zero Tmin shifts the start.
+    c.setProperty("paramTMin", 3.0);
+    c.setProperty("paramTMax", 5.0);
+    c.setProperty("paramTStep", 1.0);
+    QVariantList p2 = c.getMultiGraphPoints(600)[0].toList();
+    checkTrue("T-window: Tmin=3 → first t=3",
+              near(p2[0].toMap()["x"].toDouble(), 3.0));
+    checkTrue("T-window: 3 points (3,4,5)", p2.size() == 3);
+
+    // Clean up + restore defaults.
+    c.setActiveFunction(0); c.processInput("CLEAR");
+    c.setActiveFunction(1); c.processInput("CLEAR");
+    c.setGraphMode(0); c.setActiveFunction(0);
+    c.setProperty("paramTMin", 0.0);
+    c.setProperty("paramTMax", 6.283185307179586);
+    c.setProperty("paramTStep", 0.02);
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

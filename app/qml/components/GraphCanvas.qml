@@ -387,6 +387,7 @@ Rectangle {
             function onActiveFunctionIndexChanged() { canvas.requestPaint() }
             function onDrawModeChanged() { canvas.requestPaint() }
             function onGraphModeSettingChanged() { canvas.requestPaint() }
+            function onParamWindowChanged() { canvas.requestPaint() }
             function onStatPlotChanged() { canvas.requestPaint() }
             function onFormatChanged() { canvas.requestPaint() }
             function onFunctionsChanged() { canvas.requestPaint() }

@@ -98,6 +98,12 @@ private:
     Q_PROPERTY(bool zoomBoxArm MEMBER m_zoomBoxArm NOTIFY zoomBoxArmChanged)
     // Sequence mode (graphMode==3) window/seed settings: nMax and the
     // initial term for u/v/w (used when the recurrence references Ans).
+    // Parametric/polar parameter window (shared — the two modes are
+    // mutually exclusive). Sweep runs Tmin..Tmax; the point count comes
+    // from Tstep. In Pol mode these read as θmin/θmax/θstep.
+    Q_PROPERTY(double paramTMin MEMBER m_paramTMin NOTIFY paramWindowChanged)
+    Q_PROPERTY(double paramTMax MEMBER m_paramTMax NOTIFY paramWindowChanged)
+    Q_PROPERTY(double paramTStep MEMBER m_paramTStep NOTIFY paramWindowChanged)
     Q_PROPERTY(double seqNMax MEMBER m_seqNMax NOTIFY seqSettingsChanged)
     Q_PROPERTY(double seqInitU MEMBER m_seqInitU NOTIFY seqSettingsChanged)
     Q_PROPERTY(double seqInitV MEMBER m_seqInitV NOTIFY seqSettingsChanged)
@@ -436,6 +442,7 @@ signals:
     void formatChanged();
     void zoomBoxArmChanged();
     void seqSettingsChanged();
+    void paramWindowChanged();
     void traceChanged();
 
 private:
@@ -511,6 +518,12 @@ private:
     bool m_axesOn = true;
     bool m_coordOn = true;
     bool m_labelOn = true;
+    // Parametric/polar parameter window (defaults: a smooth full turn
+    // in radians — ~314 points). Reset to the angle-appropriate defaults
+    // when the angle mode changes.
+    double m_paramTMin = 0.0;
+    double m_paramTMax = 6.283185307179586;  // 2π
+    double m_paramTStep = 0.02;
     // Sequence-mode settings (see the seq* properties).
     double m_seqNMax = 10.0;
     double m_seqInitU = 1.0;

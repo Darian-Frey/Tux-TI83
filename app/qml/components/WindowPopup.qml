@@ -25,18 +25,26 @@ Popup {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
     width: 280
-    // Taller in Seq mode to fit the extra nMax + u/v/w(1) fields.
-    height: uiController.graphMode === 3 ? 520 : 360
+    // Taller when a mode adds extra window fields (Par/Pol T-window, Seq).
+    height: (uiController.graphMode === 1 || uiController.graphMode === 2
+             || uiController.graphMode === 3) ? 520 : 360
     padding: 14
 
-    // Viewport fields, plus the sequence window fields when in Seq mode.
+    // Viewport fields, plus mode-specific window fields (Par/Pol T-window
+    // or the Seq settings).
     readonly property var fields: {
-        var base = [
-            { label: "Xmin:", prop: "xMin" },
-            { label: "Xmax:", prop: "xMax" },
-            { label: "Ymin:", prop: "yMin" },
-            { label: "Ymax:", prop: "yMax" }
-        ]
+        var base = []
+        // Parametric (1) / polar (2) parameter window. θ labels in polar.
+        if (uiController.graphMode === 1 || uiController.graphMode === 2) {
+            var p = uiController.graphMode === 2 ? "θ" : "T"
+            base.push({ label: p + "min:",  prop: "paramTMin" })
+            base.push({ label: p + "max:",  prop: "paramTMax" })
+            base.push({ label: p + "step:", prop: "paramTStep" })
+        }
+        base.push({ label: "Xmin:", prop: "xMin" })
+        base.push({ label: "Xmax:", prop: "xMax" })
+        base.push({ label: "Ymin:", prop: "yMin" })
+        base.push({ label: "Ymax:", prop: "yMax" })
         if (uiController.graphMode === 3) {
             base.push({ label: "nMax:", prop: "seqNMax" })
             base.push({ label: "u(1):", prop: "seqInitU" })
