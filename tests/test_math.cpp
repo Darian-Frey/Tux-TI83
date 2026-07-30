@@ -1661,9 +1661,9 @@ int main(int argc, char *argv[]) {
               c.functionLabel(0) == "X1T" && c.functionLabel(1) == "Y1T" &&
               c.functionLabel(8) == "X5T" && c.functionLabel(9) == "Y5T");
 
-    // setGraphMode accepts Par(1); rejects Seq(3) → Func.
-    c.setGraphMode(3);
-    checkTrue("graphMode Seq(3) rejected → Func(0)",
+    // setGraphMode accepts Par(1); rejects out-of-range → Func.
+    c.setGraphMode(5);
+    checkTrue("graphMode out-of-range(5) rejected → Func(0)",
               c.property("graphMode").toInt() == 0);
     c.setGraphMode(1);
     checkTrue("graphMode Par(1) accepted",
@@ -1689,6 +1689,45 @@ int main(int argc, char *argv[]) {
     c.setActiveFunction(1); c.processInput("CLEAR");
     c.setGraphMode(0);
     c.setActiveFunction(0);
+  }
+
+  section("Sequence mode (Phase F)");
+  {
+    auto near = [](double a, double b) { return std::abs(a - b) < 1e-9; };
+    c.setGraphMode(3);
+    checkTrue("graphMode Seq(3) accepted", c.property("graphMode").toInt() == 3);
+    checkTrue("Seq labels u/v/w + blank",
+              c.functionLabel(0) == "u(n)" && c.functionLabel(1) == "v(n)" &&
+              c.functionLabel(2) == "w(n)" && c.functionLabel(3).isEmpty());
+    c.setProperty("seqNMax", 10.0);
+
+    // Explicit: u(n) = X² (= n²) — evaluated directly at each n.
+    c.setActiveFunction(0); eval(c, "X^2");
+    QVariantList u = c.getMultiGraphPoints(10)[0].toList();
+    checkTrue("Seq explicit: 10 terms", u.size() == 10);
+    checkTrue("Seq explicit: u(1)=1",
+              near(u[0].toMap()["x"].toDouble(), 1) &&
+              near(u[0].toMap()["y"].toDouble(), 1));
+    checkTrue("Seq explicit: u(3)=9", near(u[2].toMap()["y"].toDouble(), 9));
+
+    // Recursive: u(n)=Ans+2, seed u(1)=1 → 1,3,5,7,...
+    c.setActiveFunction(0); c.processInput("CLEAR"); eval(c, "Ans+2");
+    c.setProperty("seqInitU", 1.0);
+    QVariantList r = c.getMultiGraphPoints(10)[0].toList();
+    checkTrue("Seq recursive: seed u(1)=1", near(r[0].toMap()["y"].toDouble(), 1));
+    checkTrue("Seq recursive: u(2)=3", near(r[1].toMap()["y"].toDouble(), 3));
+    checkTrue("Seq recursive: u(3)=5", near(r[2].toMap()["y"].toDouble(), 5));
+
+    // Geometric: u(n)=2·Ans, seed 1 → 1,2,4,8,...
+    c.setActiveFunction(0); c.processInput("CLEAR"); eval(c, "2Ans");
+    QVariantList g = c.getMultiGraphPoints(10)[0].toList();
+    checkTrue("Seq geometric: 1,2,4,8",
+              near(g[0].toMap()["y"].toDouble(), 1) &&
+              near(g[1].toMap()["y"].toDouble(), 2) &&
+              near(g[3].toMap()["y"].toDouble(), 8));
+
+    c.setActiveFunction(0); c.processInput("CLEAR");
+    c.setGraphMode(0); c.setActiveFunction(0);
   }
 
   section("Empty input");

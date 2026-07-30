@@ -48,7 +48,8 @@ Popup {
         Text {
             Layout.fillWidth: true
             text: (uiController.graphMode === 2 ? "r=" :
-                   uiController.graphMode === 1 ? "PARAM" : "Y=") + " EDITOR"
+                   uiController.graphMode === 1 ? "PARAM" :
+                   uiController.graphMode === 3 ? "SEQ u/v/w" : "Y=") + " EDITOR"
             color: Style.textMuted
             font.family: Style.monoFamily
             font.pixelSize: Style.sectionLabelPixelSize

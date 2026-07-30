@@ -486,7 +486,8 @@ ApplicationWindow {
                     const fixSeg = (fx >= 0) ? ("  FIX " + fx) : ""
                     // Surface a non-default graph mode; Func (default)
                     // stays implicit to avoid clutter.
-                    const graphSeg = (g === 2) ? "  POL" : (g === 1) ? "  PAR" : ""
+                    const graphSeg = (g === 2) ? "  POL" : (g === 1) ? "  PAR"
+                                    : (g === 3) ? "  SEQ" : ""
                     return notation + fixSeg + "  " + angle + graphSeg
                 }
                 color: Style.textMuted

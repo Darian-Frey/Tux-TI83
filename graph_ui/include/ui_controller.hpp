@@ -91,6 +91,12 @@ private:
     // preserve the pre-Format-menu appearance.
     // ZBox arm flag — while true, a canvas drag defines the zoom box.
     Q_PROPERTY(bool zoomBoxArm MEMBER m_zoomBoxArm NOTIFY zoomBoxArmChanged)
+    // Sequence mode (graphMode==3) window/seed settings: nMax and the
+    // initial term for u/v/w (used when the recurrence references Ans).
+    Q_PROPERTY(double seqNMax MEMBER m_seqNMax NOTIFY seqSettingsChanged)
+    Q_PROPERTY(double seqInitU MEMBER m_seqInitU NOTIFY seqSettingsChanged)
+    Q_PROPERTY(double seqInitV MEMBER m_seqInitV NOTIFY seqSettingsChanged)
+    Q_PROPERTY(double seqInitW MEMBER m_seqInitW NOTIFY seqSettingsChanged)
     Q_PROPERTY(bool gridOn MEMBER m_gridOn NOTIFY formatChanged)
     Q_PROPERTY(bool axesOn MEMBER m_axesOn NOTIFY formatChanged)
     Q_PROPERTY(bool coordOn MEMBER m_coordOn NOTIFY formatChanged)
@@ -203,6 +209,12 @@ public:
             const int pair = i / 2 + 1;
             return QStringLiteral("%1%2T")
                 .arg(i % 2 == 0 ? "X" : "Y").arg(pair);
+        }
+        if (m_graphMode == 3) {  // sequence — only u/v/w (slots 0/1/2)
+            if (i == 0) return QStringLiteral("u(n)");
+            if (i == 1) return QStringLiteral("v(n)");
+            if (i == 2) return QStringLiteral("w(n)");
+            return QString();
         }
         return functionPrefix() +
                (i == 9 ? QStringLiteral("0") : QString::number(i + 1));
@@ -405,6 +417,7 @@ signals:
     void statPlotChanged();
     void formatChanged();
     void zoomBoxArmChanged();
+    void seqSettingsChanged();
     void traceChanged();
 
 private:
@@ -476,6 +489,11 @@ private:
     bool m_axesOn = true;
     bool m_coordOn = true;
     bool m_labelOn = true;
+    // Sequence-mode settings (see the seq* properties).
+    double m_seqNMax = 10.0;
+    double m_seqInitU = 1.0;
+    double m_seqInitV = 1.0;
+    double m_seqInitW = 1.0;
     // TRACE state. When `m_isTracing` is true the graph canvas paints
     // a crosshair at (m_traceX, evaluated Y) on the active function.
     // m_traceX is reset to viewport centre on every toggleTrace(true).

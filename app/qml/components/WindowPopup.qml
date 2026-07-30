@@ -25,8 +25,26 @@ Popup {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
     width: 280
-    height: 360
+    // Taller in Seq mode to fit the extra nMax + u/v/w(1) fields.
+    height: uiController.graphMode === 3 ? 520 : 360
     padding: 14
+
+    // Viewport fields, plus the sequence window fields when in Seq mode.
+    readonly property var fields: {
+        var base = [
+            { label: "Xmin:", prop: "xMin" },
+            { label: "Xmax:", prop: "xMax" },
+            { label: "Ymin:", prop: "yMin" },
+            { label: "Ymax:", prop: "yMax" }
+        ]
+        if (uiController.graphMode === 3) {
+            base.push({ label: "nMax:", prop: "seqNMax" })
+            base.push({ label: "u(1):", prop: "seqInitU" })
+            base.push({ label: "v(1):", prop: "seqInitV" })
+            base.push({ label: "w(1):", prop: "seqInitW" })
+        }
+        return base
+    }
 
     // Centre on the parent (the application overlay).
     x: (parent.width - width) / 2
@@ -59,14 +77,9 @@ Popup {
             color: Style.bgSection
         }
 
-        // ── Viewport fields (Xmin / Xmax / Ymin / Ymax) ──
+        // ── Viewport fields (+ sequence fields in Seq mode) ──
         Repeater {
-            model: [
-                { label: "Xmin:", prop: "xMin" },
-                { label: "Xmax:", prop: "xMax" },
-                { label: "Ymin:", prop: "yMin" },
-                { label: "Ymax:", prop: "yMax" }
-            ]
+            model: root.fields
             delegate: RowLayout {
                 Layout.fillWidth: true
                 spacing: 10

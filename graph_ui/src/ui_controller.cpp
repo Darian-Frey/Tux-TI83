@@ -398,6 +398,10 @@ void UIController::saveState() const {
   mode["axesOn"]  = m_axesOn;
   mode["coordOn"] = m_coordOn;
   mode["labelOn"] = m_labelOn;
+  mode["seqNMax"]  = m_seqNMax;
+  mode["seqInitU"] = m_seqInitU;
+  mode["seqInitV"] = m_seqInitV;
+  mode["seqInitW"] = m_seqInitW;
   root["mode"] = mode;
 
   // TBLSET (TABLE mode settings — separate object since they're
@@ -503,8 +507,12 @@ void UIController::loadState() {
   if (mode.contains("graphMode"))
   {
     const int g = mode["graphMode"].toInt();
-    m_graphMode = (g == 1 || g == 2) ? g : 0;
+    m_graphMode = (g >= 1 && g <= 3) ? g : 0;
   }
+  if (mode.contains("seqNMax"))  m_seqNMax  = mode["seqNMax"].toDouble(10.0);
+  if (mode.contains("seqInitU")) m_seqInitU = mode["seqInitU"].toDouble(1.0);
+  if (mode.contains("seqInitV")) m_seqInitV = mode["seqInitV"].toDouble(1.0);
+  if (mode.contains("seqInitW")) m_seqInitW = mode["seqInitW"].toDouble(1.0);
   if (mode.contains("statPlotOn"))
     m_statPlotOn = mode["statPlotOn"].toBool();
   if (mode.contains("statPlotType")) {
@@ -628,6 +636,10 @@ void UIController::resetAll() {
   m_axesOn = true;
   m_coordOn = true;
   m_labelOn = true;
+  m_seqNMax = 10.0;
+  m_seqInitU = 1.0;
+  m_seqInitV = 1.0;
+  m_seqInitW = 1.0;
   m_insertMode = true;
   m_isTracing = false;
   m_traceX = 0.0;
@@ -788,10 +800,9 @@ void UIController::setDrawMode(int m) {
 
 void UIController::setGraphMode(int m) {
   CrashLogger::logEvent(QStringLiteral("setGraphMode: ") + QString::number(m));
-  // Func (0), Par (1), and Pol (2) are implemented; Seq (3) is not and
-  // falls back to Func so a stray write can't strand the user in an
-  // unimplemented mode.
-  const int clamped = (m == 1 || m == 2) ? m : 0;  // Func/Par/Pol (Seq→Func)
+  // All four graph modes are implemented: Func (0), Par (1), Pol (2),
+  // Seq (3). Out-of-range writes fall back to Func.
+  const int clamped = (m >= 1 && m <= 3) ? m : 0;
   if (m_graphMode == clamped)
     return;
   m_graphMode = clamped;
@@ -2140,6 +2151,49 @@ QVariantList UIController::getMultiGraphPoints(int resolution) {
       }
       allFunctions.append(QVariant::fromValue(points));
     }
+    return allFunctions;
+  }
+
+  // Sequence mode (graphMode == 3): slots 0/1/2 are u/v/w. X stands in
+  // for n and Ans for the previous term u(n-1). Explicit sequences (no
+  // Ans in the buffer) are evaluated directly at each n; recursive ones
+  // seed u(nMin) from the initial value and iterate. Points are (n, u).
+  if (m_graphMode == 3) {
+    const long long nMin = 1;
+    long long nMax = static_cast<long long>(std::floor(m_seqNMax));
+    if (nMax < nMin) nMax = nMin;
+    if (nMax - nMin > 100000) nMax = nMin + 100000;  // runaway cap
+    const double inits[3] = {m_seqInitU, m_seqInitV, m_seqInitW};
+
+    const CalculationResult savedAns = MathStateMachine::lastResult;
+    for (int slot = 0; slot < static_cast<int>(m_functionBuffers.size()); ++slot) {
+      QVariantList points;
+      if (slot < 3 && m_functionEnabled[slot] && !m_functionBuffers[slot].empty()) {
+        const auto &buf = m_functionBuffers[slot];
+        const bool recursive =
+            std::find(buf.begin(), buf.end(), Token::Ans) != buf.end();
+        double prev = inits[slot];
+        for (long long n = nMin; n <= nMax; ++n) {
+          double val;
+          if (recursive && n == nMin) {
+            val = inits[slot];  // seed term u(nMin)
+          } else {
+            // Feed the previous term in through Ans for recursion.
+            MathStateMachine::lastResult = {true, prev, {}, false, ""};
+            CalculationResult r = msm.evaluate(buf, static_cast<double>(n));
+            if (!r.success || r.isMatrix || r.isList) break;
+            val = r.value;
+          }
+          prev = val;
+          QVariantMap pt;
+          pt["x"] = static_cast<double>(n);
+          pt["y"] = val;
+          points.append(pt);
+        }
+      }
+      allFunctions.append(QVariant::fromValue(points));
+    }
+    MathStateMachine::lastResult = savedAns;  // restore Ans
     return allFunctions;
   }
 
