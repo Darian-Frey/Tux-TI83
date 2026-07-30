@@ -47,6 +47,13 @@ int EOSPrecedence::precedence(Token t) {
   case Token::Y1Call:
   case Token::Y2Call:
   case Token::Y3Call:
+  case Token::Y4Call:
+  case Token::Y5Call:
+  case Token::Y6Call:
+  case Token::Y7Call:
+  case Token::Y8Call:
+  case Token::Y9Call:
+  case Token::Y0Call:
   case Token::FnIntCall:
   case Token::NDerivCall:
   case Token::SumCall:
@@ -116,7 +123,7 @@ bool EOSPrecedence::is_function(Token t) {
           t == Token::Abs || t == Token::Int ||
           t == Token::IPart || t == Token::FPart ||
           t == Token::Exp || t == Token::Sgn ||
-          t == Token::Y1Call || t == Token::Y2Call || t == Token::Y3Call ||
+          (t >= Token::Y1Call && t <= Token::Y0Call) ||
           t == Token::FnIntCall || t == Token::NDerivCall ||
           t == Token::SumCall || t == Token::ProdCall ||
           t == Token::Sinh || t == Token::Cosh || t == Token::Tanh ||
@@ -157,7 +164,7 @@ bool EOSPrecedence::has_built_in_paren(Token t) {
           t == Token::Log || t == Token::Ln || t == Token::Sqrt ||
           t == Token::Abs || t == Token::Int || t == Token::IPart ||
           t == Token::FPart || t == Token::Exp || t == Token::Sgn ||
-          t == Token::Y1Call || t == Token::Y2Call || t == Token::Y3Call ||
+          (t >= Token::Y1Call && t <= Token::Y0Call) ||
           t == Token::FnIntCall || t == Token::NDerivCall ||
           t == Token::SumCall || t == Token::ProdCall ||
           t == Token::Det || t == Token::Transpose ||
@@ -949,14 +956,13 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
   ycTokens.reserve(stoTokens.size());
   for (size_t i = 0; i < stoTokens.size(); ++i) {
     Token t = stoTokens[i];
-    const bool isLeafYn = (t == Token::Y1 || t == Token::Y2 || t == Token::Y3);
+    const bool isLeafYn = (t >= Token::Y1 && t <= Token::Y0);
     if (isLeafYn &&
         i + 1 < stoTokens.size() &&
         stoTokens[i + 1] == Token::LeftParen) {
-      const Token callForm =
-          (t == Token::Y1) ? Token::Y1Call :
-          (t == Token::Y2) ? Token::Y2Call :
-                             Token::Y3Call;
+      const Token callForm = static_cast<Token>(
+          static_cast<int>(Token::Y1Call) +
+          (static_cast<int>(t) - static_cast<int>(Token::Y1)));
       ycTokens.push_back(callForm);
       ++i;  // skip the LeftParen — the call form has built-in paren
     } else {
@@ -972,7 +978,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
   // the LHS of a multiplication. `valueLikeStart`: the current token
   // begins something that can be the RHS. When both hold, we inject.
   auto isYn = [](Token t) {
-    return t == Token::Y1 || t == Token::Y2 || t == Token::Y3;
+    return t >= Token::Y1 && t <= Token::Y0;
   };
   auto valueLikeEnd = [&isYn](Token t) {
     return t == Token::NumLiteral ||
@@ -1031,7 +1037,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
              t == Token::Pi || t == Token::E || t == Token::Ans ||
            t == Token::ImagI ||
              t == Token::Rand ||
-             t == Token::Y1 || t == Token::Y2 || t == Token::Y3)
+             (t >= Token::Y1 && t <= Token::Y0))
       rpn.push_back({t, 0.0});
     else if (t == Token::Fact) {
       // Unary postfix. Its operand is already in rpn ahead of this,
@@ -1177,13 +1183,11 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
       // scalar 0 on first use (matches TI-83 power-on state).
       stack.push({lastResult.isMatrix, lastResult.value, lastResult.matrixValue,
                   lastResult.isList, lastResult.listValue, lastResult.imag});
-    } else if (t == Token::Y1 || t == Token::Y2 || t == Token::Y3) {
+    } else if (t >= Token::Y1 && t <= Token::Y0) {
       // Y-VARS bare form — recursively evaluate the referenced buffer
       // at the current xValue. Cycle guard via `activeYn` (declared
       // at function scope above; shared with the call form).
-      const int yIdx = (t == Token::Y1) ? 0
-                     : (t == Token::Y2) ? 1
-                                        : 2;
+      const int yIdx = static_cast<int>(t) - static_cast<int>(Token::Y1);
       if (activeYn.count(yIdx))
         return {false, 0.0, {}, false, "Recursion"};
       if (!yLookup) {
@@ -1203,8 +1207,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
       if (subRes.isMatrix)
         return {false, 0.0, {}, false, "Type Error"};
       stack.push({false, subRes.value, {}});
-    } else if (t == Token::Y1Call || t == Token::Y2Call ||
-               t == Token::Y3Call) {
+    } else if (t >= Token::Y1Call && t <= Token::Y0Call) {
       // Y-VARS explicit-argument form — pop the argument from the
       // operand stack and recursively evaluate the referenced buffer
       // with X = arg. Shares the activeYn cycle guard with the bare
@@ -1216,9 +1219,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
       if (argOp.isMat)
         return {false, 0.0, {}, false, "Type Error"};
       const double argX = argOp.val;
-      const int yIdx = (t == Token::Y1Call) ? 0
-                     : (t == Token::Y2Call) ? 1
-                                            : 2;
+      const int yIdx = static_cast<int>(t) - static_cast<int>(Token::Y1Call);
       if (activeYn.count(yIdx))
         return {false, 0.0, {}, false, "Recursion"};
       if (!yLookup) {

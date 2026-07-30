@@ -1847,6 +1847,33 @@ int main(int argc, char *argv[]) {
     c.setProperty("paramTStep", 0.02);
   }
 
+  section("Y4–Y0 reference tokens (Phase F follow-up)");
+  {
+    // Fresh controller: yLookup is a static capturing `this`, so it must
+    // point at a live UIController for the whole block (see Y1–Y3 tests).
+    UIController yv;
+    tux_ti83::MathStateMachine::varRegistry.fill(0.0);  // X = 0
+    yv.setGraphMode(0);
+
+    // Y4 (slot 3) = X²; Y5 (slot 4) = Y4 + 10 (references Y4).
+    yv.setActiveFunction(3); eval(yv, "X^2");
+    yv.setActiveFunction(4); eval(yv, "Y4+10");
+    // Y0 (slot 9) = 7.
+    yv.setActiveFunction(9); eval(yv, "7");
+
+    yv.setActiveFunction(0);  // scratch slot for evaluation
+    check("Y4(4) = 16", eval(yv, "Y4(4)"), "16");
+    check("Y5 references Y4: Y5(3) = 19", eval(yv, "Y5(3)"), "19");
+    check("bare Y4 at X=0 = 0", eval(yv, "Y4"), "0");
+    check("Y0 = 7", eval(yv, "Y0"), "7");
+    check("Y0 + Y4(2) = 11", eval(yv, "Y0+Y4(2)"), "11");
+
+    // Self-reference on a high slot still trips recursion: Y7 = Y7+1.
+    yv.setActiveFunction(6); eval(yv, "Y7+1");
+    yv.setActiveFunction(0);
+    check("Y7 self-ref → ERR:RECURSION", eval(yv, "Y7"), "ERR:RECURSION");
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

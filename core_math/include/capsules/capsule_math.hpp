@@ -177,9 +177,19 @@ enum class Token {
   // current X); explicit-argument form `Y1(3)` is not supported in
   // v1 — it parses as `Y1 * 3` via the existing implicit-mul rule.
   // Self-reference and cross-Y cycles return "Recursion".
+  // Y1..Y9, Y0 — the ten function slots. Kept CONTIGUOUS (Y0 last, the
+  // 10th) so the evaluator maps a token to its buffer index as t - Y1
+  // (Y0 → 9). Y1Call..Y0Call below mirror this order.
   Y1,
   Y2,
   Y3,
+  Y4,
+  Y5,
+  Y6,
+  Y7,
+  Y8,
+  Y9,
+  Y0,
   // Explicit-argument call form for Y-VARS: `Y1(3)` evaluates Y1
   // with X = 3 (the argument), rather than the bare form's
   // implicit-current-X. Synthesised in a preprocessing pass by
@@ -191,6 +201,13 @@ enum class Token {
   Y1Call,
   Y2Call,
   Y3Call,
+  Y4Call,
+  Y5Call,
+  Y6Call,
+  Y7Call,
+  Y8Call,
+  Y9Call,
+  Y0Call,
   // Deferred-evaluation calculus functions. The user-typed form takes
   // an expression, a bound variable, and one or two bounds:
   //   fnInt(expr, var, lower, upper)        — definite integral

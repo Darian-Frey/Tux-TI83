@@ -101,6 +101,13 @@ constexpr TokenSpec kTokens[] = {
     {"Y1", Token::Y1, "Y1"},
     {"Y2", Token::Y2, "Y2"},
     {"Y3", Token::Y3, "Y3"},
+    {"Y4", Token::Y4, "Y4"},
+    {"Y5", Token::Y5, "Y5"},
+    {"Y6", Token::Y6, "Y6"},
+    {"Y7", Token::Y7, "Y7"},
+    {"Y8", Token::Y8, "Y8"},
+    {"Y9", Token::Y9, "Y9"},
+    {"Y0", Token::Y0, "Y0"},
 
     // Functions — inputs include the opening paren, so the buffer
     // always has just the function token (no separate LeftParen).

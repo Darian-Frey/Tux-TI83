@@ -258,14 +258,14 @@ ApplicationWindow {
                 return
 
             // Y lookahead — the previous keystroke inserted a visible
-            // VarY and set pendingY. If THIS keystroke is 1/2/3, we
-            // backspace the Y and re-insert the fused Y1/Y2/Y3 token.
+            // VarY and set pendingY. If THIS keystroke is a digit 0-9, we
+            // backspace the Y and re-insert the fused Y1..Y9 / Y0 token.
             // Anything else just clears the flag and leaves the Y as
             // a plain VarY.
             if (root.pendingY) {
                 root.pendingY = false
                 const text = event.text
-                if (text === "1" || text === "2" || text === "3") {
+                if (text.length === 1 && text >= "0" && text <= "9") {
                     uiController.processInput("DEL")
                     root.handleKey("Y" + text)
                     event.accepted = true
