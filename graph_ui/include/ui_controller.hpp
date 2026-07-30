@@ -54,6 +54,10 @@ private:
     // out-of-range values, NaN, ±inf) falls back through to the
     // existing Notation/Decimal formatter.
     Q_PROPERTY(int numberBase READ numberBase WRITE setNumberBase NOTIFY numberBaseChanged)
+
+    // MODE → Complex: 0 Real, 1 a+bi (Rect), 2 re^θi (Polar). Governs
+    // whether √ of a negative etc. produce a complex result or error.
+    Q_PROPERTY(int complexMode READ complexMode WRITE setComplexMode NOTIFY complexModeChanged)
     // Cursor position within the current expression, expressed as a
     // character offset into the rendered display string. The backing
     // state is token-level (m_cursorPos, 0..buf.size()), but the
@@ -134,6 +138,10 @@ public:
         return static_cast<int>(MathStateMachine::numberBase);
     }
     void setNumberBase(int b);
+    int complexMode() const {
+        return static_cast<int>(MathStateMachine::complexMode);
+    }
+    void setComplexMode(int m);
     int cursorOffset() const;
     bool insertMode() const { return m_insertMode; }
     Q_INVOKABLE void toggleInsertMode();
@@ -156,6 +164,8 @@ public:
     // zeros trimmed. Single source of truth for result formatting —
     // the evaluator, `▶Dec`, and the test suite all route through here.
     Q_INVOKABLE static QString formatScalar(double value);
+    // Format a complex value a+bi (Phase F); real when im==0.
+    Q_INVOKABLE QString formatComplex(double re, double im) const;
     // Tokenise a free-form expression string ("2+sin(0.5)") into the
     // sequence of input strings the controller's processInput method
     // accepts. Longest-match against the kTokens table plus a small set
@@ -417,6 +427,7 @@ signals:
     void notationChanged();
     void fixDecimalsChanged();
     void numberBaseChanged();
+    void complexModeChanged();
     void cursorMoved();
     void insertModeChanged();
     void drawModeChanged();

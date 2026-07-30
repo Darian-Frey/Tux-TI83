@@ -177,6 +177,13 @@ constexpr TokenSpec kTokens[] = {
     {"geometcdf(",  Token::GeometCdf,  "geometcdf("},
     // Continuous distributions. χ² also accepts the ASCII alias `chi2`
     // (χ is awkward to type); both display as `χ²…`.
+    // Complex numbers (Phase F).
+    {"i",       Token::ImagI,    "i"},
+    {"conj(",   Token::Conj,     "conj("},
+    {"real(",   Token::RealPart, "real("},
+    {"imag(",   Token::ImagPart, "imag("},
+    {"angle(",  Token::Angle,    "angle("},
+
     {"tpdf(",     Token::TPdf,   "tpdf("},
     {"tcdf(",     Token::TCdf,   "tcdf("},
     {"χ²pdf(",    Token::ChiPdf, "χ²pdf("},
@@ -406,6 +413,7 @@ QJsonObject UIController::buildStateJson() const {
   mode["notation"]    = static_cast<int>(MathStateMachine::notation);
   mode["fixDecimals"] = MathStateMachine::fixDecimals;
   mode["numberBase"]  = static_cast<int>(MathStateMachine::numberBase);
+  mode["complexMode"] = static_cast<int>(MathStateMachine::complexMode);
   mode["drawMode"]    = m_drawMode;
   mode["graphMode"]   = m_graphMode;
   mode["statPlotOn"]    = m_statPlotOn;
@@ -533,6 +541,13 @@ void UIController::applyStateJson(const QJsonObject &root) {
         (b == 3) ? NumberBase::Bin :
                    NumberBase::Dec;
   }
+  if (mode.contains("complexMode")) {
+    int cm = mode["complexMode"].toInt(0);
+    MathStateMachine::complexMode =
+        (cm == 1) ? ComplexMode::Rect :
+        (cm == 2) ? ComplexMode::Polar :
+                    ComplexMode::Real;
+  }
   if (mode.contains("drawMode"))
     m_drawMode = (mode["drawMode"].toInt() == 1) ? 1 : 0;
   if (mode.contains("graphMode"))
@@ -618,6 +633,7 @@ void UIController::applyStateJson(const QJsonObject &root) {
   emit notationChanged();
   emit fixDecimalsChanged();
   emit numberBaseChanged();
+  emit complexModeChanged();
   emit drawModeChanged();
   emit viewportChanged();
   emit displayChanged();
@@ -685,6 +701,7 @@ void UIController::resetAll() {
   MathStateMachine::notation     = NumberNotation::Normal;
   MathStateMachine::fixDecimals  = -1;
   MathStateMachine::numberBase   = NumberBase::Dec;
+  MathStateMachine::complexMode  = ComplexMode::Real;
 
   // Controller-owned state.
   for (auto &buf : m_functionBuffers) buf.clear();
@@ -743,6 +760,7 @@ void UIController::resetAll() {
   emit notationChanged();
   emit fixDecimalsChanged();
   emit numberBaseChanged();
+  emit complexModeChanged();
   emit cursorMoved();
   emit insertModeChanged();
   emit drawModeChanged();
@@ -840,6 +858,41 @@ void UIController::setNumberBase(int b) {
     return;
   MathStateMachine::numberBase = newBase;
   emit numberBaseChanged();
+}
+
+void UIController::setComplexMode(int m) {
+  CrashLogger::logEvent(QStringLiteral("setComplexMode: ") + QString::number(m));
+  const ComplexMode nm = (m == 1) ? ComplexMode::Rect
+                       : (m == 2) ? ComplexMode::Polar
+                                  : ComplexMode::Real;
+  if (MathStateMachine::complexMode == nm)
+    return;
+  MathStateMachine::complexMode = nm;
+  emit complexModeChanged();
+}
+
+// Format a complex value as `a+bi` (or `a-bi`, `bi`, or just `a` when
+// real). Each part routes through formatScalar so Notation/Decimal MODE
+// settings apply. In Polar (re^θi) mode a non-real value shows as
+// magnitude∠angle instead.
+QString UIController::formatComplex(double re, double im) const {
+  if (im == 0.0)
+    return formatScalar(re);
+  if (MathStateMachine::complexMode == ComplexMode::Polar) {
+    const double mag = std::hypot(re, im);
+    double ang = std::atan2(im, re);
+    if (MathStateMachine::angleMode == AngleMode::Degree)
+      ang = ang * 180.0 / M_PI;
+    return formatScalar(mag) + QStringLiteral("∠") + formatScalar(ang);
+  }
+  // Rectangular a+bi.
+  const QString imagPart = (std::abs(im) == 1.0)
+                               ? QStringLiteral("i")
+                               : (formatScalar(std::abs(im)) + QStringLiteral("i"));
+  const QString sign = (im < 0.0) ? QStringLiteral("-") : QStringLiteral("+");
+  if (re == 0.0)
+    return (im < 0.0 ? QStringLiteral("-") : QString()) + imagPart;
+  return formatScalar(re) + sign + imagPart;
 }
 
 int UIController::cursorOffset() const {
@@ -1188,6 +1241,9 @@ void UIController::evaluate() {
           listStr += ",";
       }
       currentStr = listStr + "}";
+    } else if (result.imag != 0.0) {
+      // Complex result (Phase F) — a+bi (or re^θi in Polar mode).
+      currentStr = formatComplex(result.value, result.imag);
     } else {
       // BUG-015 fix: default scalar display is decimal. Users get the
       // fraction form on demand via the ▶Frac MATH-menu entry.

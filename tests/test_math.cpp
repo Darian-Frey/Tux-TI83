@@ -1769,6 +1769,44 @@ int main(int argc, char *argv[]) {
     tux_ti83::MathStateMachine::listRegistry.clear();
   }
 
+  section("Complex numbers (Phase F)");
+  {
+    using tux_ti83::MathStateMachine;
+    using tux_ti83::ComplexMode;
+    auto near = [](double a, double b) { return std::abs(a - b) < 1e-6; };
+
+    // Basic entry + arithmetic.
+    check("2+3i", eval(c, "2+3i"), "2+3i");
+    check("i^2 = -1", eval(c, "i^2"), "-1");
+    check("i^3 = -i", eval(c, "i^3"), "-i");
+    check("i^4 = 1", eval(c, "i^4"), "1");
+    check("3i", eval(c, "3i"), "3i");
+    check("(2+3i)(2-3i) = 13", eval(c, "(2+3i)(2-3i)"), "13");
+    check("(1+i)^2 = 2i", eval(c, "(1+i)^2"), "2i");
+    check("(2+3i)^2 = -5+12i", eval(c, "(2+3i)^2"), "-5+12i");
+    check("real parts cancel: 2+2i-2 = 2i", eval(c, "2+2i-2"), "2i");
+    check("i/i = 1", eval(c, "i/i"), "1");
+
+    // Complex functions.
+    check("conj(2+3i) = 2-3i", eval(c, "conj(2+3i)"), "2-3i");
+    check("real(2+3i) = 2", eval(c, "real(2+3i)"), "2");
+    check("imag(2+3i) = 3", eval(c, "imag(2+3i)"), "3");
+    check("abs(3+4i) = 5", eval(c, "abs(3+4i)"), "5");
+    checkTrue("angle(i) = π/2", near(eval(c, "angle(i)").toDouble(), M_PI / 2.0));
+
+    // Ans carries a complex value forward.
+    check("seed Ans = 2+3i", eval(c, "2+3i"), "2+3i");
+    check("Ans+1 = 3+3i", evalChained(c, "Ans+1"), "3+3i");
+
+    // √ of a negative: Real mode errors, a+bi mode gives a complex root.
+    MathStateMachine::complexMode = ComplexMode::Real;
+    check("√(-4) Real → ERR:NONREAL ANS", eval(c, "√(-4)"), "ERR:NONREAL ANS");
+    MathStateMachine::complexMode = ComplexMode::Rect;
+    check("√(-4) a+bi → 2i", eval(c, "√(-4)"), "2i");
+    check("√(-1) a+bi → i", eval(c, "√(-1)"), "i");
+    MathStateMachine::complexMode = ComplexMode::Real;  // restore default
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

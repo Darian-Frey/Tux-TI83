@@ -169,7 +169,7 @@ Candidate next areas (no commitment):
 - 💭 Symbolic operations (well beyond original TI-83 scope)
 
 ### Number systems
-- 💭 Complex numbers (a+bi mode, polar form, conjugate, real/imag parts)
+- ✅ Complex numbers (a+bi) — landed 2026-07-26 (Phase F #36). The operand/result value model gained an `imag` field (threaded through the stack, `Ans`, and results); the complex code path only activates when an imaginary part is present, so all real arithmetic is untouched. `i` unit + complex `+ − × ÷ ^` (exact integer powers via repeated multiplication) and negation; `conj(`/`real(`/`imag(`/`angle(` and complex `abs(` (magnitude); `√` of a negative → complex in a+bi mode (`ERR:NONREAL ANS` in Real mode). MODE → Complex row live (Real / a+bi / re^θi — the latter shows magnitude∠angle); `a+bi`/`re^θi` header indicator; MATH-menu + keyboard `i` entry; persisted. Deferred: complex trig/exp/log, complex in vars/lists/matrices, negative-real fractional powers.
 - ✅ Base conversion (DEC/HEX/OCT/BIN) — MODE-popup row; integer results display in the selected base, non-integers fall back to decimal (IMP-043, 2026-05-24)
 
 ## Comparators & boolean
@@ -426,4 +426,4 @@ A natural ordering, smallest meaningful chunk first:
 33. Programming (TI-BASIC subset)
 34. Save/load ✅
 35. Parametric / polar / sequence modes ✅ (all four graph modes done)
-36. Complex numbers
+36. Complex numbers ✅

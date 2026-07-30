@@ -14,11 +14,10 @@ import ".."
 // roadmap of what's coming without pretending settings exist.
 //
 // Behavioural contract: wired rows write straight to a controller
-// property (Angle, Notation, Decimal, Base, Graph, Draw) and the header
-// indicator binds to the same properties. The Graph row wires Func/Pol
-// (Par/Seq greyed via disabledIndices). Plot / Complex / Screen remain
-// full placeholders (active:false) — their features aren't built, so
-// they render greyed rather than pretending the settings exist.
+// property (Angle, Notation, Decimal, Base, Graph, Draw, Complex) and
+// the header indicator binds to the same properties. Plot and Screen
+// remain full placeholders (active:false) — their features aren't built,
+// so they render greyed rather than pretending the settings exist.
 Popup {
     id: root
 
@@ -206,10 +205,14 @@ Popup {
             options: ["Sequential", "Simul"]
             selectedIndex: 0
         }
+        // Complex: Real / a+bi / re^θi — wired. Governs whether √ of a
+        // negative (etc.) yields a complex result, and the display form.
         ModeRow {
             label: "Complex"
             options: ["Real", "a+bi", "re^θi"]
-            selectedIndex: 0
+            selectedIndex: uiController.complexMode
+            active: true
+            onSelected: (index) => uiController.complexMode = index
         }
         ModeRow {
             label: "Screen"

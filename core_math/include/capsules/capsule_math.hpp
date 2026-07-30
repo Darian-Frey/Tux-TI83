@@ -309,7 +309,15 @@ enum class Token {
   ChiPdf,
   ChiCdf,
   FPdf,
-  FCdf
+  FCdf,
+
+  // Complex numbers (Phase F). ImagI is the imaginary unit `i` (a leaf,
+  // like Pi/E). The rest are unary functions over a complex value.
+  ImagI,
+  Conj,
+  RealPart,
+  ImagPart,
+  Angle
 };
 
 struct Matrix {
@@ -332,6 +340,10 @@ struct CalculationResult {
   // working — isList defaults false, listValue empty.
   bool isList = false;
   std::vector<double> listValue;
+  // Complex numbers (Phase F). `value` holds the real part; `imag` the
+  // imaginary part. Appended last so existing positional initializers
+  // keep working (imag defaults 0 → a real result).
+  double imag = 0.0;
 };
 
 class EOSPrecedence {
@@ -376,6 +388,12 @@ enum class NumberNotation { Normal, Sci, Eng };
 // lives in UIController::formatScalar.
 enum class NumberBase { Dec, Hex, Oct, Bin };
 
+// Complex-result mode (MODE → Complex). Real: operations that would
+// produce a non-real result from real inputs (√ of a negative, etc.)
+// error with NONREAL ANS. Rect (a+bi) and Polar (re^θi) allow complex
+// results; they differ only in how the result is displayed.
+enum class ComplexMode { Real, Rect, Polar };
+
 class MathStateMachine {
 public:
   CalculationResult evaluate(const std::vector<Token> &graph,
@@ -414,6 +432,7 @@ public:
   // preserves the historic Notation/Decimal behaviour, Hex/Oct/Bin
   // switch integer-valued scalars to base 16/8/2 with sign + prefix.
   static NumberBase numberBase;
+  static ComplexMode complexMode;
 
   // Last successful evaluation result. Updated by the UI controller
   // after every successful ENTER and recalled via Token::Ans. Matches

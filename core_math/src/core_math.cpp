@@ -1,6 +1,7 @@
 #include "capsules/capsule_math.hpp"
 #include <algorithm>
 #include <cmath>
+#include <complex>
 #include <map>
 #include <set>
 #include <stack>
@@ -18,6 +19,7 @@ AngleMode MathStateMachine::angleMode = AngleMode::Radian;
 NumberNotation MathStateMachine::notation = NumberNotation::Normal;
 int MathStateMachine::fixDecimals = -1;  // -1 = Float (no fix)
 NumberBase MathStateMachine::numberBase = NumberBase::Dec;
+ComplexMode MathStateMachine::complexMode = ComplexMode::Real;
 CalculationResult MathStateMachine::lastResult{true, 0.0, {}, false, ""};
 std::function<std::vector<Token>(int)> MathStateMachine::yLookup;
 
@@ -134,6 +136,8 @@ bool EOSPrecedence::is_function(Token t) {
           t == Token::TPdf || t == Token::TCdf ||
           t == Token::ChiPdf || t == Token::ChiCdf ||
           t == Token::FPdf || t == Token::FCdf ||
+          t == Token::Conj || t == Token::RealPart ||
+          t == Token::ImagPart || t == Token::Angle ||
           is_binary_function(t));
 }
 
@@ -177,7 +181,9 @@ bool EOSPrecedence::has_built_in_paren(Token t) {
           t == Token::GeometPdf || t == Token::GeometCdf ||
           t == Token::TPdf || t == Token::TCdf ||
           t == Token::ChiPdf || t == Token::ChiCdf ||
-          t == Token::FPdf || t == Token::FCdf);
+          t == Token::FPdf || t == Token::FCdf ||
+          t == Token::Conj || t == Token::RealPart ||
+          t == Token::ImagPart || t == Token::Angle);
 }
 
 // --- MATRIX MATH HELPERS ---
@@ -971,6 +977,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
   auto valueLikeEnd = [&isYn](Token t) {
     return t == Token::NumLiteral ||
            t == Token::Pi || t == Token::E || t == Token::Ans ||
+           t == Token::ImagI ||
            t == Token::RightParen || t == Token::Fact ||
            t == Token::RightBrace ||
            (t >= Token::VarA && t <= Token::VarZ) ||
@@ -981,6 +988,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
   auto valueLikeStart = [&isYn](Token t) {
     return t == Token::NumLiteral ||
            t == Token::Pi || t == Token::E || t == Token::Ans ||
+           t == Token::ImagI ||
            t == Token::LeftParen ||
            t == Token::LeftBrace ||
            (t >= Token::VarA && t <= Token::VarZ) ||
@@ -1021,6 +1029,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
              (t >= Token::VarA && t <= Token::VarZ) ||
              (t >= Token::L1 && t <= Token::L6) ||
              t == Token::Pi || t == Token::E || t == Token::Ans ||
+           t == Token::ImagI ||
              t == Token::Rand ||
              t == Token::Y1 || t == Token::Y2 || t == Token::Y3)
       rpn.push_back({t, 0.0});
@@ -1114,14 +1123,21 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
   }
 
   struct Operand {
-    bool isMat;
-    double val;
+    // Defaulted so default-constructed `Operand o;` (used by the list
+    // and complex code) is a well-formed real 0 — otherwise isMat/val
+    // would be uninitialised garbage. Brace-init sites still work.
+    bool isMat = false;
+    double val = 0.0;
     Matrix mat;
-    // Phase C lists. Defaulted so existing brace-init sites
-    // ({isMat, val, mat}) still compile — the rest zero-fills.
+    // Phase C lists.
     bool isList = false;
     std::vector<double> list;
+    // Complex (Phase F): `val` = real part, `imag` = imaginary part.
+    double imag = 0.0;
   };
+  // Is this operand a (non-real) complex number?
+  auto isComplex = [](const Operand &o) { return o.imag != 0.0; };
+  auto toC = [](const Operand &o) { return std::complex<double>(o.val, o.imag); };
   std::stack<Operand> stack;
   auto toB = [](double v) { return std::abs(v) > 1e-9; };
 
@@ -1148,6 +1164,11 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
       stack.push({false, M_PI, {}});
     else if (t == Token::E)
       stack.push({false, M_E, {}});
+    else if (t == Token::ImagI) {
+      Operand o;  // the imaginary unit i = 0 + 1i
+      o.imag = 1.0;
+      stack.push(o);
+    }
     else if (t == Token::Rand)
       stack.push({false,
                   std::uniform_real_distribution<double>(0.0, 1.0)(rng), {}});
@@ -1155,7 +1176,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
       // Recall the last successful evaluation result. Defaults to the
       // scalar 0 on first use (matches TI-83 power-on state).
       stack.push({lastResult.isMatrix, lastResult.value, lastResult.matrixValue,
-                  lastResult.isList, lastResult.listValue});
+                  lastResult.isList, lastResult.listValue, lastResult.imag});
     } else if (t == Token::Y1 || t == Token::Y2 || t == Token::Y3) {
       // Y-VARS bare form — recursively evaluate the referenced buffer
       // at the current xValue. Cycle guard via `activeYn` (declared
@@ -1850,6 +1871,40 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
       if (a.isList)
         return {false, 0.0, {}, false, "Type Error"};
 
+      // Complex functions (Phase F) — conj/real/imag/angle are defined
+      // for real operands too. Then, for a complex operand, handle the
+      // functions that accept complex (abs/neg/sqrt) and reject the rest.
+      if (t == Token::Conj) {
+        Operand o; o.val = a.val; o.imag = -a.imag; stack.push(o); continue;
+      }
+      if (t == Token::RealPart) { stack.push({false, a.val, {}}); continue; }
+      if (t == Token::ImagPart) { stack.push({false, a.imag, {}}); continue; }
+      if (t == Token::Angle) {
+        double ang = std::atan2(a.imag, a.val);
+        if (MathStateMachine::angleMode == AngleMode::Degree)
+          ang = ang * 180.0 / M_PI;
+        stack.push({false, ang, {}}); continue;
+      }
+      if (isComplex(a)) {
+        if (t == Token::Abs) {
+          stack.push({false, std::hypot(a.val, a.imag), {}}); continue;
+        }
+        if (t == Token::Neg) {
+          Operand o; o.val = -a.val; o.imag = -a.imag; stack.push(o); continue;
+        }
+        if (t == Token::Sqrt) {
+          std::complex<double> z = std::sqrt(toC(a));
+          Operand o; o.val = z.real(); o.imag = z.imag(); stack.push(o); continue;
+        }
+        // Other unary functions on a complex operand aren't supported yet.
+        return {false, 0.0, {}, false, "Type Error"};
+      }
+      // √ of a negative real → complex when not in Real mode.
+      if (t == Token::Sqrt && a.val < 0.0 &&
+          MathStateMachine::complexMode != ComplexMode::Real) {
+        Operand o; o.val = 0.0; o.imag = std::sqrt(-a.val); stack.push(o); continue;
+      }
+
       // Handle functions based on type
       if (t == Token::Det) {
         if (!a.isMat)
@@ -2010,6 +2065,50 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
         continue;
       }
 
+      // Complex arithmetic (Phase F): when either operand has an
+      // imaginary part, compute + - * / ^ (and == / ≠) with std::complex.
+      // Real operands keep the existing real code paths untouched.
+      if (isComplex(a) || isComplex(b)) {
+        if (a.isMat || b.isMat || a.isList || b.isList)
+          return {false, 0.0, {}, false, "Type Error"};
+        const std::complex<double> ca = toC(a), cb = toC(b);
+        auto pushC = [&](std::complex<double> z) {
+          Operand o;
+          o.val = z.real();
+          o.imag = z.imag();
+          stack.push(o);
+        };
+        if (t == Token::Add)                                 pushC(ca + cb);
+        else if (t == Token::Sub)                            pushC(ca - cb);
+        else if (t == Token::Mul || t == Token::ImplicitMul) pushC(ca * cb);
+        else if (t == Token::Div) {
+          if (cb == std::complex<double>(0.0, 0.0))
+            return {false, 0.0, {}, false, "DIVIDE BY 0"};
+          pushC(ca / cb);
+        } else if (t == Token::Pow) {
+          // Integer exponents via repeated multiplication — exact, no
+          // exp/log round-off (so i² = -1, not -1 + 1e-16 i).
+          if (b.imag == 0.0 && b.val == std::floor(b.val) &&
+              std::abs(b.val) <= 64.0) {
+            const long long n = static_cast<long long>(b.val);
+            std::complex<double> r(1.0, 0.0);
+            const std::complex<double> base =
+                (n >= 0) ? ca : (std::complex<double>(1.0, 0.0) / ca);
+            for (long long k = 0; k < std::llabs(n); ++k) r *= base;
+            pushC(r);
+          } else {
+            pushC(std::pow(ca, cb));
+          }
+        }
+        else if (t == Token::Equal)
+          stack.push({false, (ca == cb) ? 1.0 : 0.0, {}});
+        else if (t == Token::NotEqual)
+          stack.push({false, (ca != cb) ? 1.0 : 0.0, {}});
+        else
+          return {false, 0.0, {}, false, "Type Error"};  // <,>,and,... on complex
+        continue;
+      }
+
       if (t == Token::Add) {
         if (a.isMat && b.isMat) {
           // BUG-010 fix: matrixAdd silently returned an empty Matrix on
@@ -2121,7 +2220,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
   if (stack.empty())
     return {false, 0.0, {}, false, "Error"};
   Operand res = stack.top();
-  return {true, res.val, res.mat, res.isMat, "", res.isList, res.list};
+  return {true, res.val, res.mat, res.isMat, "", res.isList, res.list, res.imag};
 }
 
 std::string MathStateMachine::toFraction(double value, double tolerance) {

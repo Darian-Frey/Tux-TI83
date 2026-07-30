@@ -383,6 +383,7 @@ ApplicationWindow {
                 "^": "^", "(": "(", ")": ")",
                 "s": "sin(", "c": "cos(", "t": "tan(",
                 "l": "log(", "n": "ln(", "r": "√(", "p": "π",
+                "i": "i",  // imaginary unit
                 "!": "!",
                 "|": "→",  // STO assignment arrow — Shift-\\ on US layout.
                 // Uppercase letters → single-letter variable tokens.
@@ -488,7 +489,9 @@ ApplicationWindow {
                     // stays implicit to avoid clutter.
                     const graphSeg = (g === 2) ? "  POL" : (g === 1) ? "  PAR"
                                     : (g === 3) ? "  SEQ" : ""
-                    return notation + fixSeg + "  " + angle + graphSeg
+                    const cx = uiController.complexMode
+                    const cxSeg = (cx === 1) ? "  a+bi" : (cx === 2) ? "  re^θi" : ""
+                    return notation + fixSeg + "  " + angle + graphSeg + cxSeg
                 }
                 color: Style.textMuted
                 font.family: Style.monoFamily
