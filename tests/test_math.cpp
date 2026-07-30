@@ -1730,6 +1730,45 @@ int main(int argc, char *argv[]) {
     c.setGraphMode(0); c.setActiveFunction(0);
   }
 
+  section("Save/load export (Phase F)");
+  {
+    auto near = [](double a, double b) { return std::abs(a - b) < 1e-9; };
+    tux_ti83::MathStateMachine::varRegistry.fill(0.0);
+    tux_ti83::MathStateMachine::listRegistry.clear();
+    c.setGraphMode(0);
+
+    // Set some state, export it, mutate, then import → state restored.
+    eval(c, "42→A");
+    c.updateList("L1", QVariantList{7, 8, 9});
+    checkTrue("export writes a save", c.exportState("unittest"));
+    checkTrue("save appears in listSaves",
+              c.listSaves().contains("unittest"));
+
+    // Mutate away from the saved state.
+    eval(c, "0→A");
+    c.clearAllLists();
+    checkTrue("A mutated to 0", near(eval(c, "A").toDouble(), 0.0));
+
+    // Import restores.
+    checkTrue("import succeeds", c.importState("unittest"));
+    checkTrue("A restored to 42", near(eval(c, "A").toDouble(), 42.0));
+    QVariantList l1 = c.getList("L1");
+    checkTrue("L1 restored to {7,8,9}",
+              l1.size() == 3 && near(l1[0].toDouble(), 7) &&
+              near(l1[2].toDouble(), 9));
+
+    // Name sanitisation + missing-save handling.
+    checkTrue("blank name rejected", !c.exportState("   "));
+    checkTrue("import of missing save fails", !c.importState("nope-xyz"));
+
+    // Clean up the test save.
+    c.deleteSave("unittest");
+    checkTrue("delete removes it", !c.listSaves().contains("unittest"));
+
+    tux_ti83::MathStateMachine::varRegistry.fill(0.0);
+    tux_ti83::MathStateMachine::listRegistry.clear();
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

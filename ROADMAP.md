@@ -369,8 +369,8 @@ TI-83 capability the project is named after.
 
 ## Connectivity & data exchange
 
-- 💭 Save/load full calculator state to disk
-- 💭 Export/import variables, lists, matrices, programs as files
+- ✅ Save/load full calculator state to disk — landed 2026-07-26 (Phase F #34). Named snapshots (`~/.local/state/tux-ti83/saves/<name>.t83`, JSON) via `UIController::exportState`/`importState`/`listSaves`/`deleteSave`, sharing the auto-state serialization through refactored `buildStateJson`/`applyStateJson`. Managed from a SAVE/LOAD section in the MEM menu (name field + Export; per-save Load / ✕ delete). This is the automatic `state.json` plus explicit user-named saves.
+- 💭 Export/import individual variables/lists/matrices as files (whole-state snapshots done above; per-object export is the remaining bit)
 - 💭 `.8xp` (TI program) import — would let users run real TI-83 programs
 - 💭 Link cable simulation between two running instances
 
@@ -424,6 +424,6 @@ A natural ordering, smallest meaningful chunk first:
 31. Calculus (`fnInt`, `nDeriv`, `sum`, `seq`)
 32. Distributions
 33. Programming (TI-BASIC subset)
-34. Save/load
+34. Save/load ✅
 35. Parametric / polar / sequence modes ✅ (all four graph modes done)
 36. Complex numbers

@@ -6,6 +6,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QStandardPaths>
+#include <QFileInfo>
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -278,6 +279,23 @@ QString resolveStateFilePath() {
   return dir + "/state.json";
 }
 
+// Directory holding named save snapshots (a `saves/` subdir alongside
+// state.json). Created on demand.
+QString resolveSavesDir() {
+  QString base = QFileInfo(resolveStateFilePath()).absolutePath();
+  QString dir = base + "/saves";
+  QDir().mkpath(dir);
+  return dir;
+}
+
+// Keep only letters/digits/-/_ so a user name maps to a safe filename.
+QString sanitizeSaveName(const QString &name) {
+  QString s;
+  for (QChar c : name.trimmed())
+    if (c.isLetterOrNumber() || c == '-' || c == '_') s += c;
+  return s;
+}
+
 // Schema version. Bump when the JSON layout changes incompatibly so
 // older state files are detected and skipped rather than misread.
 constexpr int kStateSchemaVersion = 1;
@@ -307,7 +325,7 @@ UIController::UIController(QObject *parent) : QObject(parent), m_activeIdx(0) {
   };
 }
 
-void UIController::saveState() const {
+QJsonObject UIController::buildStateJson() const {
   QJsonObject root;
   root["version"] = kStateSchemaVersion;
 
@@ -411,12 +429,22 @@ void UIController::saveState() const {
   table["tblStep"]  = m_tblStep;
   root["table"] = table;
 
-  QFile f(resolveStateFilePath());
+  return root;
+}
+
+// Write the JSON document to `path`; returns false on open/write failure.
+static bool writeJsonFile(const QString &path, const QJsonObject &root) {
+  QFile f(path);
   if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
-    return;
+    return false;
   f.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
   f.close();
-  CrashLogger::logEvent(QStringLiteral("saveState ok"));
+  return true;
+}
+
+void UIController::saveState() const {
+  if (writeJsonFile(resolveStateFilePath(), buildStateJson()))
+    CrashLogger::logEvent(QStringLiteral("saveState ok"));
 }
 
 void UIController::loadState() {
@@ -430,11 +458,14 @@ void UIController::loadState() {
     CrashLogger::logEvent(QStringLiteral("loadState skipped: parse error"));
     return;
   }
-  QJsonObject root = doc.object();
+  applyStateJson(doc.object());
+}
+
+void UIController::applyStateJson(const QJsonObject &root) {
   // Version mismatch: skip, leave defaults. Future migrations would
   // branch here.
   if (root.value("version").toInt() != kStateSchemaVersion) {
-    CrashLogger::logEvent(QStringLiteral("loadState skipped: version mismatch"));
+    CrashLogger::logEvent(QStringLiteral("applyState skipped: version mismatch"));
     return;
   }
 
@@ -596,6 +627,50 @@ void UIController::loadState() {
   emit drawObjectsChanged();
 
   CrashLogger::logEvent(QStringLiteral("loadState ok"));
+}
+
+bool UIController::exportState(const QString &name) {
+  const QString clean = sanitizeSaveName(name);
+  if (clean.isEmpty())
+    return false;
+  const QString path = resolveSavesDir() + "/" + clean + ".t83";
+  const bool ok = writeJsonFile(path, buildStateJson());
+  CrashLogger::logEvent(QStringLiteral("exportState ") + clean +
+                        (ok ? QStringLiteral(" ok") : QStringLiteral(" FAIL")));
+  return ok;
+}
+
+bool UIController::importState(const QString &name) {
+  const QString clean = sanitizeSaveName(name);
+  if (clean.isEmpty())
+    return false;
+  QFile f(resolveSavesDir() + "/" + clean + ".t83");
+  if (!f.exists() || !f.open(QIODevice::ReadOnly))
+    return false;
+  QJsonParseError err;
+  QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &err);
+  f.close();
+  if (err.error != QJsonParseError::NoError || !doc.isObject())
+    return false;
+  applyStateJson(doc.object());
+  CrashLogger::logEvent(QStringLiteral("importState ") + clean);
+  return true;
+}
+
+QStringList UIController::listSaves() const {
+  QDir dir(resolveSavesDir());
+  QStringList out;
+  const auto entries =
+      dir.entryInfoList(QStringList{"*.t83"}, QDir::Files, QDir::Name);
+  for (const QFileInfo &fi : entries)
+    out.append(fi.completeBaseName());
+  return out;
+}
+
+void UIController::deleteSave(const QString &name) {
+  const QString clean = sanitizeSaveName(name);
+  if (!clean.isEmpty())
+    QFile::remove(resolveSavesDir() + "/" + clean + ".t83");
 }
 
 void UIController::resetAll() {

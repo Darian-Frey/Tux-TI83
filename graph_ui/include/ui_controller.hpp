@@ -3,6 +3,7 @@
 #include <QStringList>
 #include <QVariantList>
 #include <QVariantMap>
+#include <QJsonObject>
 #include <deque>
 #include <vector>
 #include "capsules/capsule_math.hpp"
@@ -258,6 +259,12 @@ public:
     // (~/.local/state/tux-ti83/state.json on most Linux desktops).
     Q_INVOKABLE void saveState() const;
     Q_INVOKABLE void loadState();
+    // Save/load export (Phase F #34): named snapshots under a `saves/`
+    // dir, sharing the auto-state JSON via buildStateJson/applyStateJson.
+    Q_INVOKABLE bool exportState(const QString& name);
+    Q_INVOKABLE bool importState(const QString& name);
+    Q_INVOKABLE QStringList listSaves() const;
+    Q_INVOKABLE void deleteSave(const QString& name);
     // Factory reset — clears every piece of session and persisted
     // state (scalars A..Z, matrices [A]/[B]/[C], function buffers
     // Y1/Y2/Y3, history, entry-recall ring, viewport, MODE settings,
@@ -421,6 +428,10 @@ signals:
     void traceChanged();
 
 private:
+    // Serialise all persisted state to JSON / apply a JSON snapshot.
+    // Shared by saveState/loadState and exportState/importState.
+    QJsonObject buildStateJson() const;
+    void applyStateJson(const QJsonObject& root);
     // Home-screen slot label prefix: "r" in polar graph mode, else "Y".
     QString functionPrefix() const {
         return (m_graphMode == 2) ? QStringLiteral("r") : QStringLiteral("Y");

@@ -14,7 +14,7 @@ Popup {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
     width: 320
-    height: 460
+    height: 560
     padding: 14
 
     x: (parent.width - width) / 2
@@ -28,6 +28,7 @@ Popup {
     }
 
     property var info: ({})
+    property int savesRev: 0   // bumped to refresh the saves list
     function refresh() { info = uiController.memInfo() }
     onOpened: refresh()
 
@@ -122,7 +123,121 @@ Popup {
             onPressed: { uiController.resetAll(); root.close() }
         }
 
-        Item { Layout.fillHeight: true }
+        // ── Save / load named snapshots ──
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: Style.bgSection
+        }
+        Text {
+            text: "SAVE / LOAD"
+            color: Style.textMuted
+            font.family: Style.monoFamily
+            font.pixelSize: Style.funcKeyLabelPixelSize
+        }
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 6
+            TextField {
+                id: nameField
+                Layout.fillWidth: true
+                Layout.preferredHeight: 30
+                placeholderText: "save name"
+                color: Style.textDisplay
+                font.family: Style.monoFamily
+                font.pixelSize: Style.funcKeyLabelPixelSize
+                selectByMouse: true
+                background: Rectangle {
+                    color: Style.bgDisplay
+                    radius: 4
+                    border.color: nameField.activeFocus ? Style.textExpr : Style.keyBorderNeutral
+                    border.width: 1
+                }
+            }
+            CalcKey {
+                Layout.preferredWidth: 80
+                label: "Export"
+                keyType: "enter"
+                onPressed: {
+                    if (uiController.exportState(nameField.text)) {
+                        nameField.text = ""
+                        root.savesRev++
+                    }
+                }
+            }
+        }
+        ListView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.minimumHeight: 60
+            clip: true
+            spacing: 3
+            boundsBehavior: Flickable.StopAtBounds
+            model: (root.savesRev, uiController.listSaves())
+            delegate: RowLayout {
+                width: ListView.view.width
+                height: 26
+                spacing: 6
+                Text {
+                    Layout.fillWidth: true
+                    text: modelData
+                    color: Style.textDisplay
+                    font.family: Style.monoFamily
+                    font.pixelSize: Style.funcKeyLabelPixelSize
+                    elide: Text.ElideRight
+                }
+                Rectangle {
+                    Layout.preferredWidth: 44
+                    Layout.preferredHeight: 22
+                    radius: 4
+                    color: loadArea.containsMouse
+                           ? Qt.lighter(Style.bgSection, 1.0 + Style.keyHoverLighten)
+                           : Style.bgSection
+                    border.width: 1
+                    border.color: Style.enterBorder
+                    Text {
+                        anchors.centerIn: parent
+                        text: "Load"
+                        color: Style.textResult
+                        font.family: Style.monoFamily
+                        font.pixelSize: Style.funcKeyLabelPixelSize
+                    }
+                    MouseArea {
+                        id: loadArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: {
+                            uiController.importState(modelData)
+                            root.refresh()
+                            root.close()
+                        }
+                    }
+                }
+                Rectangle {
+                    Layout.preferredWidth: 24
+                    Layout.preferredHeight: 22
+                    radius: 4
+                    color: delArea.containsMouse
+                           ? Qt.lighter(Style.bgSection, 1.0 + Style.keyHoverLighten)
+                           : Style.bgSection
+                    border.width: 1
+                    border.color: Style.keyBorderNeutral
+                    Text {
+                        anchors.centerIn: parent
+                        text: "✕"
+                        color: Style.textError
+                        font.family: Style.monoFamily
+                        font.pixelSize: Style.funcKeyLabelPixelSize
+                    }
+                    MouseArea {
+                        id: delArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: { uiController.deleteSave(modelData); root.savesRev++ }
+                    }
+                }
+            }
+        }
 
         CalcKey {
             label: "DONE"
