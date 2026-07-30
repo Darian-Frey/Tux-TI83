@@ -501,7 +501,10 @@ void UIController::loadState() {
   if (mode.contains("drawMode"))
     m_drawMode = (mode["drawMode"].toInt() == 1) ? 1 : 0;
   if (mode.contains("graphMode"))
-    m_graphMode = (mode["graphMode"].toInt() == 2) ? 2 : 0;
+  {
+    const int g = mode["graphMode"].toInt();
+    m_graphMode = (g == 1 || g == 2) ? g : 0;
+  }
   if (mode.contains("statPlotOn"))
     m_statPlotOn = mode["statPlotOn"].toBool();
   if (mode.contains("statPlotType")) {
@@ -785,10 +788,10 @@ void UIController::setDrawMode(int m) {
 
 void UIController::setGraphMode(int m) {
   CrashLogger::logEvent(QStringLiteral("setGraphMode: ") + QString::number(m));
-  // Only Func (0) and Pol (2) are implemented; Par (1) / Seq (3) are
-  // rejected and fall back to Func so a stray write can't strand the
-  // user in an unimplemented mode.
-  const int clamped = (m == 2) ? 2 : 0;
+  // Func (0), Par (1), and Pol (2) are implemented; Seq (3) is not and
+  // falls back to Func so a stray write can't strand the user in an
+  // unimplemented mode.
+  const int clamped = (m == 1 || m == 2) ? m : 0;  // Func/Par/Pol (Seq→Func)
   if (m_graphMode == clamped)
     return;
   m_graphMode = clamped;
@@ -1066,7 +1069,7 @@ void UIController::evaluate() {
   // currentStr is overwritten with the result.
   m_displayExpression = currentStr;
   QString entry =
-      functionPrefix() + QString::number(m_activeIdx + 1) + ": " + currentStr + " = ";
+      functionLabel(m_activeIdx) + ": " + currentStr + " = ";
 
   MathStateMachine msm;
   // In calc mode, X behaves like any other scalar variable — resolve
@@ -1155,7 +1158,7 @@ void UIController::convertDisplayToFraction() {
     return; // Irrational or unconvertible — silently leave the decimal.
   auto &currentStr = m_displayStrings[m_activeIdx];
   currentStr = QString::fromStdString(fracStr);
-  m_history.prepend(functionPrefix() + QString::number(m_activeIdx + 1) +
+  m_history.prepend(functionLabel(m_activeIdx) +
                     ": Ans▶Frac = " + currentStr);
   emit historyChanged();
   emit displayChanged();
@@ -1169,7 +1172,7 @@ void UIController::convertDisplayToDecimal() {
     return;
   auto &currentStr = m_displayStrings[m_activeIdx];
   currentStr = formatScalar(MathStateMachine::lastResult.value);
-  m_history.prepend(functionPrefix() + QString::number(m_activeIdx + 1) +
+  m_history.prepend(functionLabel(m_activeIdx) +
                     ": Ans▶Dec = " + currentStr);
   emit historyChanged();
   emit displayChanged();
@@ -2103,6 +2106,42 @@ QVariantList UIController::getMultiGraphPoints(int resolution) {
   // an empty array and skips it.
   QVariantList allFunctions;
   MathStateMachine msm;
+  const bool degreeMode = (MathStateMachine::angleMode == AngleMode::Degree);
+
+  // Parametric mode (graphMode == 1): the 10 buffers are read as 5
+  // X/Y pairs (X1T,Y1T,X2T,Y2T,...). Sweep the parameter t over a full
+  // turn (X stands in for t, like polar's θ) and plot (X_nT(t),Y_nT(t)).
+  // Each pair's points land at its even (X) slot so colour-by-index and
+  // per-slot style still work; the odd (Y) slot stays empty.
+  if (m_graphMode == 1) {
+    const double tMax = degreeMode ? 360.0 : 2.0 * M_PI;
+    const double tStep = tMax / resolution;
+    for (int slot = 0; slot < static_cast<int>(m_functionBuffers.size()); ++slot) {
+      QVariantList points;
+      const int yslot = slot + 1;
+      const bool isXslot = (slot % 2 == 0) &&
+                           yslot < static_cast<int>(m_functionBuffers.size());
+      const bool ok = isXslot &&
+          !m_functionBuffers[slot].empty() && !m_functionBuffers[yslot].empty() &&
+          m_functionEnabled[slot] && m_functionEnabled[yslot];
+      if (ok) {
+        for (int i = 0; i <= resolution; ++i) {
+          const double t = i * tStep;
+          CalculationResult rx = msm.evaluate(m_functionBuffers[slot], t);
+          CalculationResult ry = msm.evaluate(m_functionBuffers[yslot], t);
+          if (rx.success && !rx.isMatrix && !rx.isList &&
+              ry.success && !ry.isMatrix && !ry.isList) {
+            QVariantMap pt;
+            pt["x"] = rx.value;
+            pt["y"] = ry.value;
+            points.append(pt);
+          }
+        }
+      }
+      allFunctions.append(QVariant::fromValue(points));
+    }
+    return allFunctions;
+  }
 
   // Polar mode (graphMode == 2) sweeps the angle parameter over a full
   // turn and interprets each buffer as r = f(θ), converting (r, θ) to

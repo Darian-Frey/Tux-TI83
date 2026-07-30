@@ -1648,6 +1648,49 @@ int main(int argc, char *argv[]) {
     checkTrue("clrDraw clears all", c.getDrawObjects().isEmpty());
   }
 
+  section("Parametric mode (Phase F)");
+  {
+    // Labels adapt to the graph mode.
+    c.setProperty("graphMode", 0);
+    checkTrue("Func label: Y1 / Y0",
+              c.functionLabel(0) == "Y1" && c.functionLabel(9) == "Y0");
+    c.setProperty("graphMode", 2);
+    checkTrue("Pol label: r1", c.functionLabel(0) == "r1");
+    c.setProperty("graphMode", 1);
+    checkTrue("Par label: X1T/Y1T/X5T/Y5T",
+              c.functionLabel(0) == "X1T" && c.functionLabel(1) == "Y1T" &&
+              c.functionLabel(8) == "X5T" && c.functionLabel(9) == "Y5T");
+
+    // setGraphMode accepts Par(1); rejects Seq(3) → Func.
+    c.setGraphMode(3);
+    checkTrue("graphMode Seq(3) rejected → Func(0)",
+              c.property("graphMode").toInt() == 0);
+    c.setGraphMode(1);
+    checkTrue("graphMode Par(1) accepted",
+              c.property("graphMode").toInt() == 1);
+
+    // X1T = X (t), Y1T = 2X (2t): the pair plots (t, 2t). Points land at
+    // the even (X) slot; the odd (Y) slot stays empty.
+    c.setActiveFunction(0); eval(c, "X");
+    c.setActiveFunction(1); eval(c, "2X");
+    QVariantList pts = c.getMultiGraphPoints(10);
+    checkTrue("Par: pair points at slot 0", !pts[0].toList().isEmpty());
+    checkTrue("Par: odd (Y) slot 1 empty", pts[1].toList().isEmpty());
+    QVariantMap p0 = pts[0].toList()[0].toMap();
+    checkTrue("Par: first point (0,0)",
+              std::abs(p0["x"].toDouble()) < 1e-9 &&
+              std::abs(p0["y"].toDouble()) < 1e-9);
+    QVariantList l0 = pts[0].toList();
+    QVariantMap pk = l0[l0.size() / 2].toMap();
+    checkTrue("Par: y = 2x along the curve",
+              std::abs(pk["y"].toDouble() - 2.0 * pk["x"].toDouble()) < 1e-9);
+
+    c.setActiveFunction(0); c.processInput("CLEAR");
+    c.setActiveFunction(1); c.processInput("CLEAR");
+    c.setGraphMode(0);
+    c.setActiveFunction(0);
+  }
+
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
 

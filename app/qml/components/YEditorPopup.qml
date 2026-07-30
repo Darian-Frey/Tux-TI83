@@ -37,17 +37,18 @@ Popup {
         function onFunctionsChanged() { root.rev++ }
         function onDisplayChanged() { root.rev++ }
         function onActiveFunctionIndexChanged() { root.rev++ }
+        function onGraphModeSettingChanged() { root.rev++ }
     }
 
     readonly property var styleGlyphs: ["―", "█", "⋯"]  // thin / thick / dotted
-    readonly property string prefix: uiController.graphMode === 2 ? "r" : "Y"
 
     contentItem: ColumnLayout {
         spacing: 10
 
         Text {
             Layout.fillWidth: true
-            text: (uiController.graphMode === 2 ? "r=" : "Y=") + " EDITOR"
+            text: (uiController.graphMode === 2 ? "r=" :
+                   uiController.graphMode === 1 ? "PARAM" : "Y=") + " EDITOR"
             color: Style.textMuted
             font.family: Style.monoFamily
             font.pixelSize: Style.sectionLabelPixelSize
@@ -88,11 +89,11 @@ Popup {
                     spacing: 6
 
                     Text {
-                        text: root.prefix + (index === 9 ? "0" : (index + 1))
+                        text: (root.rev, uiController.functionLabel(index))
                         color: slotRow.slotColor
                         font.family: Style.monoFamily
-                        font.pixelSize: Style.keyLabelPixelSize
-                        Layout.preferredWidth: 26
+                        font.pixelSize: Style.funcKeyLabelPixelSize
+                        Layout.preferredWidth: 34
                     }
                     Text {
                         Layout.fillWidth: true

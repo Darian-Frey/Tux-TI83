@@ -37,8 +37,9 @@ RowLayout {
 
             Text {
                 anchors.centerIn: parent
-                // r1/r2/r3 in polar graph mode, Y1/Y2/Y3 otherwise.
-                text: (uiController.graphMode === 2 ? "r" : "Y") + (index + 1)
+                // Y1/Y2/Y3 (Func), r1/r2/r3 (Pol), or X1T/Y1T/X2T (Par).
+                // graphMode referenced so the label refreshes on mode change.
+                text: (uiController.graphMode, uiController.functionLabel(index))
                 color: active ? Style.textPrimary : Style.textSecondary
                 font.family: Style.monoFamily
                 font.pixelSize: Style.funcKeyLabelPixelSize

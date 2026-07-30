@@ -484,9 +484,9 @@ ApplicationWindow {
                     const notation = (n === 1) ? "SCI" : (n === 2) ? "ENG" : "NORMAL"
                     const angle = (a === 1) ? "DEG" : "RAD"
                     const fixSeg = (fx >= 0) ? ("  FIX " + fx) : ""
-                    // Only surface a non-default graph mode (POL); Func is
-                    // the default and stays implicit to avoid clutter.
-                    const graphSeg = (g === 2) ? "  POL" : ""
+                    // Surface a non-default graph mode; Func (default)
+                    // stays implicit to avoid clutter.
+                    const graphSeg = (g === 2) ? "  POL" : (g === 1) ? "  PAR" : ""
                     return notation + fixSeg + "  " + angle + graphSeg
                 }
                 color: Style.textMuted

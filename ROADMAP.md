@@ -307,7 +307,7 @@ default on) gating the graph canvas. RESET restores them.
 - 📅 `ExprOn` / `ExprOff` (show the expression while tracing) — deferred.
 
 ### Other graphing modes
-- 💭 Parametric mode (X1T, Y1T)
+- ✅ Parametric mode (X1T, Y1T) — landed 2026-07-26 (Phase F). MODE → Graph → Par; the 10 function buffers are read as 5 X/Y pairs (X1T,Y1T,X2T,Y2T,…) and each pair plots `(X_nT(t), Y_nT(t))` over a full-turn sweep. Reuses the graph pipeline and the Y-editor; `X` stands in for the parameter `t` (like polar's θ — no core_math change). Slot labels adapt everywhere; `PAR` header indicator; persisted. Caveats: fixed t-range `[0, 2π]` (Tmin/Tmax/Tstep window settings are a follow-up) and X-as-t rather than a dedicated `T` token.
 - ✅ Polar mode (r1, r2, r3) — landed 2026-07-22. MODE → Graph → Pol; each function buffer is read as `r = f(θ)` and rendered on the shared canvas via `(r,θ)→(x,y)`. Angle-unit-aware (radian/degree). Reuses the Func-mode render/pan/zoom pipeline; `r1/r2/r3` selector + `POL` header indicator + persisted `graphMode`. Caveats: the angle variable is entered as `X` (no dedicated `θ` token — avoids a core_math change), θ sweeps a fixed full turn (no θmin/θmax/θstep settings yet), and trace isn't polar-aware yet.
 - 💭 Sequence mode (u(n), v(n))
 - 💭 Inequality shading (Inequalz app on TI-83 Plus)

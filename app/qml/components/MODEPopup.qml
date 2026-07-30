@@ -184,14 +184,14 @@ Popup {
             active: true
             onSelected: (index) => uiController.numberBase = index
         }
-        // Graph: Func / Pol wired (Cartesian and polar). Par / Seq stay
-        // greyed — not implemented. selectedIndex/onSelected use the
-        // option index directly, matching the controller's graphMode
-        // encoding (0 = Func, 2 = Pol).
+        // Graph: Func / Par / Pol wired (Cartesian, parametric, polar).
+        // Seq stays greyed — not implemented. selectedIndex/onSelected use
+        // the option index directly, matching the controller's graphMode
+        // encoding (0 = Func, 1 = Par, 2 = Pol).
         ModeRow {
             label: "Graph"
             options: ["Func", "Par", "Pol", "Seq"]
-            disabledIndices: [1, 3]
+            disabledIndices: [3]   // Seq not implemented; Func/Par/Pol live
             selectedIndex: uiController.graphMode
             active: true
             onSelected: (index) => uiController.graphMode = index

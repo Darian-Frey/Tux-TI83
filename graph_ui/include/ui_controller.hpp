@@ -195,6 +195,18 @@ public:
         return (i >= 0 && i < static_cast<int>(m_displayStrings.size()))
                    ? m_displayStrings[i] : QString();
     }
+    // Slot label for the current graph mode: Y1..Y0 (Func), r1..r0 (Pol),
+    // or the parametric pairs X1T/Y1T/X2T/Y2T/... (Par — buffers are
+    // read two at a time, X then Y).
+    Q_INVOKABLE QString functionLabel(int i) const {
+        if (m_graphMode == 1) {  // parametric
+            const int pair = i / 2 + 1;
+            return QStringLiteral("%1%2T")
+                .arg(i % 2 == 0 ? "X" : "Y").arg(pair);
+        }
+        return functionPrefix() +
+               (i == 9 ? QStringLiteral("0") : QString::number(i + 1));
+    }
     Q_INVOKABLE void toggleGraphMode() {
         m_isGraphMode = !m_isGraphMode;
         // Mutually exclusive with TABLE mode.
