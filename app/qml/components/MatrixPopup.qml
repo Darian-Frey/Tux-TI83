@@ -304,7 +304,12 @@ Popup {
                         { display: "1: det(",  input: "det("  },
                         { display: "2: T(",    input: "T("    },
                         { display: "3: rref(", input: "rref(" },
-                        { display: "4: ^-1 (inverse)", input: "^-1" }
+                        { display: "4: ref(",  input: "ref("  },
+                        { display: "5: ^-1 (inverse)", input: "^-1" },
+                        { display: "6: identity(", input: "identity(" },
+                        { display: "7: dim(",     input: "dim("     },
+                        { display: "8: augment(", input: "augment(" },
+                        { display: "9: randM(",   input: "randM("   }
                     ]
                     spacing: 4
                     clip: true

@@ -81,6 +81,19 @@ enum class Token {
   Exp,
   // Sign function — returns -1, 0, or +1.
   Sgn,
+  // Matrix/List toolkit (Phase F follow-up). All take a built-in `(`.
+  //   Identity(n)   — unary scalar → n×n identity matrix.
+  //   Dim(arg)      — unary; matrix → {rows,cols} list, list → length scalar.
+  //   Ref(M)        — unary matrix → row-echelon form (forward elimination,
+  //                   leading 1s; distinct from Rref which back-eliminates).
+  //   Augment(a,b)  — binary; matrix‖matrix (equal rows → horizontal concat)
+  //                   or list‖list (concatenation).
+  //   RandM(r,c)    — binary scalars → r×c matrix of random ints in [-9,9].
+  Identity,
+  Dim,
+  Ref,
+  Augment,
+  RandM,
   // Number functions (binary). Pop two operands during evaluation;
   // arguments are separated by Comma in the source expression.
   Round,

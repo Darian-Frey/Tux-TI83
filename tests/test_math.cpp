@@ -335,6 +335,70 @@ int main(int argc, char *argv[]) {
   check("T([B]) of square 2×2",
         eval(c, "T([B])"), "[[1,3][2,4]]");
 
+  section("Matrix/List toolkit (Phase F follow-up)");
+  {
+    // identity(n) — scalar → n×n identity matrix.
+    check("identity(3)", eval(c, "identity(3)"), "[[1,0,0][0,1,0][0,0,1]]");
+    check("identity(1)", eval(c, "identity(1)"), "[[1]]");
+    check("identity(0) → DOMAIN", eval(c, "identity(0)"), "ERR:DOMAIN");
+    check("identity(2.5) → DOMAIN", eval(c, "identity(2.5)"), "ERR:DOMAIN");
+
+    // dim( — matrix → {rows,cols} list; list → length scalar.
+    c.updateMatrix("[A]", 2, 3, QVariantList{1.0, 2.0, 3.0, 4.0, 5.0, 6.0});
+    check("dim(2×3 matrix) = {2,3}", eval(c, "dim([A])"), "{2,3}");
+    check("dim(list) = length", eval(c, "dim({4,5,6,7})"), "4");
+    check("dim(scalar) → type error", eval(c, "dim(5)"), "ERR:DATA TYPE");
+
+    // ref( — row-echelon: leading 1s, upper-triangular, no back-elim.
+    c.updateMatrix("[A]", 3, 3,
+                   QVariantList{2.0, 4.0, 6.0, 1.0, 1.0, 1.0, 0.0, 0.0, 5.0});
+    check("ref([[2,4,6][1,1,1][0,0,5]]) = [[1,2,3][0,1,2][0,0,1]]",
+          eval(c, "ref([A])"), "[[1,2,3][0,1,2][0,0,1]]");
+    // Rank-deficient 3×2 → leading 1 then zero rows below.
+    c.updateMatrix("[A]", 3, 2,
+                   QVariantList{1.0, 2.0, 2.0, 4.0, 0.0, 0.0});
+    check("ref of rank-1 3×2 → [[1,2][0,0][0,0]]",
+          eval(c, "ref([A])"), "[[1,2][0,0][0,0]]");
+    check("ref(scalar) → type error", eval(c, "ref(5)"), "ERR:DATA TYPE");
+
+    // augment( — matrix‖matrix (equal rows) or list‖list.
+    c.updateMatrix("[A]", 2, 2, QVariantList{1.0, 2.0, 3.0, 4.0});
+    c.updateMatrix("[B]", 2, 2, QVariantList{5.0, 6.0, 7.0, 8.0});
+    check("augment(2×2,2×2) → 2×4",
+          eval(c, "augment([A],[B])"), "[[1,2,5,6][3,4,7,8]]");
+    c.updateMatrix("[B]", 3, 2, QVariantList{1.0, 2.0, 3.0, 4.0, 5.0, 6.0});
+    check("augment row mismatch → INVALID DIM",
+          eval(c, "augment([A],[B])"), "ERR:INVALID DIM");
+    check("augment(list,list) concatenates",
+          eval(c, "augment({1,2},{3,4,5})"), "{1,2,3,4,5}");
+    check("augment(matrix,list) → type error",
+          eval(c, "augment([A],{1,2})"), "ERR:DATA TYPE");
+
+    // randM(r,c) — r×c matrix of random ints in [-9,9].
+    tux_ti83::MathStateMachine::seedRandom(777);
+    QString rm = eval(c, "randM(2,3)");
+    tux_ti83::MathStateMachine::seedRandom(777);
+    checkTrue("randM deterministic under seed", eval(c, "randM(2,3)") == rm);
+    check("dim(randM(4,2)) = {4,2}", eval(c, "dim(randM(4,2))"), "{4,2}");
+    check("randM(0,2) → DOMAIN", eval(c, "randM(0,2)"), "ERR:DOMAIN");
+    check("randM(2,2.5) → DOMAIN", eval(c, "randM(2,2.5)"), "ERR:DOMAIN");
+    // Every entry is an integer within [-9,9] over many draws.
+    bool rmOk = true;
+    for (int i = 0; i < 50 && rmOk; ++i) {
+      c.updateMatrix("[A]", 1, 1, QVariantList{0.0});  // reset target
+      QString s = eval(c, "randM(3,3)");
+      // Normalise the [[..][..]] grid to comma-separated numbers: turn the
+      // "][" row boundary into a comma first, then drop the outer brackets.
+      QString nums = s;
+      nums.replace("][", ",").remove('[').remove(']');
+      for (const QString &p : nums.split(',', Qt::SkipEmptyParts)) {
+        double v = p.toDouble();
+        if (v < -9.0 || v > 9.0 || v != std::floor(v)) rmOk = false;
+      }
+    }
+    checkTrue("randM entries are integers in [-9,9]", rmOk);
+  }
+
   section("Matrix dimension mismatch (BUG-010, BUG-011)");
   c.updateMatrix("[A]", 2, 2, QVariantList{1.0, 2.0, 3.0, 4.0});
   c.updateMatrix("[B]", 3, 3,

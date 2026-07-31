@@ -44,6 +44,11 @@ int EOSPrecedence::precedence(Token t) {
   case Token::FPart:
   case Token::Exp:
   case Token::Sgn:
+  case Token::Identity:
+  case Token::Dim:
+  case Token::Ref:
+  case Token::Augment:
+  case Token::RandM:
   case Token::Y1Call:
   case Token::Y2Call:
   case Token::Y3Call:
@@ -123,6 +128,7 @@ bool EOSPrecedence::is_function(Token t) {
           t == Token::Abs || t == Token::Int ||
           t == Token::IPart || t == Token::FPart ||
           t == Token::Exp || t == Token::Sgn ||
+          t == Token::Identity || t == Token::Dim || t == Token::Ref ||
           (t >= Token::Y1Call && t <= Token::Y0Call) ||
           t == Token::FnIntCall || t == Token::NDerivCall ||
           t == Token::SumCall || t == Token::ProdCall ||
@@ -151,7 +157,8 @@ bool EOSPrecedence::is_function(Token t) {
 bool EOSPrecedence::is_binary_function(Token t) {
   return (t == Token::Round || t == Token::Min ||
           t == Token::Max || t == Token::Mod ||
-          t == Token::NCr || t == Token::NPr);
+          t == Token::NCr || t == Token::NPr ||
+          t == Token::Augment || t == Token::RandM);
 }
 
 bool EOSPrecedence::has_built_in_paren(Token t) {
@@ -164,6 +171,7 @@ bool EOSPrecedence::has_built_in_paren(Token t) {
           t == Token::Log || t == Token::Ln || t == Token::Sqrt ||
           t == Token::Abs || t == Token::Int || t == Token::IPart ||
           t == Token::FPart || t == Token::Exp || t == Token::Sgn ||
+          t == Token::Identity || t == Token::Dim || t == Token::Ref ||
           (t >= Token::Y1Call && t <= Token::Y0Call) ||
           t == Token::FnIntCall || t == Token::NDerivCall ||
           t == Token::SumCall || t == Token::ProdCall ||
@@ -172,6 +180,7 @@ bool EOSPrecedence::has_built_in_paren(Token t) {
           t == Token::Round || t == Token::Min ||
           t == Token::Max || t == Token::Mod ||
           t == Token::NCr || t == Token::NPr ||
+          t == Token::Augment || t == Token::RandM ||
           t == Token::Sinh || t == Token::Cosh || t == Token::Tanh ||
           t == Token::ASinh || t == Token::ACosh || t == Token::ATanh ||
           t == Token::Mean || t == Token::StdDev || t == Token::Variance ||
@@ -297,6 +306,54 @@ void rrefInPlace(Matrix &m) {
     ++lead;
   }
 clamp:
+  for (size_t k = 0; k < m.data.size(); ++k)
+    if (std::abs(m.data[k]) < 1e-12)
+      m.data[k] = 0.0;
+}
+
+// Row-echelon form (not reduced): forward Gaussian elimination with
+// partial pivoting. Each pivot row is normalised to a leading 1 and
+// used to zero the entries BELOW it only — unlike rrefInPlace, rows
+// above a pivot are left untouched, yielding the upper-triangular
+// echelon form the TI-83's `ref(` returns.
+void refInPlace(Matrix &m) {
+  int rows = m.rows;
+  int cols = m.cols;
+  int lead = 0;
+  for (int r = 0; r < rows; ++r) {
+    if (lead >= cols)
+      break;
+    // Partial pivot: pick the largest-magnitude entry in this column at
+    // or below row r for numerical stability.
+    int pivRow = r;
+    double best = std::abs(m.at(r, lead));
+    for (int i = r + 1; i < rows; ++i) {
+      double v = std::abs(m.at(i, lead));
+      if (v > best) { best = v; pivRow = i; }
+    }
+    if (best < 1e-12) {
+      // No pivot in this column — advance to the next column, same row.
+      ++lead;
+      --r;
+      continue;
+    }
+    if (pivRow != r) {
+      for (int j = 0; j < cols; ++j) {
+        double tmp = m.at(r, j);
+        m.set(r, j, m.at(pivRow, j));
+        m.set(pivRow, j, tmp);
+      }
+    }
+    double pivot = m.at(r, lead);
+    for (int j = 0; j < cols; ++j)
+      m.set(r, j, m.at(r, j) / pivot);
+    for (int ri = r + 1; ri < rows; ++ri) {
+      double factor = m.at(ri, lead);
+      for (int j = 0; j < cols; ++j)
+        m.set(ri, j, m.at(ri, j) - factor * m.at(r, j));
+    }
+    ++lead;
+  }
   for (size_t k = 0; k < m.data.size(); ++k)
     if (std::abs(m.data[k]) < 1e-12)
       m.data[k] = 0.0;
@@ -1766,6 +1823,100 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
         stack.push({false, r, {}});
         continue;
       }
+      // Matrix/List toolkit (Phase F follow-up). Handled ahead of the
+      // generic binary/unary blocks because these produce matrix/list
+      // results and accept matrix/list operands the generic blocks reject.
+      if (t == Token::Identity) {
+        if (stack.empty()) return {false, 0.0, {}, false, "Error"};
+        Operand a = stack.top(); stack.pop();
+        if (a.isMat || a.isList) return {false, 0.0, {}, false, "Type Error"};
+        double nd = a.val;
+        if (nd < 1.0 || nd > 99.0 || nd != std::floor(nd))
+          return {false, 0.0, {}, false, "DOMAIN"};
+        int n = static_cast<int>(nd);
+        Matrix result;
+        result.rows = n; result.cols = n;
+        result.data.assign(static_cast<size_t>(n) * n, 0.0);
+        for (int i = 0; i < n; ++i) result.set(i, i, 1.0);
+        stack.push({true, 0.0, result});
+        continue;
+      }
+      if (t == Token::Dim) {
+        if (stack.empty()) return {false, 0.0, {}, false, "Error"};
+        Operand a = stack.top(); stack.pop();
+        if (a.isMat) {
+          // Matrix → {rows, cols} list.
+          Operand o; o.isList = true;
+          o.list = {static_cast<double>(a.mat.rows),
+                    static_cast<double>(a.mat.cols)};
+          stack.push(o);
+          continue;
+        }
+        if (a.isList) {
+          stack.push({false, static_cast<double>(a.list.size()), {}});
+          continue;
+        }
+        return {false, 0.0, {}, false, "Type Error"};  // scalar has no dim
+      }
+      if (t == Token::Ref) {
+        if (stack.empty()) return {false, 0.0, {}, false, "Error"};
+        Operand a = stack.top(); stack.pop();
+        if (!a.isMat) return {false, 0.0, {}, false, "Type Error"};
+        Matrix result = a.mat;
+        refInPlace(result);
+        stack.push({true, 0.0, result});
+        continue;
+      }
+      if (t == Token::RandM) {
+        if (stack.size() < 2) return {false, 0.0, {}, false, "Error"};
+        Operand b = stack.top(); stack.pop();
+        Operand a = stack.top(); stack.pop();
+        if (a.isMat || b.isMat || a.isList || b.isList)
+          return {false, 0.0, {}, false, "Type Error"};
+        double rd = a.val, cd = b.val;
+        if (rd < 1.0 || cd < 1.0 || rd > 99.0 || cd > 99.0 ||
+            rd != std::floor(rd) || cd != std::floor(cd))
+          return {false, 0.0, {}, false, "DOMAIN"};
+        int r = static_cast<int>(rd), cN = static_cast<int>(cd);
+        Matrix result;
+        result.rows = r; result.cols = cN;
+        result.data.resize(static_cast<size_t>(r) * cN);
+        std::uniform_int_distribution<int> dist(-9, 9);
+        for (auto &v : result.data) v = static_cast<double>(dist(rng));
+        stack.push({true, 0.0, result});
+        continue;
+      }
+      if (t == Token::Augment) {
+        if (stack.size() < 2) return {false, 0.0, {}, false, "Error"};
+        Operand b = stack.top(); stack.pop();
+        Operand a = stack.top(); stack.pop();
+        if (a.isMat && b.isMat) {
+          // Horizontal concatenation — requires equal row counts.
+          if (a.mat.rows != b.mat.rows)
+            return {false, 0.0, {}, false, "Dim Mismatch"};
+          Matrix result;
+          result.rows = a.mat.rows;
+          result.cols = a.mat.cols + b.mat.cols;
+          result.data.resize(static_cast<size_t>(result.rows) * result.cols);
+          for (int i = 0; i < result.rows; ++i) {
+            for (int j = 0; j < a.mat.cols; ++j)
+              result.set(i, j, a.mat.at(i, j));
+            for (int j = 0; j < b.mat.cols; ++j)
+              result.set(i, a.mat.cols + j, b.mat.at(i, j));
+          }
+          stack.push({true, 0.0, result});
+          continue;
+        }
+        if (a.isList && b.isList) {
+          Operand o; o.isList = true;
+          o.list = a.list;
+          o.list.insert(o.list.end(), b.list.begin(), b.list.end());
+          stack.push(o);
+          continue;
+        }
+        return {false, 0.0, {}, false, "Type Error"};  // no mixed forms
+      }
+
       // Binary functions (round, min, max, mod) — pop two operands.
       if (EOSPrecedence::is_binary_function(t)) {
         if (stack.size() < 2)

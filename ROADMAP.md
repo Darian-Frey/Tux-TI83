@@ -136,7 +136,7 @@ Candidate next areas (no commitment):
 - ✅ `asin`, `acos`, `atan` (engine + `ERR:DOMAIN` for inputs outside `[-1, 1]`; fixed 2026-04-07) — UI exposure pending: best route is via 2ND modifier on the sin/cos/tan keys when the modifier system lands
 - ✅ `log` (base 10), `ln` (both return `ERR:NONREAL ANS` for non-positive inputs; fixed 2026-04-07)
 - ✅ `e` constant — engine + UI (SCIENTIFIC row 2 col 5, next to π; added 2026-04-07)
-- 📅 `e^(` exponential function
+- ✅ `e^(` exponential function — dedicated `Exp` token (single first-class entry, matches the TI-83 keytop), engine + UI; complex-aware. See [IMP-041](IMPROVEMENTS.md).
 - ✅ Hyperbolic: `sinh`, `cosh`, `tanh`, `asinh`, `acosh`, `atanh` — engine + UI via MATH menu (added 2026-04-08). Domain checks: `acosh` requires x ≥ 1, `atanh` requires |x| < 1 (both return `ERR:DOMAIN` otherwise); the other four accept all reals.
 - 💭 `logBASE(` for arbitrary base
 
@@ -152,7 +152,7 @@ Candidate next areas (no commitment):
 - ✅ `max(a, b)` — engine + UI via MATH menu (Wave 2)
 - ✅ `mod(a, b)` — engine + UI via MATH menu (returns `ERR:DIVIDE BY 0` on zero divisor; Wave 2)
 - ✅ `Comma` token + binary-function infrastructure: shunting-yard pushes a synthetic `LeftParen` for functions whose input string ends in `(`, so the matching `)` and inner commas have a clear scope marker. Unlocks future n-ary functions like `nCr(n, r)` (added 2026-04-08)
-- 📅 Sign function
+- ✅ `sgn(` sign function — returns -1, 0, or +1; engine + UI. See [IMP-041](IMPROVEMENTS.md).
 
 ### Combinatorics
 - ✅ `nCr(n, r)` — combinations, n choose r (engine + UI via MATH menu; added 2026-04-08). Requires 0 ≤ r ≤ n with both non-negative integers; `ERR:DOMAIN` otherwise.
@@ -204,10 +204,10 @@ Engine implements more than the UI currently exposes — listed below.
 - ✅ Transpose `T(` — unary matrix function; engine + UI via the MatrixPopup's MATH tab (added 2026-04-08). Swaps rows and columns; returns `ERR:DATA TYPE` for scalar input.
 - ✅ Inverse `^-1` — TI-83 syntax; engine via Gauss-Jordan on the augmented `[A | I]` form; UI via MatrixPopup MATH tab entry "4: ^-1 (inverse)" which inserts the multi-token `^-1` sequence (added 2026-04-08). Non-square input returns `ERR:INVALID DIM`; singular matrices return `ERR:SINGULAR MAT`.
 - ✅ Reduced row-echelon form `rref(` — shared row-reduction engine with inverse; UI via MatrixPopup MATH tab entry "3: rref(" (added 2026-04-08). Cells with magnitude < 1e-12 are clamped to zero so results don't display with floating-point noise.
-- 📅 Row-echelon form `ref(`
-- 📅 `dim(`, `identity(`, `randM(`
-- 📅 `augment(`
-- 📅 Matrix ↔ List conversion (`Matr→List`, `List→Matr`)
+- ✅ Row-echelon form `ref(` — unary matrix function; forward Gaussian elimination with partial pivoting and leading-1 pivots (upper-triangular echelon, no back-elimination — distinct from `rref(`). Engine + UI via MatrixPopup MATH tab; `ERR:DATA TYPE` for scalar input. Added 2026-07-31.
+- ✅ `dim(`, `identity(`, `randM(` — engine + UI via MatrixPopup MATH tab (added 2026-07-31). `identity(n)` → n×n identity (integer 1–99, else `ERR:DOMAIN`); `dim(` → `{rows,cols}` list for a matrix or length scalar for a list (`ERR:DATA TYPE` on a scalar); `randM(r,c)` → r×c matrix of random ints in [-9,9] (shared seedable RNG; integer 1–99 dims else `ERR:DOMAIN`).
+- ✅ `augment(` — binary; matrix‖matrix horizontal concat (equal rows, else `ERR:INVALID DIM`) or list‖list concatenation. Mixed matrix/list → `ERR:DATA TYPE`. Engine + UI via MatrixPopup MATH tab (added 2026-07-31).
+- 📅 Matrix ↔ List conversion (`Matr▶List`, `List▶Matr`) — the variadic column-wise converters (need variadic-arg parsing + TI store-target semantics). Deferred as a focused follow-up; `augment(` on lists and `dim(` already give partial list↔matrix interop.
 - ✅ Variable matrix dimensions — matrix editor v2 supports 1×1 up to 6×6 via R/C steppers (was fixed 3×3); landed 2026-07-22 (IMP-007 + IMP-008). Grid cap is 6 (QML/popup-height pragmatism, not the TI-83 99×99 max).
 - ✅ Extend UI registry exposure to `[A]`–`[E]` (matches TI-83 hardware default) — matrix editor v2 selector + NAMES tab + persistence now cover `[A]`–`[E]`; landed 2026-07-22 (IMP-007 + IMP-008)
 - 💭 Extend UI registry exposure to all 10 (`[A]`–`[J]`, TI-83 Plus / TI-84 range; engine is already there — `matrixTokenForName` already maps A–J, just needs more selector/NAMES entries)
@@ -223,7 +223,7 @@ arithmetic, and `STO→` to a list are done in the engine and covered by
 - ✅ List functions: `sum(`, `prod(`, `mean(`, `min(`, `max(`, `stdDev(`, `variance(` — Wave 3a, landed 2026-07-22. `mean`/`stdDev`/`variance` are list-only (sample n−1 for stdDev/variance; `ERR:DOMAIN` for n<2). `sum(`/`prod(` overload the calculus 4-arg forms by arity (1 list arg → reduction); `min(`/`max(` overload the 2-scalar forms by operand type. In the MATH menu. Limitation: 2-arg `min(`/`max(` with a list operand (element-wise) not yet supported.
 - ✅ `seq(expr, var, start, end[, step])` — Wave 3b, landed 2026-07-22. Reuses the deferred-eval framework (IMP-044) to sample the unevaluated first arg over the stepped range and collect a list. Default step 1; negative steps allowed; backwards range → `ERR:INVALID DIM`, zero step → `ERR:DOMAIN`. The authentic TI-83 `sum(seq(...))` summation form now works. Also added `median(` (Wave 3b).
 - 📅 `median(` alongside 1-var stats — ✅ done early as a list reduction in Wave 3b (odd → middle, even → mean of the two middle values).
-- 📅 List ↔ Matrix conversion
+- 📅 List ↔ Matrix conversion (`Matr▶List` / `List▶Matr` — see the Matrices section; deferred. `augment(` on lists + `dim(` already give partial interop.)
 - 📅 Custom named lists (`L1`–`L6` plus `αLIST`)
 
 ## Statistics & probability
@@ -231,7 +231,7 @@ arithmetic, and `STO→` to a list are done in the engine and covered by
 - ✅ 1-variable stats — Wave 4a, landed 2026-07-22. `UIController::oneVarStats(list)` computes n, x̄, Σx, Σx², Sx (sample sd), σx (pop sd), minX, Q1, Med, Q3, maxX (TI-83 median-of-halves quartiles); shown in a `StatResultsPopup` opened from the Stat editor's **1-VAR STATS** button. Blank editor cells are skipped, so an untouched list reports `ERR:UNDEFINED`. Not yet: mode, and stat-variable recall (`x̄`, `Sx`, … as usable variables).
 - ✅ 2-variable stats (correlation, regression coefficients) — Wave 4b, landed 2026-07-22. `UIController::twoVarStats(xList, yList)` computes n, x̄, ȳ, Σx, Σy, Σxy, Σx², Σy², Sx, Sy plus least-squares linear regression a (slope), b (intercept), r, r² (degenerate X → regression omitted, stats kept; unequal lengths → `ERR:INVALID DIM`). Shown in the shared `StatResultsPopup` (now a scrollable `mode`-driven list) via the Stat editor's **2-VAR L1,L2** button (L1=Xlist, L2=Ylist, TI-83 defaults).
 - ✅ `rand`, `randInt(`, `randNorm(`, `randBin(` — Wave 5, landed 2026-07-25. `rand` is a bare value in [0,1); the others take 2 args (scalar) or 3 (a `count`, giving a list — resolved by an arg-counting rewrite pass). Backed by a shared `std::mt19937` (seedable via `MathStateMachine::seedRandom` for deterministic tests). Domain-checked (`randInt` lo≤hi, `randNorm` sd>0, `randBin` n≥0 & 0≤p≤1, list count 1–100000 → `ERR:DOMAIN`). In the MATH menu; composes with list functions (`mean(randInt(1,100,50))`).
-- 📅 `nCr`, `nPr`, factorial `!`
+- ✅ `nCr`, `nPr`, factorial `!` — see the Combinatorics section above (all implemented Phase B, 2026-04-08; engine + UI + keyboard `!`).
 - ✅ Statistical regressions (core set) — `LinReg` (Wave 4b), plus `QuadReg`, `CubicReg`, `ExpReg`, `LnReg`, `PwrReg` (Wave 4c, landed 2026-07-22). `UIController::regression(type, xList, yList)`: Quad/Cubic solve the least-squares normal equations by Gaussian elimination (with R²); Exp/Ln/Pwr are linear fits on transformed data with domain checks (positive X/Y as required) and r/r². Picked from the **RegMenuPopup** (REGRESSIONS ▸ in the Stat editor), shown in `StatResultsPopup`'s "reg" mode. `polyReg` already supports degree 4, so `QuartReg` is a one-line menu add when wanted. Still 📅: `QuartReg` (unexposed), `SinReg`, `Logistic`.
 - ✅ Distributions — **all three families done** (2026-07-26).
   - Normal (`normalpdf(`, `normalcdf(`, `invNorm(`). Optional μ/σ (default 0/1) padded to fixed arity by `rewriteDistCalls` (recurses for nested calls); `normalcdf` via `std::erf`, `invNorm` via Acklam's inverse-normal approximation.

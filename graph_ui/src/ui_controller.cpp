@@ -125,6 +125,11 @@ constexpr TokenSpec kTokens[] = {
     {"det(",  Token::Det,  "det("},
     {"T(",    Token::Transpose, "T("},
     {"rref(", Token::Rref, "rref("},
+    {"ref(",      Token::Ref,      "ref("},
+    {"identity(", Token::Identity, "identity("},
+    {"dim(",      Token::Dim,      "dim("},
+    {"augment(",  Token::Augment,  "augment("},
+    {"randM(",    Token::RandM,    "randM("},
 
     // Number functions (unary)
     {"abs(",   Token::Abs,   "abs("},
