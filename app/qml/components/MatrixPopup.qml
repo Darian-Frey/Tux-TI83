@@ -309,7 +309,9 @@ Popup {
                         { display: "6: identity(", input: "identity(" },
                         { display: "7: dim(",     input: "dim("     },
                         { display: "8: augment(", input: "augment(" },
-                        { display: "9: randM(",   input: "randM("   }
+                        { display: "9: randM(",   input: "randM("   },
+                        { display: "A: List▶Matr(", input: "List▶Matr(" },
+                        { display: "B: Matr▶List(", input: "Matr▶List(" }
                     ]
                     spacing: 4
                     clip: true

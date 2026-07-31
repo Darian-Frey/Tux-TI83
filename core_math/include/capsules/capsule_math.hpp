@@ -89,11 +89,17 @@ enum class Token {
   //   Augment(a,b)  — binary; matrix‖matrix (equal rows → horizontal concat)
   //                   or list‖list (concatenation).
   //   RandM(r,c)    — binary scalars → r×c matrix of random ints in [-9,9].
+  //   ListToMatr(a,b) — binary lists → n×2 matrix (each list a column,
+  //                   equal lengths). Store the result with →[C].
+  //   MatrToList(m,c) — binary matrix + 1-based column index → that column
+  //                   as a list. Store the result with →Ln.
   Identity,
   Dim,
   Ref,
   Augment,
   RandM,
+  ListToMatr,
+  MatrToList,
   // Number functions (binary). Pop two operands during evaluation;
   // arguments are separated by Comma in the source expression.
   Round,

@@ -397,6 +397,30 @@ int main(int argc, char *argv[]) {
       }
     }
     checkTrue("randM entries are integers in [-9,9]", rmOk);
+
+    // List▶Matr(a,b) — two equal-length lists → n×2 matrix (columns).
+    check("List▶Matr({1,2,3},{4,5,6}) → [[1,4][2,5][3,6]]",
+          eval(c, "List▶Matr({1,2,3},{4,5,6})"), "[[1,4][2,5][3,6]]");
+    check("List▶Matr length mismatch → INVALID DIM",
+          eval(c, "List▶Matr({1,2},{3,4,5})"), "ERR:INVALID DIM");
+    check("List▶Matr with a scalar arg → type error",
+          eval(c, "List▶Matr({1,2},5)"), "ERR:DATA TYPE");
+
+    // Matr▶List([A], col) — 1-based column → list.
+    c.updateMatrix("[A]", 3, 2,
+                   QVariantList{1.0, 4.0, 2.0, 5.0, 3.0, 6.0});
+    check("Matr▶List([A],1) → {1,2,3}", eval(c, "Matr▶List([A],1)"), "{1,2,3}");
+    check("Matr▶List([A],2) → {4,5,6}", eval(c, "Matr▶List([A],2)"), "{4,5,6}");
+    check("Matr▶List column out of range → INVALID DIM",
+          eval(c, "Matr▶List([A],3)"), "ERR:INVALID DIM");
+    check("Matr▶List(scalar,1) → type error",
+          eval(c, "Matr▶List(5,1)"), "ERR:DATA TYPE");
+
+    // Round trip: build a matrix from two lists, pull a column back out.
+    check("round trip: Matr▶List(List▶Matr(...),1) → {1,2,3}",
+          eval(c, "Matr▶List(List▶Matr({1,2,3},{4,5,6}),1)"), "{1,2,3}");
+    check("round trip: column 2 → {4,5,6}",
+          eval(c, "Matr▶List(List▶Matr({1,2,3},{4,5,6}),2)"), "{4,5,6}");
   }
 
   section("Matrix dimension mismatch (BUG-010, BUG-011)");

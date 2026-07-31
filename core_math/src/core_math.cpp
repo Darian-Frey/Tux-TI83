@@ -49,6 +49,8 @@ int EOSPrecedence::precedence(Token t) {
   case Token::Ref:
   case Token::Augment:
   case Token::RandM:
+  case Token::ListToMatr:
+  case Token::MatrToList:
   case Token::Y1Call:
   case Token::Y2Call:
   case Token::Y3Call:
@@ -158,7 +160,8 @@ bool EOSPrecedence::is_binary_function(Token t) {
   return (t == Token::Round || t == Token::Min ||
           t == Token::Max || t == Token::Mod ||
           t == Token::NCr || t == Token::NPr ||
-          t == Token::Augment || t == Token::RandM);
+          t == Token::Augment || t == Token::RandM ||
+          t == Token::ListToMatr || t == Token::MatrToList);
 }
 
 bool EOSPrecedence::has_built_in_paren(Token t) {
@@ -181,6 +184,7 @@ bool EOSPrecedence::has_built_in_paren(Token t) {
           t == Token::Max || t == Token::Mod ||
           t == Token::NCr || t == Token::NPr ||
           t == Token::Augment || t == Token::RandM ||
+          t == Token::ListToMatr || t == Token::MatrToList ||
           t == Token::Sinh || t == Token::Cosh || t == Token::Tanh ||
           t == Token::ASinh || t == Token::ACosh || t == Token::ATanh ||
           t == Token::Mean || t == Token::StdDev || t == Token::Variance ||
@@ -1915,6 +1919,48 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
           continue;
         }
         return {false, 0.0, {}, false, "Type Error"};  // no mixed forms
+      }
+      if (t == Token::ListToMatr) {
+        // List▶Matr(Lα, Lβ) — two equal-length lists become the two
+        // columns of an n×2 matrix. Value-producing (store with →[C]).
+        if (stack.size() < 2) return {false, 0.0, {}, false, "Error"};
+        Operand b = stack.top(); stack.pop();
+        Operand a = stack.top(); stack.pop();
+        if (!a.isList || !b.isList)
+          return {false, 0.0, {}, false, "Type Error"};
+        if (a.list.size() != b.list.size())
+          return {false, 0.0, {}, false, "Dim Mismatch"};
+        if (a.list.empty())
+          return {false, 0.0, {}, false, "Dim Mismatch"};
+        int n = static_cast<int>(a.list.size());
+        Matrix result;
+        result.rows = n; result.cols = 2;
+        result.data.resize(static_cast<size_t>(n) * 2);
+        for (int i = 0; i < n; ++i) {
+          result.set(i, 0, a.list[static_cast<size_t>(i)]);
+          result.set(i, 1, b.list[static_cast<size_t>(i)]);
+        }
+        stack.push({true, 0.0, result});
+        continue;
+      }
+      if (t == Token::MatrToList) {
+        // Matr▶List([A], col) — extract 1-based column `col` of the matrix
+        // as a list. Value-producing (store with →Ln).
+        if (stack.size() < 2) return {false, 0.0, {}, false, "Error"};
+        Operand b = stack.top(); stack.pop();
+        Operand a = stack.top(); stack.pop();
+        if (!a.isMat || b.isMat || b.isList)
+          return {false, 0.0, {}, false, "Type Error"};
+        double cd = b.val;
+        if (cd < 1.0 || cd != std::floor(cd) || cd > a.mat.cols)
+          return {false, 0.0, {}, false, "Dim Mismatch"};
+        int col = static_cast<int>(cd) - 1;
+        Operand o; o.isList = true;
+        o.list.resize(static_cast<size_t>(a.mat.rows));
+        for (int i = 0; i < a.mat.rows; ++i)
+          o.list[static_cast<size_t>(i)] = a.mat.at(i, col);
+        stack.push(o);
+        continue;
       }
 
       // Binary functions (round, min, max, mod) — pop two operands.

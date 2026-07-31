@@ -130,6 +130,8 @@ constexpr TokenSpec kTokens[] = {
     {"dim(",      Token::Dim,      "dim("},
     {"augment(",  Token::Augment,  "augment("},
     {"randM(",    Token::RandM,    "randM("},
+    {"List▶Matr(", Token::ListToMatr, "List▶Matr("},
+    {"Matr▶List(", Token::MatrToList, "Matr▶List("},
 
     // Number functions (unary)
     {"abs(",   Token::Abs,   "abs("},
