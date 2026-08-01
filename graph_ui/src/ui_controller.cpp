@@ -1272,6 +1272,69 @@ void UIController::evaluate() {
   QString entry =
       functionLabel(m_activeIdx) + ": " + currentStr + " = ";
 
+  // Y-VARS store: `<expr>→Yn` stores the LHS expression tokens into the
+  // Yn function buffer (so it plots and shows in the Y= editor) rather
+  // than evaluating to a number. The engine's Sto pass rejects a Y target
+  // as a Syntax Error, so this is handled here. Two token shapes count as
+  // a Yn target (both with a non-empty LHS):
+  //   1. [ …lhs…, Sto, Y_n ]        — the fused Y-token (string/keyboard fuse)
+  //   2. [ …lhs…, Sto, VarY, digit ] — the letter Y (ALPHA) + a digit, which
+  //      is how the on-screen keypad enters "Y2"; reads as Yn. (No "Y2"
+  //      scalar variable exists, so this is unambiguous.)
+  {
+    const size_t n = currentBuf.size();
+    int slot = -1;
+    size_t lhsLen = 0;
+    if (n >= 3 && currentBuf[n - 2] == Token::Sto &&
+        currentBuf[n - 1] >= Token::Y1 && currentBuf[n - 1] <= Token::Y0) {
+      slot = static_cast<int>(currentBuf[n - 1]) - static_cast<int>(Token::Y1);
+      lhsLen = n - 2;
+    } else if (n >= 4 && currentBuf[n - 3] == Token::Sto &&
+               currentBuf[n - 2] == Token::VarY &&
+               currentBuf[n - 1] >= Token::Num0 &&
+               currentBuf[n - 1] <= Token::Num9) {
+      const int d =
+          static_cast<int>(currentBuf[n - 1]) - static_cast<int>(Token::Num0);
+      slot = (d == 0) ? 9 : (d - 1);  // Y1..Y9 → 0..8, Y0 → 9
+      lhsLen = n - 3;
+    }
+    if (slot >= 0 && lhsLen >= 1) {
+      const std::vector<Token> lhs(currentBuf.begin(),
+                                   currentBuf.begin() + lhsLen);
+      // Rebuild the target slot's display string from the LHS tokens.
+      QString lhsStr;
+      const auto &rev = tokenToSpec();
+      for (auto t : lhs) {
+        auto it = rev.find(static_cast<int>(t));
+        if (it != rev.end())
+          lhsStr += QString::fromUtf8(it->second->displayStr);
+      }
+      m_functionBuffers[slot] = lhs;
+      m_displayStrings[slot]  = lhsStr;
+      if (slot < static_cast<int>(m_functionEnabled.size()))
+        m_functionEnabled[slot] = true;  // storing (re)enables the slot
+
+      // Active input line. If we stored into a *different* slot, clear the
+      // active line and report "Done" (TI-83). If we stored into the slot
+      // the home screen is editing, its buffer/string now hold the
+      // function itself — show that so display and buffer stay consistent.
+      if (slot != m_activeIdx) {
+        currentBuf.clear();
+        currentStr = "Done";
+        entry += "Done";
+      } else {
+        entry += lhsStr;
+      }
+      m_displayState = Evaluated;
+      m_history.prepend(entry);
+      emit historyChanged();
+      emit displayChanged();
+      emit displayStateChanged();
+      emit functionsChanged();  // refresh graph + Y= editor
+      return;
+    }
+  }
+
   MathStateMachine msm;
   // In calc mode, X behaves like any other scalar variable — resolve
   // it from the registry so `5→X: X+1` gives 6. Graph-mode evaluation

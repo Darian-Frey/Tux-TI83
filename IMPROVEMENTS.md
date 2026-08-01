@@ -29,6 +29,16 @@ Each entry uses this template:
 
 ## Suggested
 
+### IMP-045: `MathStateMachine::yLookup` is a static capturing `this` — dangles across controllers
+
+- **Status:** suggested
+- **Found:** 2026-08-01 (Y-VARS store session; recurring test hazard)
+- **Location:** [core_math/src/core_math.cpp](core_math/src/core_math.cpp) (`static std::function<std::vector<Token>(int)> yLookup`), assigned in `UIController`'s constructor ([graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp):335)
+- **Effort:** medium
+- **Description:** `yLookup` is a `static` `std::function` that each `UIController` constructor overwrites with a lambda capturing `this`. Whichever controller was constructed **last** owns it, and destroying that controller leaves `yLookup` dangling — any subsequent Y-VARS recall reads freed memory. Harmless in the shipped app (one long-lived controller) but a real footgun: it has now caused Y-recall test failures **twice** (Y4–Y0 and Y-VARS store), each worked around by forcing a fresh in-scope controller. It also silently couples "which controller answers Y-lookups" to construction order rather than to the controller actually doing the evaluation.
+- **Suggested fix:** make the Y-buffer source non-static — e.g. pass a lookup (or the buffers) into `MathStateMachine::evaluate()` as a parameter, or store it per-instance and have the controller set it on the specific `MathStateMachine` it drives. Removes the global, the dangling window, and the construction-order coupling. Touches the `core_math`/controller boundary, so it needs an explicit go-ahead (engine change).
+- **Notes:** Cross-references the test-only workaround pattern (fresh `UIController` per Y-recall section). Would also let multiple controllers coexist correctly (e.g. tests, or a future split-screen).
+
 ### IMP-011: CLI / REPL can't populate matrices
 - **Status:** suggested
 - **Found:** 2026-04-08 (user-reported after matrix-inverse landed)

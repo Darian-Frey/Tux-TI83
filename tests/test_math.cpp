@@ -1730,6 +1730,55 @@ int main(int argc, char *argv[]) {
     c.setActiveFunction(0); c.processInput("CLEAR");
   }
 
+  section("Y-VARS store (expr→Yn)");
+  {
+    // Fresh controller so the static yLookup points here for Y-recall
+    // (see the Y4–Y0 tests / the yLookup-dangling footgun).
+    UIController ys;
+    ys.setProperty("graphMode", 0);
+    ys.setActiveFunction(0);  // Y1 is the active/home slot
+
+    // Store to a non-active slot: X²→Y2. Reports Done; Y2 now holds X².
+    check("X^2→Y2 reports Done", eval(ys, "X^2→Y2"), "Done");
+    checkTrue("Y2 buffer holds X^2",
+              ys.functionBufferText(1) == QStringLiteral("X^2"));
+    checkTrue("Y2 plots after store",
+              !ys.getMultiGraphPoints(10)[1].toList().isEmpty());
+
+    // Stored function recalls and composes: Y2(3) → 9.
+    ys.setActiveFunction(0);
+    check("stored Y2 recall: Y2(3) = 9", eval(ys, "Y2(3)"), "9");
+
+    // Store into the active slot: 5→Y1 echoes the stored expression (its
+    // buffer and the home line are the same storage in this app).
+    ys.setActiveFunction(0);
+    check("5→Y1 (active slot) echoes expr", eval(ys, "5→Y1"), "5");
+    checkTrue("Y1 buffer holds 5", ys.functionBufferText(0) == QStringLiteral("5"));
+
+    // Empty LHS (→Y3) is not a store — falls through to normal eval/error.
+    ys.setActiveFunction(0);
+    checkTrue("bare →Y3 is not treated as a store",
+              ys.functionBufferText(2).isEmpty());
+
+    // Keyed form: the on-screen keypad enters "Y3" as the letter Y (VarY)
+    // then a digit, i.e. tokens [Sto, VarY, Num3] rather than the fused Y3
+    // token. Build that shape via two processExpression calls and confirm
+    // it still stores into Y3 (slot 2).
+    ys.setActiveFunction(0);
+    ys.processInput(QStringLiteral("CLEAR"));
+    ys.processExpression(QStringLiteral("2X→Y"));  // …, Sto, VarY
+    ys.processExpression(QStringLiteral("3"));      // + Num3  → reads as Y3
+    ys.processInput(QStringLiteral("ENTER"));
+    check("2X→Y3 (keyed VarY+digit) reports Done", ys.currentDisplay(), "Done");
+    checkTrue("Y3 buffer holds 2X", ys.functionBufferText(2) == QStringLiteral("2X"));
+
+    // A plain store to variable Y (no trailing digit) is NOT a Y-store.
+    ys.setActiveFunction(0);
+    check("7→Y stores to scalar Y (not a function)", eval(ys, "7→Y"), "7");
+    checkTrue("Y3 unchanged by 7→Y",
+              ys.functionBufferText(2) == QStringLiteral("2X"));
+  }
+
   section("DRAW menu overlays (Phase D)");
   {
     c.clrDraw();
