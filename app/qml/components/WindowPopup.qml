@@ -27,7 +27,7 @@ Popup {
     width: 280
     // Taller when a mode adds extra window fields (Par/Pol T-window, Seq).
     height: (uiController.graphMode === 1 || uiController.graphMode === 2
-             || uiController.graphMode === 3) ? 520 : 360
+             || uiController.graphMode === 3) ? 640 : 480
     padding: 14
 
     // Viewport fields, plus mode-specific window fields (Par/Pol T-window
@@ -43,8 +43,11 @@ Popup {
         }
         base.push({ label: "Xmin:", prop: "xMin" })
         base.push({ label: "Xmax:", prop: "xMax" })
+        base.push({ label: "Xscl:", prop: "xScl" })
         base.push({ label: "Ymin:", prop: "yMin" })
         base.push({ label: "Ymax:", prop: "yMax" })
+        base.push({ label: "Yscl:", prop: "yScl" })
+        base.push({ label: "Xres:", prop: "xres", integer: true, min: 1, max: 8 })
         if (uiController.graphMode === 3) {
             base.push({ label: "nMax:", prop: "seqNMax" })
             base.push({ label: "u(1):", prop: "seqInitU" })
@@ -104,7 +107,9 @@ Popup {
                     id: field
                     Layout.fillWidth: true
                     Layout.preferredHeight: 28
-                    text: uiController[modelData.prop].toFixed(2)
+                    text: modelData.integer
+                           ? uiController[modelData.prop].toString()
+                           : uiController[modelData.prop].toFixed(2)
                     color: Style.textDisplay
                     selectByMouse: true
                     font.family: Style.monoFamily
@@ -120,9 +125,21 @@ Popup {
                         // Same NaN guard as the legacy popup post-BUG-001 fix.
                         var v = parseFloat(text)
                         if (Number.isFinite(v)) {
-                            uiController[modelData.prop] = v
+                            if (modelData.integer) {
+                                // Integer field (Xres): round and clamp to
+                                // the descriptor's [min, max] range.
+                                v = Math.round(v)
+                                if (modelData.min !== undefined) v = Math.max(modelData.min, v)
+                                if (modelData.max !== undefined) v = Math.min(modelData.max, v)
+                                uiController[modelData.prop] = v
+                                text = v.toString()
+                            } else {
+                                uiController[modelData.prop] = v
+                            }
                         } else {
-                            text = uiController[modelData.prop].toFixed(2)
+                            text = modelData.integer
+                                   ? uiController[modelData.prop].toString()
+                                   : uiController[modelData.prop].toFixed(2)
                         }
                     }
                 }

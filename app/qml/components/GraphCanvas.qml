@@ -58,9 +58,16 @@ Rectangle {
                 }
             }
 
-            // Tick-step heuristic: keeps grid lines visually sane across
-            // a range of zoom levels without computing log10.
-            const step = rangeX > 50 ? 10 : (rangeX < 5 ? 0.5 : 1)
+            // Tick spacing comes from Xscl/Yscl (the axis tick / grid-line
+            // interval). Guard against zero, negative, or absurdly dense
+            // values — which would freeze the paint loop — by falling back
+            // to a zoom-based heuristic (max ~400 divisions per axis).
+            const heuristicX = rangeX > 50 ? 10 : (rangeX < 5 ? 0.5 : 1)
+            const heuristicY = rangeY > 50 ? 10 : (rangeY < 5 ? 0.5 : 1)
+            let xStep = uiController.xScl
+            let yStep = uiController.yScl
+            if (!(xStep > 0) || rangeX / xStep > 400) xStep = heuristicX
+            if (!(yStep > 0) || rangeY / yStep > 400) yStep = heuristicY
 
             ctx.font = "10px " + Style.monoFamily
             ctx.fillStyle = Style.textMuted
@@ -70,11 +77,16 @@ Rectangle {
             const axesOn = uiController.axesOn
             const labelOn = uiController.labelOn
 
-            // Vertical grid lines + x-axis labels. The x≈0 line is the
-            // (y-)axis; others are grid.
-            for (let x = Math.floor(xMin / step) * step; x <= xMax; x += step) {
+            // Axis pixel positions (clamped on-screen) for the tick marks.
+            const axisY = toPx(0, 0).y
+            const axisX = toPx(0, 0).x
+            const TICK = 3  // half-length of an axis tick mark, px
+
+            // Vertical grid lines + x-axis labels + ticks. The x≈0 line is
+            // the (y-)axis; others are grid at Xscl intervals.
+            for (let x = Math.floor(xMin / xStep) * xStep; x <= xMax; x += xStep) {
                 const px = toPx(x, 0)
-                const isAxis = Math.abs(x) < 0.0001
+                const isAxis = Math.abs(x) < xStep * 0.001
                 if (isAxis ? axesOn : gridOn) {
                     ctx.strokeStyle = isAxis ? Style.textMuted : Style.bgSection
                     ctx.beginPath()
@@ -82,20 +94,36 @@ Rectangle {
                     ctx.lineTo(px.x, height)
                     ctx.stroke()
                 }
+                // Tick mark on the x-axis at each Xscl step.
+                if (!isAxis && axesOn) {
+                    ctx.strokeStyle = Style.textMuted
+                    ctx.beginPath()
+                    ctx.moveTo(px.x, axisY - TICK)
+                    ctx.lineTo(px.x, axisY + TICK)
+                    ctx.stroke()
+                }
                 if (!isAxis && labelOn) {
                     ctx.fillText(x.toFixed(1), px.x + 2, height - 5)
                 }
             }
 
-            // Horizontal grid lines + y-axis labels.
-            for (let y = Math.floor(yMin / step) * step; y <= yMax; y += step) {
+            // Horizontal grid lines + y-axis labels + ticks.
+            for (let y = Math.floor(yMin / yStep) * yStep; y <= yMax; y += yStep) {
                 const py = toPx(0, y)
-                const isAxis = Math.abs(y) < 0.0001
+                const isAxis = Math.abs(y) < yStep * 0.001
                 if (isAxis ? axesOn : gridOn) {
                     ctx.strokeStyle = isAxis ? Style.textMuted : Style.bgSection
                     ctx.beginPath()
                     ctx.moveTo(0, py.y)
                     ctx.lineTo(width, py.y)
+                    ctx.stroke()
+                }
+                // Tick mark on the y-axis at each Yscl step.
+                if (!isAxis && axesOn) {
+                    ctx.strokeStyle = Style.textMuted
+                    ctx.beginPath()
+                    ctx.moveTo(axisX - TICK, py.y)
+                    ctx.lineTo(axisX + TICK, py.y)
                     ctx.stroke()
                 }
                 if (!isAxis && labelOn) {

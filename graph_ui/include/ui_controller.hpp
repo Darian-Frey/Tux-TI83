@@ -26,6 +26,12 @@ private:
     Q_PROPERTY(double xMax MEMBER m_xMax NOTIFY viewportChanged)
     Q_PROPERTY(double yMin MEMBER m_yMin NOTIFY viewportChanged)
     Q_PROPERTY(double yMax MEMBER m_yMax NOTIFY viewportChanged)
+    // Axis tick spacing (Xscl/Yscl) and graph resolution (Xres). Xscl/Yscl
+    // set the interval between grid lines / axis tick marks; Xres is the
+    // Func-mode sample stride (1 = finest, higher = coarser/faster).
+    Q_PROPERTY(double xScl MEMBER m_xScl NOTIFY viewportChanged)
+    Q_PROPERTY(double yScl MEMBER m_yScl NOTIFY viewportChanged)
+    Q_PROPERTY(int xres MEMBER m_xres NOTIFY viewportChanged)
     Q_PROPERTY(QString currentDisplay READ currentDisplay NOTIFY displayChanged)
     Q_PROPERTY(QStringList history READ history NOTIFY historyChanged)
     Q_PROPERTY(int activeFunctionIndex READ activeFunctionIndex NOTIFY activeFunctionIndexChanged)
@@ -260,7 +266,7 @@ public:
     // to populate the visible window — separate from getMultiGraphPoints
     // because the table needs explicit X stepping (not viewport-derived).
     Q_INVOKABLE QVariantList getTableRows(int count, double xStart);
-    Q_INVOKABLE void resetViewport() { m_xMin = -10; m_xMax = 10; m_yMin = -10; m_yMax = 10; emit viewportChanged(); }
+    Q_INVOKABLE void resetViewport() { m_xMin = -10; m_xMax = 10; m_yMin = -10; m_yMax = 10; m_xScl = 1.0; m_yScl = 1.0; emit viewportChanged(); }
     // Last-entry recall (2ND+ENTER on a real TI-83). Each successful or
     // failed ENTER with a non-empty buffer pushes the token stream into
     // a 10-deep ring buffer; successive calls walk back through it.
@@ -480,6 +486,8 @@ private:
     double m_tblStart = 0.0;
     double m_tblStep  = 1.0;
     double m_xMin = -10, m_xMax = 10, m_yMin = -10, m_yMax = 10;
+    double m_xScl = 1.0, m_yScl = 1.0;  // axis tick spacing (Xscl/Yscl)
+    int m_xres = 1;                      // Func-mode sample stride (1..8)
     // Zoom-menu state: previous viewport (ZoomPrevious), stored viewport
     // (ZoomMemory), and the ZBox arm flag.
     double m_prevXMin = -10, m_prevXMax = 10, m_prevYMin = -10, m_prevYMax = 10;

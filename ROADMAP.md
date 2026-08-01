@@ -260,8 +260,8 @@ arithmetic, and `STO→` to a list are done in the engine and covered by
 - ✅ Xmin/Xmax/Ymin/Ymax editable in the new UI's `WindowPopup` (reintegrated 2026-04-07; opened from the WINDOW soft-key)
 - ✅ ZSTANDARD and ZOOM FIT actions wired to `uiController.resetViewport()` and `zoomFit()`
 - ✅ ZOOM soft-key opens a `ZoomPopup` with ZStandard / Zoom In / Zoom Out / ZFit presets (2026-05-08)
-- 📅 Xscl/Yscl (axis tick spacing — controller doesn't track these yet)
-- 📅 Xres (graph resolution / x-step — controller doesn't track this yet)
+- ✅ Xscl/Yscl (axis tick spacing) — `xScl`/`yScl` controller properties (default 1) drive the grid-line / axis tick-mark interval in GraphCanvas, with a fallback to a zoom heuristic for zero/negative/absurdly-dense values; editable via WINDOW; persisted; reset to 1 by ZSTD. Added 2026-08-01.
+- ✅ Xres (graph resolution / x-step) — `xres` controller property (default 1, clamped 1–8) coarsens the Func-mode sample stride (`funcRes = resolution / xres`); editable via WINDOW (integer field); persisted. Applies to Func mode only (polar/parametric use their own T-window step). Added 2026-08-01.
 
 ### Tables
 

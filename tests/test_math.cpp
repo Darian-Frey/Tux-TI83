@@ -1699,6 +1699,31 @@ int main(int argc, char *argv[]) {
     c.setActiveFunction(0);
   }
 
+  section("Xres graph resolution (Phase D)");
+  {
+    c.setProperty("graphMode", 0);          // Func mode
+    c.setActiveFunction(0); eval(c, "X");   // Y1 = X, defined across [-10,10]
+
+    c.setProperty("xres", 1);
+    int n1 = c.getMultiGraphPoints(600)[0].toList().size();
+    c.setProperty("xres", 4);
+    int n4 = c.getMultiGraphPoints(600)[0].toList().size();
+    c.setProperty("xres", 8);
+    int n8 = c.getMultiGraphPoints(600)[0].toList().size();
+
+    checkTrue("Xres=1 samples finely (~601 points)", n1 > 500);
+    checkTrue("Xres=4 yields ~1/4 the points", n4 < n1 && std::abs(n4 - n1 / 4) < 25);
+    checkTrue("Xres=8 is coarsest (fewest points)", n8 < n4);
+
+    // Out-of-band Xres is clamped to [1,8] by the sweep, never zero-divides.
+    c.setProperty("xres", 0);
+    checkTrue("Xres=0 clamped → still samples",
+              !c.getMultiGraphPoints(600)[0].toList().isEmpty());
+
+    c.setProperty("xres", 1);
+    c.setActiveFunction(0); c.processInput("CLEAR");
+  }
+
   section("DRAW menu overlays (Phase D)");
   {
     c.clrDraw();

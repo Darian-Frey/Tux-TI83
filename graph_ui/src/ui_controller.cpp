@@ -414,6 +414,9 @@ QJsonObject UIController::buildStateJson() const {
   viewport["xMax"] = m_xMax;
   viewport["yMin"] = m_yMin;
   viewport["yMax"] = m_yMax;
+  viewport["xScl"] = m_xScl;
+  viewport["yScl"] = m_yScl;
+  viewport["xres"] = m_xres;
   // ZoomMemory stored window.
   viewport["savedXMin"] = m_savedXMin;
   viewport["savedXMax"] = m_savedXMax;
@@ -609,6 +612,9 @@ void UIController::applyStateJson(const QJsonObject &root) {
   if (viewport.contains("xMax")) m_xMax = viewport["xMax"].toDouble();
   if (viewport.contains("yMin")) m_yMin = viewport["yMin"].toDouble();
   if (viewport.contains("yMax")) m_yMax = viewport["yMax"].toDouble();
+  if (viewport.contains("xScl")) m_xScl = viewport["xScl"].toDouble();
+  if (viewport.contains("yScl")) m_yScl = viewport["yScl"].toDouble();
+  if (viewport.contains("xres")) m_xres = viewport["xres"].toInt();
   if (viewport.contains("savedXMin")) m_savedXMin = viewport["savedXMin"].toDouble();
   if (viewport.contains("savedXMax")) m_savedXMax = viewport["savedXMax"].toDouble();
   if (viewport.contains("savedYMin")) m_savedYMin = viewport["savedYMin"].toDouble();
@@ -2385,10 +2391,12 @@ QVariantList UIController::getMultiGraphPoints(int resolution) {
   const bool polar = (m_graphMode == 2);
   const bool degree = (MathStateMachine::angleMode == AngleMode::Degree);
   // Polar sweeps the θ window (paramTMin/Max/Step); Func sweeps x across
-  // the viewport.
-  const int nSteps = polar ? pSteps : resolution;
+  // the viewport. Xres coarsens the Func sample stride (1 = finest); it is
+  // a Func-mode setting on the TI-83, so it doesn't touch the polar sweep.
+  const int funcRes = std::max(1, resolution / std::clamp(m_xres, 1, 8));
+  const int nSteps = polar ? pSteps : funcRes;
   const double sweepMin = polar ? pMin : m_xMin;
-  const double step = polar ? pStep : ((m_xMax - m_xMin) / resolution);
+  const double step = polar ? pStep : ((m_xMax - m_xMin) / funcRes);
 
   for (size_t f = 0; f < m_functionBuffers.size(); ++f) {
     QVariantList points;
