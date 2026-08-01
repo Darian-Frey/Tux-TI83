@@ -118,6 +118,10 @@ private:
     Q_PROPERTY(bool axesOn MEMBER m_axesOn NOTIFY formatChanged)
     Q_PROPERTY(bool coordOn MEMBER m_coordOn NOTIFY formatChanged)
     Q_PROPERTY(bool labelOn MEMBER m_labelOn NOTIFY formatChanged)
+    // Trace cursor coordinate mode: 0 = RectGC (X/Y), 1 = PolarGC (R/θ).
+    Q_PROPERTY(int coordMode MEMBER m_coordMode NOTIFY formatChanged)
+    // ExprOn/ExprOff: show the traced function's equation while tracing.
+    Q_PROPERTY(bool exprOn MEMBER m_exprOn NOTIFY formatChanged)
     // TRACE soft-key state. When true, the graph canvas draws a
     // crosshair on the active function's curve at `traceX` and shows
     // an X / Y readout. Left/Right arrow input is routed to
@@ -224,6 +228,12 @@ public:
         return (i >= 0 && i < static_cast<int>(m_displayStrings.size()))
                    ? m_displayStrings[i] : QString();
     }
+    // The plotted expression for slot i, rebuilt from the token BUFFER
+    // rather than the live edit string (which the home screen clobbers
+    // with the result after ENTER). Used by the trace ExprOn overlay so
+    // it always matches the drawn curve. Defined in the .cpp because it
+    // needs the file-local token→display map.
+    Q_INVOKABLE QString functionBufferText(int i) const;
     // Slot label for the current graph mode: Y1..Y0 (Func), r1..r0 (Pol),
     // or the parametric pairs X1T/Y1T/X2T/Y2T/... (Par — buffers are
     // read two at a time, X then Y).
@@ -526,6 +536,8 @@ private:
     bool m_axesOn = true;
     bool m_coordOn = true;
     bool m_labelOn = true;
+    int  m_coordMode = 0;    // 0 = RectGC (X/Y), 1 = PolarGC (R/θ)
+    bool m_exprOn = true;    // show equation while tracing (ExprOn)
     // Parametric/polar parameter window (defaults: a smooth full turn
     // in radians — ~314 points). Reset to the angle-appropriate defaults
     // when the angle mode changes.

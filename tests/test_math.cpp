@@ -1678,6 +1678,12 @@ int main(int argc, char *argv[]) {
     // Define Y1 and Y8 (index 7), disable Y1: only Y8 should plot.
     c.setActiveFunction(0); eval(c, "X");
     c.setActiveFunction(7); eval(c, "2X");
+    // functionBufferText reflects the plotted BUFFER (drives the trace
+    // ExprOn overlay), not the live edit string that eval leaves behind.
+    checkTrue("functionBufferText(0) == \"X\"",
+              c.functionBufferText(0) == QStringLiteral("X"));
+    checkTrue("functionBufferText(7) == \"2X\"",
+              c.functionBufferText(7) == QStringLiteral("2X"));
     c.toggleFunctionEnabled(0);  // Y1 off
     QVariantList pts = c.getMultiGraphPoints(10);
     checkTrue("10 slot-lists returned", pts.size() == 10);
@@ -1869,6 +1875,23 @@ int main(int argc, char *argv[]) {
     checkTrue("L1 restored to {7,8,9}",
               l1.size() == 3 && near(l1[0].toDouble(), 7) &&
               near(l1[2].toDouble(), 9));
+
+    // FORMAT flags coordMode / exprOn round-trip through save/load.
+    checkTrue("coordMode defaults to 0 (RectGC)",
+              c.property("coordMode").toInt() == 0);
+    checkTrue("exprOn defaults to true", c.property("exprOn").toBool());
+    c.setProperty("coordMode", 1);       // PolarGC
+    c.setProperty("exprOn", false);      // ExprOff
+    checkTrue("format save writes", c.exportState("fmt"));
+    c.setProperty("coordMode", 0);
+    c.setProperty("exprOn", true);
+    checkTrue("format import succeeds", c.importState("fmt"));
+    checkTrue("coordMode restored to PolarGC",
+              c.property("coordMode").toInt() == 1);
+    checkTrue("exprOn restored to false", !c.property("exprOn").toBool());
+    c.deleteSave("fmt");
+    c.setProperty("coordMode", 0);       // reset to defaults
+    c.setProperty("exprOn", true);
 
     // Name sanitisation + missing-save handling.
     checkTrue("blank name rejected", !c.exportState("   "));

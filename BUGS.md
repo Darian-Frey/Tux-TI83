@@ -29,6 +29,16 @@ Each entry uses this template:
 
 ## Fixed
 
+### BUG-022: Y-editor list shows the live edit string, not the plotted function, after a home-screen eval
+
+- **Status:** fixed (2026-08-01, RectGC/ExprOn session)
+- **Location:** [app/qml/components/YEditorPopup.qml](app/qml/components/YEditorPopup.qml):101
+- **Severity:** low (display-only; the plotted curve and evaluation are unaffected)
+- **Description:** `functionExpr(i)` returns `m_displayStrings[i]`, the live per-slot edit/display buffer. When a slot is the active selector and the user evaluates on the home screen, that buffer is overwritten with the **result** (e.g. `0`) while the plotted token buffer `m_functionBuffers[i]` keeps the real function (`X^2`). So the Y-editor row for that slot rendered `0` instead of `X²`, even though the graph still plots `X²`.
+- **Reproduction (was):** Set Y1 to `X^2` (it plots). With Y1 the active slot, type `X^2` on the home screen and press ENTER (shows `0`). Open the Y= editor → Y1 showed `0`, not `X^2`.
+- **Fix:** Use `uiController.functionBufferText(index)` in place of `functionExpr(index)` in YEditorPopup. `functionBufferText(i)` (added this session) detokenises `m_functionBuffers[i]`, the plotted buffer, so the list always matches the drawn curve. Same helper fixed the trace ExprOn overlay's original `Y1=0` display.
+- **Notes:** Surfaced while implementing FORMAT → ExprOn (the overlay had the identical `Y1=0` symptom). Both call sites now go through the buffer detokeniser.
+
 ### BUG-021: Loaded state leaves display in Inputting, so first keystroke appends to the prior buffer
 
 - **Status:** fixed (2026-05-23, same session as IMP-039)

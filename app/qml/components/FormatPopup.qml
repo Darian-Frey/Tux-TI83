@@ -121,6 +121,20 @@ Popup {
             value: uiController.labelOn
             onPicked: (on) => uiController.labelOn = on
         }
+        // Trace coordinate readout mode: RectGC (X/Y) vs PolarGC (R/θ).
+        // Reuses the two-segment ToggleRow: "on" == PolarGC.
+        ToggleRow {
+            label: "GC"
+            options: ["Rect", "Polar"]
+            value: uiController.coordMode === 1
+            onPicked: (polar) => uiController.coordMode = polar ? 1 : 0
+        }
+        // ExprOn/ExprOff — show the traced function's equation.
+        ToggleRow {
+            label: "Expr"
+            value: uiController.exprOn
+            onPicked: (on) => uiController.exprOn = on
+        }
 
         Item { Layout.fillHeight: true }
 

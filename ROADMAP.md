@@ -303,8 +303,8 @@ default on) gating the graph canvas. RESET restores them.
 - ✅ `GridOn` / `GridOff` — toggles the grid lines.
 - ✅ `AxesOn` / `AxesOff` — toggles the x/y = 0 axis lines.
 - ✅ `LabelOn` / `LabelOff` — toggles the tick-number labels.
-- 📅 `RectGC` / `PolarGC` (rectangular vs polar coords for the cursor) — deferred (needs a polar trace readout).
-- 📅 `ExprOn` / `ExprOff` (show the expression while tracing) — deferred.
+- ✅ `RectGC` / `PolarGC` (rectangular vs polar coords for the cursor) — `coordMode` FORMAT flag (0 Rect / 1 Polar). The trace readout shows `X=/Y=` in RectGC and `R=/θ=` in PolarGC (θ in the current angle unit); toggled via the FORMAT menu "GC" row; persisted. Added 2026-08-01.
+- ✅ `ExprOn` / `ExprOff` (show the expression while tracing) — `exprOn` FORMAT flag (default on) draws the traced function's `label=body` (e.g. `Y1=X²`) top-left while tracing; toggled via the FORMAT menu "Expr" row; persisted. Added 2026-08-01.
 
 ### Other graphing modes
 - ✅ Parametric mode (X1T, Y1T) — landed 2026-07-26 (Phase F). MODE → Graph → Par; the 10 function buffers are read as 5 X/Y pairs (X1T,Y1T,X2T,Y2T,…) and each pair plots `(X_nT(t), Y_nT(t))` over a full-turn sweep. Reuses the graph pipeline and the Y-editor; `X` stands in for the parameter `t` (like polar's θ — no core_math change). Slot labels adapt everywhere; `PAR` header indicator; persisted. **Tmin/Tmax/Tstep window** added 2026-07-26 (shared `param*` settings, in the WINDOW popup; reset to the angle-appropriate full turn on angle-mode change). Caveat: X-as-t rather than a dedicated `T` token.

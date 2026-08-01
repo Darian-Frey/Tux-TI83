@@ -98,7 +98,10 @@ Popup {
                     }
                     Text {
                         Layout.fillWidth: true
-                        text: (root.rev, uiController.functionExpr(index)) || "—"
+                        // Use the plotted token buffer, not the live edit
+                        // string (which a home-screen eval clobbers with the
+                        // result) — BUG-022. root.rev forces re-eval on change.
+                        text: (root.rev, uiController.functionBufferText(index)) || "—"
                         color: slotRow.on ? Style.textDisplay : Style.textMuted
                         font.family: Style.monoFamily
                         font.pixelSize: Style.funcKeyLabelPixelSize

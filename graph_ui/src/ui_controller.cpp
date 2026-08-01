@@ -441,6 +441,8 @@ QJsonObject UIController::buildStateJson() const {
   mode["axesOn"]  = m_axesOn;
   mode["coordOn"] = m_coordOn;
   mode["labelOn"] = m_labelOn;
+  mode["coordMode"] = m_coordMode;
+  mode["exprOn"]    = m_exprOn;
   mode["paramTMin"]  = m_paramTMin;
   mode["paramTMax"]  = m_paramTMax;
   mode["paramTStep"] = m_paramTStep;
@@ -596,6 +598,8 @@ void UIController::applyStateJson(const QJsonObject &root) {
   if (mode.contains("axesOn"))  m_axesOn  = mode["axesOn"].toBool();
   if (mode.contains("coordOn")) m_coordOn = mode["coordOn"].toBool();
   if (mode.contains("labelOn")) m_labelOn = mode["labelOn"].toBool();
+  if (mode.contains("coordMode")) m_coordMode = mode["coordMode"].toInt();
+  if (mode.contains("exprOn"))    m_exprOn    = mode["exprOn"].toBool();
 
   // TBLSET restore. Step must be non-zero — guard against bad data.
   QJsonObject table = root.value("table").toObject();
@@ -1065,6 +1069,19 @@ void UIController::recallLastEntry() {
 
 QString UIController::currentDisplay() const {
   return m_displayStrings[m_activeIdx];
+}
+
+QString UIController::functionBufferText(int i) const {
+  if (i < 0 || i >= static_cast<int>(m_functionBuffers.size()))
+    return QString();
+  QString s;
+  const auto &rev = tokenToSpec();
+  for (auto t : m_functionBuffers[i]) {
+    auto it = rev.find(static_cast<int>(t));
+    if (it != rev.end())
+      s += QString::fromUtf8(it->second->displayStr);
+  }
+  return s;
 }
 
 QString UIController::formatScalar(double value) {

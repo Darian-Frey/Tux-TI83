@@ -319,14 +319,40 @@ Rectangle {
                 // formatScalar so the readout respects the user's
                 // MODE Notation (Normal/Sci/Eng) and Decimal (Float
                 // /Fix N) settings.
-                // Coordinate readout — gated by FORMAT → Coord. The
-                // crosshair above always shows; only the numbers hide.
+                // Expression strip (top-left) — FORMAT → Expr (ExprOn).
+                // Shows the traced function's label and body, e.g. "Y1=X²".
+                if (uiController.exprOn) {
+                    const expr = uiController.functionLabel(activeIdx) +
+                                 "=" + uiController.functionBufferText(activeIdx)
+                    ctx.font = "11px " + Style.monoFamily
+                    const ew = ctx.measureText(expr).width
+                    ctx.fillStyle = Style.bgShell
+                    ctx.globalAlpha = 0.85
+                    ctx.fillRect(0, 0, ew + 12, 18)
+                    ctx.globalAlpha = 1.0
+                    ctx.fillStyle = traceColour
+                    ctx.fillText(expr, 6, 13)
+                }
+
+                // Coordinate readout (bottom-left) — gated by FORMAT → Coord.
+                // Formatted per FORMAT → GC: RectGC shows X/Y, PolarGC shows
+                // R/θ (θ in the current angle unit). The crosshair always
+                // shows; only the numbers hide.
                 if (uiController.coordOn) {
-                    const readout = "Y" + (activeIdx + 1) +
-                                    "  X=" + uiController.formatScalar(tx) +
-                                    "  Y=" + (isFinite(ty)
-                                              ? uiController.formatScalar(ty)
-                                              : "—")
+                    let readout
+                    if (!isFinite(ty)) {
+                        readout = (uiController.coordMode === 1)
+                                  ? "R=—  θ=—" : "X=" + uiController.formatScalar(tx) + "  Y=—"
+                    } else if (uiController.coordMode === 1) {
+                        const r = Math.sqrt(tx * tx + ty * ty)
+                        let theta = Math.atan2(ty, tx)
+                        if (uiController.angleMode === 1) theta = theta * 180 / Math.PI
+                        readout = "R=" + uiController.formatScalar(r) +
+                                  "  θ=" + uiController.formatScalar(theta)
+                    } else {
+                        readout = "X=" + uiController.formatScalar(tx) +
+                                  "  Y=" + uiController.formatScalar(ty)
+                    }
                     ctx.font = "11px " + Style.monoFamily
                     const textW = ctx.measureText(readout).width
                     const padX = 6, padY = 4
