@@ -391,6 +391,10 @@ public:
   // True for functions that pop two operands during evaluation
   // (round, min, max, mod). Arguments are comma-separated in the source.
   static bool is_binary_function(Token t);
+  // True for functions that take a variable, source-counted number of
+  // comma-separated arguments (List▶Matr). The shunting-yard rides the
+  // arg count in the emitted token's RPN payload.
+  static bool is_variadic_function(Token t);
   // True for functions whose kTokens input string ends in `(` (so the
   // user types e.g. `abs(` as one keystroke and never types a separate
   // `(`). The shunting-yard pushes a synthetic LeftParen alongside

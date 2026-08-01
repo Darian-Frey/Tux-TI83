@@ -27,7 +27,9 @@ Popup {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
     width: 320
-    height: 540
+    // Tall enough to show the full MATH-tab list (11 entries × 40px) plus
+    // the header, tab bar, and padding without clipping the last rows.
+    height: 640
     padding: 14
 
     x: (parent.width - width) / 2
@@ -316,6 +318,9 @@ Popup {
                     spacing: 4
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
+                    // Visible scrollbar so the lower entries (List▶Matr /
+                    // Matr▶List) are discoverable even if the list overflows.
+                    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
                     delegate: Rectangle {
                         width: ListView.view.width

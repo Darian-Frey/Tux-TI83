@@ -131,6 +131,7 @@ bool EOSPrecedence::is_function(Token t) {
           t == Token::IPart || t == Token::FPart ||
           t == Token::Exp || t == Token::Sgn ||
           t == Token::Identity || t == Token::Dim || t == Token::Ref ||
+          t == Token::ListToMatr ||
           (t >= Token::Y1Call && t <= Token::Y0Call) ||
           t == Token::FnIntCall || t == Token::NDerivCall ||
           t == Token::SumCall || t == Token::ProdCall ||
@@ -161,7 +162,14 @@ bool EOSPrecedence::is_binary_function(Token t) {
           t == Token::Max || t == Token::Mod ||
           t == Token::NCr || t == Token::NPr ||
           t == Token::Augment || t == Token::RandM ||
-          t == Token::ListToMatr || t == Token::MatrToList);
+          t == Token::MatrToList);
+}
+
+// Variadic functions take a source-counted number of comma-separated
+// arguments (like a `{…}` list literal). The shunting-yard tracks the
+// count per open paren and rides it in the emitted token's RPN payload.
+bool EOSPrecedence::is_variadic_function(Token t) {
+  return t == Token::ListToMatr;
 }
 
 bool EOSPrecedence::has_built_in_paren(Token t) {
@@ -1088,6 +1096,12 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
   // LeftBrace markers on opStack. Starts at 1 (one element before any
   // comma); each top-level comma inside the braces bumps it.
   std::stack<int> braceCounts;
+  // Per-open-paren info, parallel to the LeftParen markers on opStack:
+  // {isVariadicFuncParen, argCount}. Pushed on every LeftParen push,
+  // popped on every LeftParen pop, so `.top()` always describes the
+  // innermost paren. Only variadic-function parens count their args; the
+  // count rides in the emitted token's RPN payload. Mirrors braceCounts.
+  std::stack<std::pair<bool, int>> parenInfo;
   int numIdx = 0;
   for (auto t : finalTokens) {
     if (t == Token::NumLiteral)
@@ -1116,18 +1130,35 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
       // RightParen handler ("pop until LeftParen, then pop the
       // function above") and the simple "Comma pops until LeftParen"
       // rule both work uniformly across function styles.
-      if (EOSPrecedence::has_built_in_paren(t))
+      if (t == Token::LeftParen) {
+        parenInfo.push({false, 0});  // user grouping paren
+      } else if (EOSPrecedence::has_built_in_paren(t)) {
         opStack.push(Token::LeftParen);
+        parenInfo.push({EOSPrecedence::is_variadic_function(t), 1});
+      }
+      // Functions without a built-in paren (e.g. Neg) push no LeftParen
+      // and therefore no parenInfo.
     }
     else if (t == Token::RightParen) {
       while (!opStack.empty() && opStack.top() != Token::LeftParen) {
         rpn.push_back({opStack.top(), 0.0});
         opStack.pop();
       }
-      if (!opStack.empty())
-        opStack.pop();
+      bool variadic = false;
+      int argCount = 0;
+      if (!opStack.empty()) {
+        opStack.pop();  // drop the LeftParen
+        if (!parenInfo.empty()) {
+          variadic = parenInfo.top().first;
+          argCount = parenInfo.top().second;
+          parenInfo.pop();
+        }
+      }
       if (!opStack.empty() && EOSPrecedence::is_function(opStack.top())) {
-        rpn.push_back({opStack.top(), 0.0});
+        // Variadic functions carry their arg count in the RPN payload;
+        // everything else emits 0.0 (unchanged).
+        rpn.push_back({opStack.top(),
+                       variadic ? static_cast<double>(argCount) : 0.0});
         opStack.pop();
       }
     } else if (t == Token::Comma) {
@@ -1145,6 +1176,11 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
       if (!opStack.empty() && opStack.top() == Token::LeftBrace &&
           !braceCounts.empty())
         braceCounts.top()++;
+      // A comma directly inside a variadic-function paren bumps that
+      // paren's arg count (parenInfo.top() tracks the innermost paren).
+      else if (!opStack.empty() && opStack.top() == Token::LeftParen &&
+               !parenInfo.empty() && parenInfo.top().first)
+        parenInfo.top().second++;
     } else if (t == Token::LeftBrace) {
       // Open a list literal. Marker on the operator stack + a fresh
       // element counter (1 = the element before any comma).
@@ -1921,25 +1957,38 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
         return {false, 0.0, {}, false, "Type Error"};  // no mixed forms
       }
       if (t == Token::ListToMatr) {
-        // List▶Matr(Lα, Lβ) — two equal-length lists become the two
-        // columns of an n×2 matrix. Value-producing (store with →[C]).
-        if (stack.size() < 2) return {false, 0.0, {}, false, "Error"};
-        Operand b = stack.top(); stack.pop();
-        Operand a = stack.top(); stack.pop();
-        if (!a.isList || !b.isList)
-          return {false, 0.0, {}, false, "Type Error"};
-        if (a.list.size() != b.list.size())
-          return {false, 0.0, {}, false, "Dim Mismatch"};
-        if (a.list.empty())
-          return {false, 0.0, {}, false, "Dim Mismatch"};
-        int n = static_cast<int>(a.list.size());
-        Matrix result;
-        result.rows = n; result.cols = 2;
-        result.data.resize(static_cast<size_t>(n) * 2);
-        for (int i = 0; i < n; ++i) {
-          result.set(i, 0, a.list[static_cast<size_t>(i)]);
-          result.set(i, 1, b.list[static_cast<size_t>(i)]);
+        // List▶Matr(L1, …, Ln) — n equal-length lists become the n columns
+        // of an m×n matrix. Value-producing (store with →[C]). The arg
+        // count rides in the RPN payload (node.second), set by the
+        // shunting-yard's variadic-paren counter; a 0/absent count (e.g. a
+        // path that didn't set one) falls back to 2 for safety.
+        int cols = static_cast<int>(std::llround(node.second));
+        if (cols < 1) cols = 2;
+        if (static_cast<int>(stack.size()) < cols)
+          return {false, 0.0, {}, false, "Error"};
+        // Pop `cols` list operands. They come off the stack in reverse
+        // source order, so fill columns right-to-left.
+        std::vector<std::vector<double>> columns(static_cast<size_t>(cols));
+        for (int c = cols - 1; c >= 0; --c) {
+          Operand op = stack.top(); stack.pop();
+          if (!op.isList)
+            return {false, 0.0, {}, false, "Type Error"};
+          columns[static_cast<size_t>(c)] = std::move(op.list);
         }
+        const size_t rows = columns[0].size();
+        if (rows == 0)
+          return {false, 0.0, {}, false, "Dim Mismatch"};
+        for (const auto &col : columns)
+          if (col.size() != rows)
+            return {false, 0.0, {}, false, "Dim Mismatch"};
+        Matrix result;
+        result.rows = static_cast<int>(rows);
+        result.cols = cols;
+        result.data.resize(rows * static_cast<size_t>(cols));
+        for (int c = 0; c < cols; ++c)
+          for (size_t i = 0; i < rows; ++i)
+            result.set(static_cast<int>(i), c,
+                       columns[static_cast<size_t>(c)][i]);
         stack.push({true, 0.0, result});
         continue;
       }

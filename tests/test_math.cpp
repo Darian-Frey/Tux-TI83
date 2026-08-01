@@ -421,6 +421,21 @@ int main(int argc, char *argv[]) {
           eval(c, "Matr▶List(List▶Matr({1,2,3},{4,5,6}),1)"), "{1,2,3}");
     check("round trip: column 2 → {4,5,6}",
           eval(c, "Matr▶List(List▶Matr({1,2,3},{4,5,6}),2)"), "{4,5,6}");
+
+    // Variadic List▶Matr: n lists → n columns (not just 2).
+    check("List▶Matr 3 lists → 2×3",
+          eval(c, "List▶Matr({1,2},{3,4},{5,6})"), "[[1,3,5][2,4,6]]");
+    check("List▶Matr 4 single-element lists → 1×4",
+          eval(c, "List▶Matr({1},{2},{3},{4})"), "[[1,2,3,4]]");
+    check("List▶Matr one list → m×1 column vector",
+          eval(c, "List▶Matr({7,8,9})"), "[[7][8][9]]");
+    check("List▶Matr mismatched length among 3 → INVALID DIM",
+          eval(c, "List▶Matr({1,2},{3,4},{5,6,7})"), "ERR:INVALID DIM");
+    check("List▶Matr scalar among 3 args → type error",
+          eval(c, "List▶Matr({1,2},9,{5,6})"), "ERR:DATA TYPE");
+    // Extract the middle column of a 3-column build.
+    check("Matr▶List(3-col build, 2) → {3,4}",
+          eval(c, "Matr▶List(List▶Matr({1,2},{3,4},{5,6}),2)"), "{3,4}");
   }
 
   section("Matrix dimension mismatch (BUG-010, BUG-011)");
