@@ -218,10 +218,14 @@ Popup {
             active: true
             onSelected: (index) => uiController.complexMode = index
         }
+        // Screen: Full / Horiz / G-T — wired. Governs the main view layout
+        // (single view vs graph-over-keypad vs graph-beside-table).
         ModeRow {
             label: "Screen"
             options: ["Full", "Horiz", "G-T"]
-            selectedIndex: 0
+            selectedIndex: uiController.screenMode
+            active: true
+            onSelected: (index) => uiController.screenMode = index
         }
 
         Item { Layout.fillHeight: true }

@@ -443,6 +443,7 @@ QJsonObject UIController::buildStateJson() const {
   mode["complexMode"] = static_cast<int>(MathStateMachine::complexMode);
   mode["drawMode"]    = m_drawMode;
   mode["plotMode"]    = m_plotMode;
+  mode["screenMode"]  = m_screenMode;
   mode["graphMode"]   = m_graphMode;
   mode["statPlotOn"]    = m_statPlotOn;
   mode["statPlotType"]  = m_statPlotType;
@@ -585,6 +586,10 @@ void UIController::applyStateJson(const QJsonObject &root) {
     m_drawMode = (mode["drawMode"].toInt() == 1) ? 1 : 0;
   if (mode.contains("plotMode"))
     m_plotMode = (mode["plotMode"].toInt() == 1) ? 1 : 0;
+  if (mode.contains("screenMode")) {
+    const int s = mode["screenMode"].toInt();
+    m_screenMode = (s >= 0 && s <= 2) ? s : 0;
+  }
   if (mode.contains("graphMode"))
   {
     const int g = mode["graphMode"].toInt();
@@ -763,6 +768,7 @@ void UIController::resetAll() {
   m_isTableMode = false;
   m_drawMode = 0;
   m_plotMode = 0;
+  m_screenMode = 0;
   m_graphMode = 0;
   m_statPlotOn = false;
   m_statPlotType = 0;

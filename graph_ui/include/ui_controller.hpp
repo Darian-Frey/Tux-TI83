@@ -85,6 +85,10 @@ private:
     // before the next), 1 = Simul (all curves advance together). Only the
     // GraphCanvas draw animation observes it; the final image is identical.
     Q_PROPERTY(int plotMode MEMBER m_plotMode NOTIFY plotModeChanged)
+    // Screen layout (MODE → Screen row). 0 = Full (one view at a time),
+    // 1 = Horiz (graph over the keypad), 2 = G-T (graph beside the table).
+    // The QML layout observes it; no evaluator effect.
+    Q_PROPERTY(int screenMode MEMBER m_screenMode NOTIFY screenModeChanged)
 
     // Graph type (MODE → Graph row). 0 = Func (Cartesian y=f(x)),
     // 2 = Pol (polar r=f(θ)). Values match the row's option order
@@ -458,6 +462,7 @@ signals:
     void insertModeChanged();
     void drawModeChanged();
     void plotModeChanged();
+    void screenModeChanged();
     void graphModeSettingChanged();
     void statPlotChanged();
     void formatChanged();
@@ -533,6 +538,8 @@ private:
     int m_drawMode = 0;
     // 0 = Sequential (default), 1 = Simul. See plotMode property above.
     int m_plotMode = 0;
+    // 0 = Full (default), 1 = Horiz, 2 = G-T. See screenMode property above.
+    int m_screenMode = 0;
     // Graph type: 0 = Func, 2 = Pol (option-index encoding). See the
     // graphMode property above.
     int m_graphMode = 0;

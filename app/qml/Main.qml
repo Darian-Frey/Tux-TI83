@@ -588,15 +588,42 @@ ApplicationWindow {
         // keypad sections (page 0), the graph canvas (page 1), and
         // the table view (page 2). Toggled by GRAPH / 2ND+GRAPH /
         // Y= in the soft-key row above.
-        StackLayout {
+        ColumnLayout {
+            id: viewRegion
             Layout.fillWidth: true
             Layout.fillHeight: true
-            currentIndex: uiController.isTableMode ? 2
-                        : uiController.isGraphMode ? 1
-                        : 0
+            readonly property bool viewActive: uiController.isGraphMode || uiController.isTableMode
 
-            // ── Page 0: keypad (CONTROL / SCIENTIFIC / NUMERIC) ──
+            // ── View area: graph and/or table ──
+            // MODE → Screen: Full shows the active view alone; G-T shows the
+            // graph and table side by side; Horiz shows the view here with
+            // the keypad below (so the graph renders on top). Placed above
+            // the keypad on purpose.
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: viewRegion.viewActive
+                spacing: 6
+
+                GraphCanvas {
+                    visible: viewRegion.viewActive
+                             && (uiController.screenMode === 2 || uiController.isGraphMode)
+                }
+                TableView {
+                    id: tableView
+                    visible: viewRegion.viewActive
+                             && (uiController.screenMode === 2 || uiController.isTableMode)
+                }
+            }
+
+            // ── Keypad (CONTROL / SCIENTIFIC / NUMERIC) ──
+            // Visible when not in a view (any screen mode) or in the Horiz
+            // split. Fills the region only when it's the sole content; in
+            // Horiz it takes its natural height with the graph filling above.
             ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: !viewRegion.viewActive
+                visible: !viewRegion.viewActive || uiController.screenMode === 1
                 spacing: 10
 
         // ── 4. CONTROL section ──────────────────────────
@@ -776,12 +803,6 @@ ApplicationWindow {
 
         Item { Layout.fillHeight: true }
             }
-
-            // ── Page 1: graph canvas ─────────────────────
-            GraphCanvas { }
-
-            // ── Page 2: table view ───────────────────────
-            TableView { id: tableView }
         }
             }
         }
