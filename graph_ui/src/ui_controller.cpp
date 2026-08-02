@@ -335,11 +335,18 @@ UIController::UIController(QObject *parent) : QObject(parent), m_activeIdx(0) {
   // default-zero registry.
 
   // Y-VARS engine hookup. The math engine knows nothing about which
-  // function buffer is which slot; this lambda answers that question.
-  // Last-constructed controller wins (the static is process-global),
-  // which is fine since production has exactly one and tests run
-  // sequentially with one live instance at a time.
-  MathStateMachine::yLookup = [this](int idx) -> std::vector<Token> {
+  // function buffer is which slot; bindEngine() (below) answers that
+  // question per MathStateMachine instance. IMP-045: this used to set a
+  // process-global static here, which dangled once this controller was
+  // destroyed; the lookup is now bound on each engine we construct.
+}
+
+// Bind this controller's Y-VARS buffer source onto a MathStateMachine
+// instance. Called on every engine the controller constructs so Y_n
+// references resolve to m_functionBuffers. The lambda captures `this`,
+// which always outlives the local engine, so there is no dangling.
+void UIController::bindEngine(MathStateMachine &m) const {
+  m.yLookup = [this](int idx) -> std::vector<Token> {
     if (idx < 0 || idx >= static_cast<int>(m_functionBuffers.size()))
       return {};
     return m_functionBuffers[idx];
@@ -1336,6 +1343,7 @@ void UIController::evaluate() {
   }
 
   MathStateMachine msm;
+  bindEngine(msm);
   // In calc mode, X behaves like any other scalar variable — resolve
   // it from the registry so `5→X: X+1` gives 6. Graph-mode evaluation
   // (plot sweeps) passes its own xValue and bypasses this path.
@@ -2080,6 +2088,7 @@ void UIController::zoomFit() {
   double minVal = 1e308, maxVal = -1e308;
   bool found = false;
   MathStateMachine msm;
+  bindEngine(msm);
   for (const auto &buffer : m_functionBuffers) {
     if (buffer.empty())
       continue;
@@ -2114,6 +2123,7 @@ double UIController::traceY() const {
   if (buf.empty())
     return std::numeric_limits<double>::quiet_NaN();
   MathStateMachine msm;
+  bindEngine(msm);
   CalculationResult res = msm.evaluate(buf, m_traceX);
   if (!res.success || res.isMatrix)
     return std::numeric_limits<double>::quiet_NaN();
@@ -2345,6 +2355,7 @@ QVariantList UIController::getTableRows(int count, double xStart) {
   // user sees blank cells where no expression exists.
   QVariantList rows;
   MathStateMachine msm;
+  bindEngine(msm);
   for (int i = 0; i < count; ++i) {
     const double x = xStart + i * m_tblStep;
     QVariantMap row;
@@ -2373,6 +2384,7 @@ QVariantList UIController::getMultiGraphPoints(int resolution) {
   // an empty array and skips it.
   QVariantList allFunctions;
   MathStateMachine msm;
+  bindEngine(msm);
   const bool degreeMode = (MathStateMachine::angleMode == AngleMode::Degree);
 
   // Parametric mode (graphMode == 1): the 10 buffers are read as 5

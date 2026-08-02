@@ -462,6 +462,9 @@ signals:
     void traceChanged();
 
 private:
+    // Bind this controller's Y-VARS buffer source onto a MathStateMachine
+    // instance (IMP-045). Call on every engine the controller constructs.
+    void bindEngine(MathStateMachine &m) const;
     // Serialise all persisted state to JSON / apply a JSON snapshot.
     // Shared by saveState/loadState and exportState/importState.
     QJsonObject buildStateJson() const;

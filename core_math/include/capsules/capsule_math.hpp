@@ -479,11 +479,14 @@ public:
   // a TI-83's `Ans` behaviour — errors don't overwrite it.
   static CalculationResult lastResult;
 
-  // Y-VARS lookup. The UI controller sets this on construction to a
-  // lambda that returns m_functionBuffers[idx] (idx ∈ {0,1,2} for
-  // Y1/Y2/Y3). Stays null in headless contexts (CLI/REPL/tests) —
-  // the evaluator then treats every Y_n as 0, matching the TI-83
-  // behaviour of an empty function slot.
-  static std::function<std::vector<Token>(int)> yLookup;
+  // Y-VARS lookup. A PER-INSTANCE callback returning the token buffer for
+  // Y-slot idx (0..9 → Y1..Y0). The UI controller binds this on each
+  // MathStateMachine it constructs (to a lambda reading m_functionBuffers);
+  // recursive sub-evaluations copy it from their parent (see evaluate()).
+  // Stays null in headless contexts (CLI/REPL/tests that don't set it) —
+  // the evaluator then treats every Y_n as 0, matching the TI-83 behaviour
+  // of an empty function slot. IMP-045: was a `static` capturing `this`,
+  // which dangled once the owning controller was destroyed.
+  std::function<std::vector<Token>(int)> yLookup;
 };
 } // namespace tux_ti83

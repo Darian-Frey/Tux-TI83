@@ -23,7 +23,15 @@ Each entry uses this template:
 
 ## Open
 
-(none)
+### BUG-023: On-screen keypad can't enter Y-function tokens — "Y1" becomes variable-Y × 1
+
+- **Status:** open
+- **Found:** 2026-08-01 (IMP-045 GUI verification)
+- **Location:** [app/qml/Main.qml](app/qml/Main.qml) (keypad has no Y-VARS entry; the `pendingY` fuse is physical-keyboard only) — engine side is fine
+- **Severity:** medium (silent wrong answer for home-screen Y-VARS recall via mouse)
+- **Description:** The on-screen keypad has no way to insert a Y-function token (`Y1`..`Y0`). Entering "Y1" via ALPHA+`1` inserts the **letter-Y scalar variable** (`VarY`) followed by `Num1`, so `Y1(3)` parses as `Y·1·(3)` and evaluates to `0` (Y unset) instead of recalling the `Y1` function → `9`. The physical-keyboard `pendingY` fuse (press letter `Y` then a digit → fused `Y1` token) works, but there's no mouse-only equivalent. This is the recall-side twin of the store keyed-form case (handled for `→Yn` via BUG-fix; recall isn't).
+- **Reproduction:** Set `Y1=X^2` (plots). On the home screen via the on-screen keys, type `Y1(3)` using ALPHA+1 for the Y → shows `0`, not `9`. Same keystrokes but pressing the physical `Y` key then `1` → `9`.
+- **Notes:** Two fix directions: (a) a preprocessing rewrite that treats `[VarY, digit]` as `Yn` (ambiguous with the rare "Y×digit"; unambiguous only in call position `Yn(`), or (b) a proper on-screen Y-VARS entry point (a VARS menu / soft key emitting the fused token) — cleaner, no parser ambiguity. Not an IMP-045 regression; pre-existing since Y-VARS recall landed.
 
 ---
 

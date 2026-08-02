@@ -21,7 +21,7 @@ int MathStateMachine::fixDecimals = -1;  // -1 = Float (no fix)
 NumberBase MathStateMachine::numberBase = NumberBase::Dec;
 ComplexMode MathStateMachine::complexMode = ComplexMode::Real;
 CalculationResult MathStateMachine::lastResult{true, 0.0, {}, false, ""};
-std::function<std::vector<Token>(int)> MathStateMachine::yLookup;
+// IMP-045: yLookup is now a per-instance member (no static definition).
 
 int EOSPrecedence::precedence(Token t) {
   switch (t) {
@@ -1298,6 +1298,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
       }
       activeYn.insert(yIdx);
       MathStateMachine sub;
+      sub.yLookup = yLookup;  // propagate the Y-buffer source into recursion
       CalculationResult subRes = sub.evaluate(buf, xValue);
       activeYn.erase(yIdx);
       if (!subRes.success) return subRes;
@@ -1330,6 +1331,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
       }
       activeYn.insert(yIdx);
       MathStateMachine sub;
+      sub.yLookup = yLookup;  // propagate the Y-buffer source into recursion
       CalculationResult subRes = sub.evaluate(buf, argX);
       activeYn.erase(yIdx);
       if (!subRes.success) return subRes;
@@ -1373,6 +1375,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
         double prev = varRegistry[vIdx];
         varRegistry[vIdx] = v;
         MathStateMachine sub;
+        sub.yLookup = yLookup;  // Y-refs inside the sampled expression resolve
         CalculationResult r = sub.evaluate(expr, (vIdx == xIdx) ? v : xValue);
         varRegistry[vIdx] = prev;
         if (!r.success) { okSamp = false; sampleErr = r.error_message; return 0.0; }
@@ -1487,6 +1490,7 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
         const double prev = varRegistry[vIdx];
         varRegistry[vIdx] = v;
         MathStateMachine sub;
+        sub.yLookup = yLookup;  // Y-refs inside the sampled expression resolve
         CalculationResult r = sub.evaluate(expr, (vIdx == xIdx) ? v : xValue);
         varRegistry[vIdx] = prev;
         if (!r.success) return r;

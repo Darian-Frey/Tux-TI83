@@ -1747,8 +1747,9 @@ int main(int argc, char *argv[]) {
 
   section("Y-VARS store (expr→Yn)");
   {
-    // Fresh controller so the static yLookup points here for Y-recall
-    // (see the Y4–Y0 tests / the yLookup-dangling footgun).
+    // Dedicated controller for a self-contained Y-buffer fixture. (Since
+    // IMP-045, yLookup is bound per engine, so this no longer has to be
+    // the last-constructed controller — it's just tidy isolation.)
     UIController ys;
     ys.setProperty("graphMode", 0);
     ys.setActiveFunction(0);  // Y1 is the active/home slot
@@ -1792,6 +1793,26 @@ int main(int argc, char *argv[]) {
     check("7→Y stores to scalar Y (not a function)", eval(ys, "7→Y"), "7");
     checkTrue("Y3 unchanged by 7→Y",
               ys.functionBufferText(2) == QStringLiteral("2X"));
+  }
+
+  section("IMP-045: yLookup is per-instance (no cross-controller dangling)");
+  {
+    // Y-VARS lookup is now bound per MathStateMachine instead of a static
+    // capturing `this`. Recall on one controller must survive another
+    // controller being constructed AND destroyed — which, under the old
+    // static, left the global pointing at freed memory.
+    UIController a;
+    a.setGraphMode(0);
+    a.setActiveFunction(0); eval(a, "X^2");  // a's Y1 = X^2
+
+    {  // throwaway controller, destroyed at the closing brace
+      UIController b;
+      b.setActiveFunction(0); eval(b, "2X");
+    }
+
+    a.setActiveFunction(1);
+    check("Y1 recall on `a` works after `b` was destroyed",
+          eval(a, "Y1(3)"), "9");
   }
 
   section("DRAW menu overlays (Phase D)");
@@ -2049,8 +2070,9 @@ int main(int argc, char *argv[]) {
 
   section("Y4–Y0 reference tokens (Phase F follow-up)");
   {
-    // Fresh controller: yLookup is a static capturing `this`, so it must
-    // point at a live UIController for the whole block (see Y1–Y3 tests).
+    // Dedicated controller for an isolated Y-buffer fixture. (Since
+    // IMP-045, yLookup is per-engine, so this needn't be the last live
+    // controller; kept separate purely for a clean fixture.)
     UIController yv;
     tux_ti83::MathStateMachine::varRegistry.fill(0.0);  // X = 0
     yv.setGraphMode(0);
