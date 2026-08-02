@@ -610,7 +610,7 @@ ApplicationWindow {
             CalcKey { label: "2ND";   keyType: "second";  armed: root.secondArmed; onPressed: root.armSecond() }
             CalcKey { label: "MODE";  keyType: "control"; onPressed: { root.clearModifiers(); modePopup.open() } }
             CalcKey { label: "⌫";     keyType: "control"; secondLabel: "INS"; onPressed: root.handleKey("DEL") }
-            CalcKey { label: "ALPHA"; keyType: "control"; armed: root.alphaArmed || root.alphaLocked; onPressed: root.armAlpha() }
+            CalcKey { label: "ALPHA"; keyType: "alpha"; armed: root.alphaArmed || root.alphaLocked; onPressed: root.armAlpha() }
             CalcKey { label: "CLEAR"; keyType: "control"; onPressed: { root.clearModifiers(); uiController.processInput("CLEAR") } }
             // Note: corner labels intentionally omitted from CONTROL row
             // — the TI-83 equivalents (QUIT, INS, A-LOCK, RESET) aren't

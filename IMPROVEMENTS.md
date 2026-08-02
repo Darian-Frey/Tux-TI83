@@ -68,6 +68,14 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-046: ALPHA key styled neutral while 2ND is themed amber — asymmetric with their labels
+
+- **Status:** applied (2026-08-01)
+- **Location:** [app/qml/Style.qml](app/qml/Style.qml) (`alphaBg`/`alphaBorder`), [app/qml/components/CalcKey.qml](app/qml/components/CalcKey.qml) (`"alpha"` keyType), [app/qml/Main.qml](app/qml/Main.qml) (ALPHA button)
+- **Effort:** trivial
+- **Description:** The 2ND key uses `keyType: "second"` (amber bg/border), matching the amber 2ND corner labels across the keypad. The ALPHA key used `keyType: "control"` (neutral), even though all its corner labels are green (`armedBadgeAlpha`). The pair read as inconsistent — 2ND colour-coded to its function, ALPHA not.
+- **Fix applied:** added an `"alpha"` keyType with a green scheme (`alphaBg #052e16` / `alphaBorder #166534` — a darker green than the ENTER key so the two stay distinct) and switched the ALPHA button to it. Now ALPHA is green-themed to echo its green labels, symmetric with the amber 2ND key and matching real TI-83 hardware. User-reported.
+
 ### IMP-045: `MathStateMachine::yLookup` is a static capturing `this` — dangles across controllers
 
 - **Status:** applied (2026-08-01)

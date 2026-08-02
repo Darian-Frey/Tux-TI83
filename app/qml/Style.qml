@@ -32,6 +32,11 @@ QtObject {
     readonly property color enterBg:      "#0f3d20"
     readonly property color secondBorder: "#78350f"
     readonly property color secondBg:     "#4c1d02"
+    // ALPHA key — green family, echoing the green ALPHA corner labels
+    // (armedBadgeAlpha). A darker green than ENTER so the two stay
+    // distinct. Mirrors how the 2ND key is themed amber.
+    readonly property color alphaBorder:  "#166534"
+    readonly property color alphaBg:      "#052e16"
     readonly property color funcBg:       bgSurface              // function keys
     readonly property color numericBg:    "#111827"              // numeric keys (display darkened)
     readonly property color keyBorderNeutral: "#2a2d44"

@@ -15,7 +15,7 @@ Rectangle {
 
     // ── Public API ────────────────────────────────────────
     property string label: ""
-    // keyType ∈ "numeric" | "operator" | "function" | "control" | "enter" | "second"
+    // keyType ∈ "numeric" | "operator" | "function" | "control" | "enter" | "second" | "alpha"
     property string keyType: "function"
     // `armed` lights up a key when it's the active modifier (e.g. 2ND
     // after being pressed once, ALPHA similarly). The owner flips this
@@ -44,6 +44,7 @@ Rectangle {
             keyType === "operator" ? Style.opBg      :
             keyType === "enter"    ? Style.enterBg   :
             keyType === "second"   ? Style.secondBg  :
+            keyType === "alpha"    ? Style.alphaBg   :
             keyType === "control"  ? Style.bgSurface :
                                      Style.funcBg
         const hovered = pressArea.containsMouse
@@ -59,6 +60,7 @@ Rectangle {
         case "operator": return Style.opBorder
         case "enter":    return Style.enterBorder
         case "second":   return Style.secondBorder
+        case "alpha":    return Style.alphaBorder
         default:         return Style.keyBorderNeutral
         }
     }
