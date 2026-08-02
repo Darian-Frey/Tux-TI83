@@ -1815,6 +1815,35 @@ int main(int argc, char *argv[]) {
           eval(a, "Y1(3)"), "9");
   }
 
+  section("BUG-023: on-screen Y-VARS entry inserts the fused token");
+  {
+    // The Y-VARS popup inserts a Yn function token via
+    // processExpression("Yn"); this test mirrors that path and contrasts
+    // it with the broken keypad form (letter-Y variable + digit).
+    tux_ti83::MathStateMachine::varRegistry.fill(0.0);
+    UIController yp;
+    yp.setGraphMode(0);
+    yp.setActiveFunction(1); eval(yp, "X^2");  // Y2 = X^2
+
+    // Popup path: insert the fused "Y2" token, then the user types "(3)".
+    yp.setActiveFunction(0);
+    yp.processInput(QStringLiteral("CLEAR"));
+    yp.processExpression(QStringLiteral("Y2"));   // what the popup inserts
+    yp.processExpression(QStringLiteral("(3)"));
+    yp.processInput(QStringLiteral("ENTER"));
+    check("popup-inserted Y2(3) recalls the function → 9",
+          yp.currentDisplay(), "9");
+
+    // Broken keypad form: letter-Y variable (unset → 0) times 2 times 3.
+    yp.setActiveFunction(0);
+    yp.processInput(QStringLiteral("CLEAR"));
+    yp.processExpression(QStringLiteral("Y"));     // VarY, not the Y2 token
+    yp.processExpression(QStringLiteral("2(3)"));
+    yp.processInput(QStringLiteral("ENTER"));
+    check("keypad VarY+digit form is NOT a recall → 0",
+          yp.currentDisplay(), "0");
+  }
+
   section("DRAW menu overlays (Phase D)");
   {
     c.clrDraw();

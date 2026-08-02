@@ -687,7 +687,16 @@ ApplicationWindow {
             CalcKey { label: "(";  keyType: "function"; secondLabel: "{"; alphaLabel: "K"; onPressed: root.handleKey("(") }
             CalcKey { label: ")";  keyType: "function"; secondLabel: "}"; alphaLabel: "L"; onPressed: root.handleKey(")") }
             CalcKey { label: ",";  keyType: "function"; alphaLabel: "J"; onPressed: root.handleKey(",") }
-            CalcKey { label: "X";  keyType: "function"; onPressed: root.handleKey("X") }
+            // X inserts the graph variable; 2ND+X opens the Y-VARS picker
+            // (the only on-screen way to enter a Y-function token — BUG-023).
+            CalcKey { label: "X";  keyType: "function"; secondLabel: "Y-VARS"; onPressed: {
+                if (root.secondArmed) {
+                    root.clearModifiers()
+                    yVarsPopup.open()
+                } else {
+                    root.handleKey("X")
+                }
+            } }
             CalcKey { label: "÷";  keyType: "operator"; secondLabel: "!"; alphaLabel: "M"; onPressed: root.handleKey("÷") }
 
             // Row 2
@@ -838,6 +847,10 @@ ApplicationWindow {
 
     YEditorPopup {
         id: yEditorPopup
+    }
+
+    YVarsPopup {
+        id: yVarsPopup
     }
 
     DRAWPopup {

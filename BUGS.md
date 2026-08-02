@@ -23,19 +23,21 @@ Each entry uses this template:
 
 ## Open
 
-### BUG-023: On-screen keypad can't enter Y-function tokens — "Y1" becomes variable-Y × 1
-
-- **Status:** open
-- **Found:** 2026-08-01 (IMP-045 GUI verification)
-- **Location:** [app/qml/Main.qml](app/qml/Main.qml) (keypad has no Y-VARS entry; the `pendingY` fuse is physical-keyboard only) — engine side is fine
-- **Severity:** medium (silent wrong answer for home-screen Y-VARS recall via mouse)
-- **Description:** The on-screen keypad has no way to insert a Y-function token (`Y1`..`Y0`). Entering "Y1" via ALPHA+`1` inserts the **letter-Y scalar variable** (`VarY`) followed by `Num1`, so `Y1(3)` parses as `Y·1·(3)` and evaluates to `0` (Y unset) instead of recalling the `Y1` function → `9`. The physical-keyboard `pendingY` fuse (press letter `Y` then a digit → fused `Y1` token) works, but there's no mouse-only equivalent. This is the recall-side twin of the store keyed-form case (handled for `→Yn` via BUG-fix; recall isn't).
-- **Reproduction:** Set `Y1=X^2` (plots). On the home screen via the on-screen keys, type `Y1(3)` using ALPHA+1 for the Y → shows `0`, not `9`. Same keystrokes but pressing the physical `Y` key then `1` → `9`.
-- **Notes:** Two fix directions: (a) a preprocessing rewrite that treats `[VarY, digit]` as `Yn` (ambiguous with the rare "Y×digit"; unambiguous only in call position `Yn(`), or (b) a proper on-screen Y-VARS entry point (a VARS menu / soft key emitting the fused token) — cleaner, no parser ambiguity. Not an IMP-045 regression; pre-existing since Y-VARS recall landed.
+(none)
 
 ---
 
 ## Fixed
+
+### BUG-023: On-screen keypad can't enter Y-function tokens — "Y1" becomes variable-Y × 1
+
+- **Status:** fixed (2026-08-01, same session as IMP-045)
+- **Location:** [app/qml/components/YVarsPopup.qml](app/qml/components/YVarsPopup.qml) (new), [app/qml/Main.qml](app/qml/Main.qml) (2ND+X trigger)
+- **Severity:** medium (silent wrong answer for home-screen Y-VARS recall via mouse)
+- **Description:** The on-screen keypad had no way to insert a Y-function token (`Y1`..`Y0`). Entering "Y1" via ALPHA+`1` inserts the **letter-Y scalar variable** (`VarY`) followed by `Num1`, so `Y1(3)` parsed as `Y·1·(3)` and evaluated to `0` (Y unset) instead of recalling the `Y1` function → `9`. The physical-keyboard `pendingY` fuse worked, but there was no mouse-only equivalent.
+- **Reproduction (was):** Set `Y1=X^2` (plots). On the home screen via the on-screen keys, type `Y1(3)` using ALPHA+1 for the Y → showed `0`, not `9`.
+- **Fix:** Added `YVarsPopup` — a Y-VARS picker (buttons `Y1`..`Y0`) opened via **2ND+X**. Each button calls `processExpression("Yn")`, which tokenises to the fused `Yn` function token (longest match), so the on-screen path now inserts the real function reference. Chose option (b) from the original notes (proper entry point, no parser ambiguity) over a `[VarY,digit]` rewrite. Regression test ("BUG-023") mirrors the popup's insertion path (recall → 9) and contrasts it with the broken `VarY`+digit form (→ 0).
+- **Notes:** Not an IMP-045 regression; pre-existing since Y-VARS recall landed. Self-reference while the target slot is the active home slot is still the separate home-screen/Y-slot-overlap quirk (BUG-022 family), unaffected by this fix.
 
 ### BUG-022: Y-editor list shows the live edit string, not the plotted function, after a home-screen eval
 
