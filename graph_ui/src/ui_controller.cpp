@@ -245,12 +245,15 @@ constexpr TokenSpec kTokens[] = {
     {"xor", Token::Xor,       "xor"},
     {"not", Token::Not,       "not"},
 
-    // Matrices
+    // Matrices. `[A]`..`[E]` are registry references (longest-match wins
+    // over the bare `[`); `[`/`]` delimit a matrix literal `[[1,2][3,4]]`.
     {"[A]", Token::MatA, "[A]"},
     {"[B]", Token::MatB, "[B]"},
     {"[C]", Token::MatC, "[C]"},
     {"[D]", Token::MatD, "[D]"},
     {"[E]", Token::MatE, "[E]"},
+    {"[", Token::OpenBracket, "["},
+    {"]", Token::CloseBracket, "]"},
 
     // Lists (Phase C). `{`/`}` delimit list literals; L1..L6 reference
     // the list registry.

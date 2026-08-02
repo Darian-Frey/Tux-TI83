@@ -29,44 +29,21 @@ Each entry uses this template:
 
 ## Suggested
 
-### IMP-011: CLI / REPL can't populate matrices
-- **Status:** suggested
-- **Found:** 2026-04-08 (user-reported after matrix-inverse landed)
-- **Location:** architectural — spans [cli/cli_main.cpp](cli/cli_main.cpp), [cli/repl_main.cpp](cli/repl_main.cpp), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp) (`MathStateMachine::matrixRegistry`)
-- **Effort:** medium
-- **Description:** Matrix values live in `MathStateMachine::matrixRegistry`
-  — a `static std::map<Token, Matrix>` inside the `tux_ti83` library.
-  Each binary is its own process, so the registry is fresh in every
-  `tux_ti83_cli` invocation and every `tux_ti83_repl` session. Worse,
-  the CLI binaries have no way to *set* a matrix — only the GUI's
-  MatrixPopup EDIT tab populates the registry. Any CLI expression
-  involving `[A]`, `[B]`, or `[C]` returns `ERR:UNDEFINED` unless the
-  user happens to reference a matrix in the same GUI instance. From a
-  user's perspective, matrix operations are GUI-only right now.
-- **Proposal:** Two shapes, picking one:
-  1. **REPL command.** Add a `:matrix NAME ROWS COLS VALUES…` command
-     so users can `:matrix [A] 2 2 1 2 3 4` and then evaluate
-     `[A]^-1` or `det([A])` in the same session. One-liner for one-shot
-     mode via stdin pipe: `echo ':matrix [A] 2 2 1 2 3 4\n[A]^-1' | tux_ti83_repl`.
-  2. **On-disk persistence.** Serialise `matrixRegistry` to a dotfile
-     (`~/.config/tux-ti83/matrices.json` or similar) whenever a matrix
-     is updated, load on startup. GUI and CLI share the same file, so
-     matrices set in one session survive to the next — and across
-     binaries.
-  Option 1 is smaller but keeps CLI and GUI as separate worlds. Option 2
-  makes them share state but introduces file-I/O concerns (locking,
-  corruption recovery, schema versioning).
-- **Trade-offs:** Option 1 is a few dozen lines of parsing + dispatch
-  in `repl_main.cpp`. Option 2 is more like 100+ lines but benefits
-  the GUI too (matrices survive across app launches).
-- **Notes:** User's actual test case
-  (`./build/tux_ti83_cli '[A]^-1'` → `ERR:UNDEFINED`) is exactly this
-  gap. The current behaviour is technically correct but uselessly so —
-  no way for a CLI user to populate the matrix first.
-
 ---
 
 ## Applied
+
+### IMP-011: CLI / REPL can't populate matrices — resolved via typed matrix literals + matrix store
+
+- **Status:** applied (2026-08-01)
+- **Location:** [core_math/src/core_math.cpp](core_math/src/core_math.cpp) (bracket shunting-yard, `MakeMatrix` eval, matrix Sto), [core_math/include/capsules/capsule_math.hpp](core_math/include/capsules/capsule_math.hpp) (`MakeMatrix`), [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp) (`[`/`]` tokens)
+- **Effort:** medium
+- **Description:** Matrix values lived in `MathStateMachine::matrixRegistry` and were populated **only** by the GUI grid editor (`updateMatrix`) — there was no expression syntax to enter or store a matrix, so `tux_ti83_cli '[A]^-1'` returned `ERR:UNDEFINED` and CLI/REPL users couldn't do matrix math at all. (Investigation showed the gap was broader than the original note: matrix *literals* didn't even tokenise.)
+- **Fix applied:** added typed matrix literals and matrix store to the engine — a superset of the original proposals that fixes the CLI **and** benefits the GUI, matching real TI-83 syntax:
+  - `[`/`]` tokens; the shunting-yard parses `[[1,2][3,4]]` (outer `[`=matrix, inner `[…]`=rows; rows reuse `MakeList`, so a row is a list) and emits `MakeMatrix` carrying the row count. Ragged rows → `ERR:INVALID DIM`. Elements may be expressions (`[[1+1,2*3][4,5]]`).
+  - Matrix `→[A]` store: the Sto pass accepts `MatA..MatJ` targets; the Sto eval writes the matrix operand into `matrixRegistry` (scalar→matrix is `ERR:DATA TYPE`).
+  - Now `./tux_ti83_cli 'det([[1,2][3,4]])'` → `-2`, and in the REPL `[[1,2][3,4]]→[A]` then `[A]^-1` works within a session.
+- **Notes:** +12 tests (622 total). Chose this over the REPL-`:matrix`-command / on-disk-persistence options because it's the real TI-83 model and unifies GUI+CLI. **Follow-up:** the physical keyboard / on-screen keypad don't map `[`/`]` yet, so GUI users can't *type* a literal on the home screen (CLI/REPL can); a small keymap/soft-key addition would close that. Cross-persistence of `matrixRegistry` across separate CLI invocations (original option 2) is still not done and probably unneeded given inline literals.
 
 ### IMP-046: ALPHA key styled neutral while 2ND is themed amber — asymmetric with their labels
 

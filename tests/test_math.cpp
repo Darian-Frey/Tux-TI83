@@ -438,6 +438,36 @@ int main(int argc, char *argv[]) {
           eval(c, "Matr▶List(List▶Matr({1,2},{3,4},{5,6}),2)"), "{3,4}");
   }
 
+  section("Matrix literals + store (IMP-011)");
+  {
+    // Typed matrix literals `[[..][..]]` — rows are `[…]`, elements
+    // comma-separated. Row adjacency `][` must NOT get an implicit ×.
+    check("2×2 literal", eval(c, "[[1,2][3,4]]"), "[[1,2][3,4]]");
+    check("2×3 literal", eval(c, "[[1,2,3][4,5,6]]"), "[[1,2,3][4,5,6]]");
+    check("column vector 3×1", eval(c, "[[1][2][3]]"), "[[1][2][3]]");
+    check("row vector 1×3", eval(c, "[[7,8,9]]"), "[[7,8,9]]");
+    check("expression elements", eval(c, "[[1+1,2*3][4,5]]"), "[[2,6][4,5]]");
+    check("ragged rows → INVALID DIM", eval(c, "[[1,2][3]]"), "ERR:INVALID DIM");
+
+    // Store a literal into [A], then operate on it (the IMP-011 gap).
+    check("store literal → [A] echoes it",
+          eval(c, "[[1,2][3,4]]→[A]"), "[[1,2][3,4]]");
+    check("stored [A]^-1", eval(c, "[A]^-1"), "[[-2,1][1.5,-0.5]]");
+    check("stored det([A])", eval(c, "det([A])"), "-2");
+    check("stored [A]*[A]", eval(c, "[A]*[A]"), "[[7,10][15,22]]");
+
+    // Store a *computed* matrix result into another register.
+    eval(c, "[[1,2][3,4]]→[A]");   // reset [A]
+    eval(c, "[A]+[A]→[B]");
+    check("stored [B] = 2[A]", eval(c, "[B]"), "[[2,4][6,8]]");
+
+    // Type mismatch: a scalar can't be stored into a matrix register.
+    check("5→[A] → type error", eval(c, "5→[A]"), "ERR:DATA TYPE");
+
+    // Restore [A] to the value later matrix sections assume.
+    c.updateMatrix("[A]", 2, 2, QVariantList{1.0, 2.0, 3.0, 4.0});
+  }
+
   section("Matrix dimension mismatch (BUG-010, BUG-011)");
   c.updateMatrix("[A]", 2, 2, QVariantList{1.0, 2.0, 3.0, 4.0});
   c.updateMatrix("[B]", 3, 3,

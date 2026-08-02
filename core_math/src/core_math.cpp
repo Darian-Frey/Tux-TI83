@@ -1006,7 +1006,8 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
       const Token tgt = hasTarget ? processedTokens[i + 1] : Token::Sto;
       const bool isVar = (tgt >= Token::VarA && tgt <= Token::VarZ);
       const bool isList = (tgt >= Token::L1 && tgt <= Token::L6);
-      if (!hasTarget || (!isVar && !isList))
+      const bool isMat = (tgt >= Token::MatA && tgt <= Token::MatJ);
+      if (!hasTarget || (!isVar && !isList && !isMat))
         return {false, 0.0, {}, false, "Syntax Error"};
       storeTargets.push_back(tgt);
       stoTokens.push_back(Token::Sto);
@@ -1102,6 +1103,13 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
   // innermost paren. Only variadic-function parens count their args; the
   // count rides in the emitted token's RPN payload. Mirrors braceCounts.
   std::stack<std::pair<bool, int>> parenInfo;
+  // Matrix-literal scopes. `[[1,2][3,4]]` nests as matrix → rows; matrices
+  // don't nest further. bracketKind tracks each open `[` (0 = matrix,
+  // 1 = row); matrixRowCounts counts rows in the open matrix; rowElemCounts
+  // counts elements in the open row (a row reuses MakeList, so it's a list).
+  std::stack<int> bracketKind;
+  std::stack<int> matrixRowCounts;
+  std::stack<int> rowElemCounts;
   int numIdx = 0;
   for (auto t : finalTokens) {
     if (t == Token::NumLiteral)
@@ -1169,7 +1177,8 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
       // a structural marker. When the enclosing scope is a brace, bump
       // that brace's element count.
       while (!opStack.empty() && opStack.top() != Token::LeftParen &&
-             opStack.top() != Token::LeftBrace) {
+             opStack.top() != Token::LeftBrace &&
+             opStack.top() != Token::OpenBracket) {
         rpn.push_back({opStack.top(), 0.0});
         opStack.pop();
       }
@@ -1181,6 +1190,11 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
       else if (!opStack.empty() && opStack.top() == Token::LeftParen &&
                !parenInfo.empty() && parenInfo.top().first)
         parenInfo.top().second++;
+      // A comma inside a matrix row separates elements → bump that row.
+      else if (!opStack.empty() && opStack.top() == Token::OpenBracket &&
+               !bracketKind.empty() && bracketKind.top() == 1 &&
+               !rowElemCounts.empty())
+        rowElemCounts.top()++;
     } else if (t == Token::LeftBrace) {
       // Open a list literal. Marker on the operator stack + a fresh
       // element counter (1 = the element before any comma).
@@ -1199,6 +1213,44 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
       const int count = braceCounts.top();
       braceCounts.pop();
       rpn.push_back({Token::MakeList, static_cast<double>(count)});
+    } else if (t == Token::OpenBracket) {
+      // Matrix literal. The outermost `[` opens the matrix; a `[` directly
+      // inside a matrix opens a row; a `[` inside a row is a syntax error.
+      if (bracketKind.empty()) {
+        opStack.push(t);
+        matrixRowCounts.push(0);
+        bracketKind.push(0);
+      } else if (bracketKind.top() == 0) {
+        opStack.push(t);
+        rowElemCounts.push(1);
+        bracketKind.push(1);
+      } else {
+        return {false, 0.0, {}, false, "Syntax Error"};  // `[` inside a row
+      }
+    } else if (t == Token::CloseBracket) {
+      // Flush operators back to the nearest OpenBracket marker.
+      while (!opStack.empty() && opStack.top() != Token::OpenBracket) {
+        rpn.push_back({opStack.top(), 0.0});
+        opStack.pop();
+      }
+      if (opStack.empty() || bracketKind.empty())
+        return {false, 0.0, {}, false, "Syntax Error"};  // unmatched ]
+      opStack.pop();  // remove the OpenBracket marker
+      if (bracketKind.top() == 1) {
+        // Close a row → emit MakeList(elemCount); tally it on the matrix.
+        const int n = rowElemCounts.top();
+        rowElemCounts.pop();
+        bracketKind.pop();
+        rpn.push_back({Token::MakeList, static_cast<double>(n)});
+        if (!matrixRowCounts.empty())
+          matrixRowCounts.top()++;
+      } else {
+        // Close the matrix → emit MakeMatrix(rowCount).
+        const int m = matrixRowCounts.top();
+        matrixRowCounts.pop();
+        bracketKind.pop();
+        rpn.push_back({Token::MakeMatrix, static_cast<double>(m)});
+      }
     } else {
       // BUG-009 fix: respect right-associativity in the precedence loop.
       // Left-associative operators pop the stack on `>=`; right-associative
@@ -1518,6 +1570,10 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
         if (v.isMat || v.isList)
           return {false, 0.0, {}, false, "Type Error"};
         varRegistry[(int)tgt - (int)Token::VarA] = v.val;
+      } else if (tgt >= Token::MatA && tgt <= Token::MatJ) {
+        if (!v.isMat)
+          return {false, 0.0, {}, false, "Type Error"};
+        matrixRegistry[tgt] = v.mat;
       } else {  // L1..L6
         if (!v.isList)
           return {false, 0.0, {}, false, "Type Error"};
@@ -1555,6 +1611,38 @@ CalculationResult MathStateMachine::evaluate(const std::vector<Token> &tokensIn,
       o.val = 0.0;
       o.isList = true;
       o.list = std::move(lst);
+      stack.push(o);
+    } else if (t == Token::MakeMatrix) {
+      // Assemble a matrix literal: pop `rows` row-lists (each built by a
+      // MakeList) in reverse source order. All rows must share a length.
+      const int rows = static_cast<int>(std::llround(node.second));
+      if (rows <= 0 || static_cast<int>(stack.size()) < rows)
+        return {false, 0.0, {}, false, "Syntax Error"};
+      std::vector<std::vector<double>> rowData(static_cast<size_t>(rows));
+      for (int r = rows - 1; r >= 0; --r) {
+        Operand op = stack.top();
+        stack.pop();
+        if (!op.isList)  // a row must be a bracketed list of scalars
+          return {false, 0.0, {}, false, "Syntax Error"};
+        rowData[static_cast<size_t>(r)] = std::move(op.list);
+      }
+      const size_t cols = rowData[0].size();
+      if (cols == 0)
+        return {false, 0.0, {}, false, "Syntax Error"};
+      for (const auto &row : rowData)
+        if (row.size() != cols)
+          return {false, 0.0, {}, false, "Dim Mismatch"};
+      Matrix mtx;
+      mtx.rows = rows;
+      mtx.cols = static_cast<int>(cols);
+      mtx.data.resize(static_cast<size_t>(rows) * cols);
+      for (int r = 0; r < rows; ++r)
+        for (size_t cIdx = 0; cIdx < cols; ++cIdx)
+          mtx.set(r, static_cast<int>(cIdx),
+                  rowData[static_cast<size_t>(r)][cIdx]);
+      Operand o;
+      o.isMat = true;
+      o.mat = mtx;
       stack.push(o);
     } else if (t >= Token::MatA && t <= Token::MatJ) {
       if (matrixRegistry.count(t))

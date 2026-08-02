@@ -277,6 +277,12 @@ enum class Token {
   // field; the evaluator pops that many operands into a List. Never
   // typed by the user.
   MakeList,
+  // Matrix literal `[[1,2][3,4]]`: the outer `[` opens the matrix, each
+  // inner `[…]` is a row (rows reuse the MakeList machinery — a row is a
+  // list of scalars), and the outer `]` emits MakeMatrix carrying the row
+  // count in `.second`. The evaluator pops that many row-lists into a
+  // Matrix (all rows must share a length). Never typed by the user.
+  MakeMatrix,
 
   // --- List reduction functions (Phase C Wave 3) ---
   // Unary: take one list operand and return a scalar. Mean/StdDev/
