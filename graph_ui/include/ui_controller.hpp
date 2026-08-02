@@ -81,6 +81,10 @@ private:
     // sample, no connecting lines). Real TI-83 has this in the MODE
     // menu; behaviour purely affects rendering, not evaluation.
     Q_PROPERTY(int drawMode READ drawMode WRITE setDrawMode NOTIFY drawModeChanged)
+    // Plot order (MODE → Plot row). 0 = Sequential (each curve drawn fully
+    // before the next), 1 = Simul (all curves advance together). Only the
+    // GraphCanvas draw animation observes it; the final image is identical.
+    Q_PROPERTY(int plotMode MEMBER m_plotMode NOTIFY plotModeChanged)
 
     // Graph type (MODE → Graph row). 0 = Func (Cartesian y=f(x)),
     // 2 = Pol (polar r=f(θ)). Values match the row's option order
@@ -453,6 +457,7 @@ signals:
     void cursorMoved();
     void insertModeChanged();
     void drawModeChanged();
+    void plotModeChanged();
     void graphModeSettingChanged();
     void statPlotChanged();
     void formatChanged();
@@ -526,6 +531,8 @@ private:
     bool m_insertMode = true;
     // 0 = Connected (default), 1 = Dot. See drawMode property above.
     int m_drawMode = 0;
+    // 0 = Sequential (default), 1 = Simul. See plotMode property above.
+    int m_plotMode = 0;
     // Graph type: 0 = Func, 2 = Pol (option-index encoding). See the
     // graphMode property above.
     int m_graphMode = 0;

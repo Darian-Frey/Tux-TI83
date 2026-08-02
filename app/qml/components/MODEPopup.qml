@@ -200,10 +200,14 @@ Popup {
             active: true
             onSelected: (index) => uiController.drawMode = index
         }
+        // Plot: Sequential / Simul — wired. Governs the GraphCanvas draw
+        // animation order (each curve fully, vs all curves in lockstep).
         ModeRow {
             label: "Plot"
             options: ["Sequential", "Simul"]
-            selectedIndex: 0
+            selectedIndex: uiController.plotMode
+            active: true
+            onSelected: (index) => uiController.plotMode = index
         }
         // Complex: Real / a+bi / re^θi — wired. Governs whether √ of a
         // negative (etc.) yields a complex result, and the display form.

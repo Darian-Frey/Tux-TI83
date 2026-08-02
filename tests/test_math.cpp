@@ -2020,22 +2020,30 @@ int main(int argc, char *argv[]) {
               l1.size() == 3 && near(l1[0].toDouble(), 7) &&
               near(l1[2].toDouble(), 9));
 
-    // FORMAT flags coordMode / exprOn round-trip through save/load.
+    // FORMAT flags coordMode / exprOn + MODE plotMode round-trip through
+    // save/load.
     checkTrue("coordMode defaults to 0 (RectGC)",
               c.property("coordMode").toInt() == 0);
     checkTrue("exprOn defaults to true", c.property("exprOn").toBool());
+    checkTrue("plotMode defaults to 0 (Sequential)",
+              c.property("plotMode").toInt() == 0);
     c.setProperty("coordMode", 1);       // PolarGC
     c.setProperty("exprOn", false);      // ExprOff
+    c.setProperty("plotMode", 1);        // Simul
     checkTrue("format save writes", c.exportState("fmt"));
     c.setProperty("coordMode", 0);
     c.setProperty("exprOn", true);
+    c.setProperty("plotMode", 0);
     checkTrue("format import succeeds", c.importState("fmt"));
     checkTrue("coordMode restored to PolarGC",
               c.property("coordMode").toInt() == 1);
     checkTrue("exprOn restored to false", !c.property("exprOn").toBool());
+    checkTrue("plotMode restored to Simul",
+              c.property("plotMode").toInt() == 1);
     c.deleteSave("fmt");
     c.setProperty("coordMode", 0);       // reset to defaults
     c.setProperty("exprOn", true);
+    c.setProperty("plotMode", 0);
 
     // Name sanitisation + missing-save handling.
     checkTrue("blank name rejected", !c.exportState("   "));

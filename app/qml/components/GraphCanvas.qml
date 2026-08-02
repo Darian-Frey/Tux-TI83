@@ -33,6 +33,63 @@ Rectangle {
     border.width: 1
     clip: true
 
+    // ── Plot draw animation (MODE → Plot: Sequential/Simul) ──
+    // `reveal` < 0 means "fully drawn" (steady state). An animation counts
+    // it up from 0: Simul → points-per-curve; Sequential → a running index
+    // across the concatenated curves. `plotData` caches the computed points
+    // so animation frames don't recompute the whole plot; `animMax` is the
+    // reveal value at which the sweep completes.
+    property int reveal: -1
+    property var plotData: []
+    property int animMax: 0
+
+    // Refresh the cached plot points and repaint at the current reveal
+    // state (no animation) — used for pan/zoom/trace and other live updates.
+    function refreshPlot() {
+        plotData = uiController.getMultiGraphPoints(600)
+        canvas.requestPaint()
+    }
+
+    // Kick off a fresh draw animation (entering the graph, function edits,
+    // graph-mode switch). Computes the sweep length from the cached points.
+    function startPlotAnim() {
+        plotTimer.stop()
+        plotData = uiController.getMultiGraphPoints(600)
+        var maxLen = 0, total = 0
+        for (var i = 0; i < plotData.length; i++) {
+            var n = plotData[i] ? plotData[i].length : 0
+            if (n > maxLen) maxLen = n
+            total += n
+        }
+        animMax = (uiController.plotMode === 1) ? maxLen : total
+        if (animMax <= 1) { reveal = -1; canvas.requestPaint(); return }
+        reveal = 0
+        plotTimer.start()
+        canvas.requestPaint()
+    }
+
+    Component.onCompleted: refreshPlot()
+
+    // ~25 frames → ~0.4s sweep regardless of point count.
+    Timer {
+        id: plotTimer
+        interval: 16
+        repeat: true
+        running: false
+        onTriggered: {
+            root.reveal += Math.max(1, Math.ceil(root.animMax / 25))
+            if (root.reveal >= root.animMax) {
+                root.reveal = -1        // done → steady full-draw state
+                plotTimer.stop()
+            }
+            canvas.requestPaint()
+        }
+    }
+
+    // Animate the draw when the graph becomes visible (GRAPH key switches
+    // the StackLayout to this page).
+    onVisibleChanged: if (visible) startPlotAnim()
+
     Canvas {
         id: canvas
         anchors.fill: parent
@@ -145,16 +202,34 @@ Rectangle {
             // Function curves. The global MODE → Dot draws every curve as
             // dots; otherwise each slot uses its Y-editor line style
             // (0 thin / 1 thick / 2 dotted).
-            const multiPts = uiController.getMultiGraphPoints(600)
+            // Cached plot points (refreshed on every non-animation repaint
+            // trigger; frozen during the draw animation). Fall back to a
+            // fresh fetch if the cache hasn't been primed yet.
+            const multiPts = (root.plotData && root.plotData.length)
+                             ? root.plotData
+                             : uiController.getMultiGraphPoints(600)
             const dotMode = uiController.drawMode === 1
+            // Plot draw animation (MODE → Plot). reveal < 0 → draw everything
+            // (steady state). Simul reveals `reveal` points of every curve;
+            // Sequential reveals along the concatenated curves in order.
+            const simul = uiController.plotMode === 1
+            let priorTotal = 0
             for (let f = 0; f < multiPts.length; f++) {
                 const pts = multiPts[f]
-                if (!pts || pts.length === 0) continue
+                const len = pts ? pts.length : 0
+                let drawCount = len
+                if (root.reveal >= 0) {
+                    drawCount = simul
+                        ? Math.min(root.reveal, len)
+                        : Math.max(0, Math.min(len, root.reveal - priorTotal))
+                }
+                priorTotal += len
+                if (len === 0 || drawCount === 0) continue
                 const colour = Style.graphColors[f % Style.graphColors.length]
                 const fstyle = uiController.functionStyle(f)
                 if (dotMode) {
                     ctx.fillStyle = colour
-                    for (let i = 0; i < pts.length; i++) {
+                    for (let i = 0; i < drawCount; i++) {
                         const p = toPx(pts[i].x, pts[i].y)
                         ctx.beginPath()
                         ctx.arc(p.x, p.y, 1.5, 0, 2 * Math.PI)
@@ -165,7 +240,7 @@ Rectangle {
                     ctx.strokeStyle = colour
                     ctx.lineWidth = (fstyle === 1) ? 4 : 2  // thick vs thin
                     ctx.setLineDash(fstyle === 2 ? [2, 4] : [])  // dotted
-                    for (let i = 0; i < pts.length; i++) {
+                    for (let i = 0; i < drawCount; i++) {
                         const p = toPx(pts[i].x, pts[i].y)
                         if (i === 0) ctx.moveTo(p.x, p.y)
                         else ctx.lineTo(p.x, p.y)
@@ -433,18 +508,24 @@ Rectangle {
             }
         }
 
-        // Repaint on relevant controller signals.
+        // Repaint on relevant controller signals. Point-set changes refresh
+        // the cache; discrete graph events (re)start the draw animation;
+        // pure overlay/interaction updates just repaint at the current state.
         Connections {
             target: uiController
-            function onViewportChanged() { canvas.requestPaint() }
+            // Pan / zoom / window edits: recompute points, no animation.
+            function onViewportChanged() { root.refreshPlot() }
+            function onParamWindowChanged() { root.refreshPlot() }
+            // Discrete graph events: sweep the draw animation.
+            function onFunctionsChanged() { root.startPlotAnim() }
+            function onGraphModeSettingChanged() { root.startPlotAnim() }
+            function onPlotModeChanged() { root.startPlotAnim() }
+            // Overlays / interaction: repaint at the current reveal state.
             function onDisplayChanged() { canvas.requestPaint() }
             function onActiveFunctionIndexChanged() { canvas.requestPaint() }
             function onDrawModeChanged() { canvas.requestPaint() }
-            function onGraphModeSettingChanged() { canvas.requestPaint() }
-            function onParamWindowChanged() { canvas.requestPaint() }
             function onStatPlotChanged() { canvas.requestPaint() }
             function onFormatChanged() { canvas.requestPaint() }
-            function onFunctionsChanged() { canvas.requestPaint() }
             function onDrawObjectsChanged() { canvas.requestPaint() }
             function onTraceChanged() { canvas.requestPaint() }
         }
