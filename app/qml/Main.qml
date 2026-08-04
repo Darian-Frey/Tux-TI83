@@ -86,7 +86,14 @@ ApplicationWindow {
         "MATH":  "A", "MATRX": "B",
         "sin(":  "E", "cos(":  "F", "tan(": "G", "^": "H",
         "ln(":   "S", "log(":  "N",
-        "(":     "K", ")":     "L", ",":    "J",
+        // K / L rehomed onto the π / e keys' free ALPHA slots after the
+        // ( / ) ALPHA slots were repurposed for the [ / ] brackets.
+        "π":     "K", "e":     "L",
+        // ALPHA+( / ALPHA+) give the matrix-literal brackets [ / ] rather
+        // than the letters K / L, grouping all three bracket pairs on the
+        // two bracket keys (primary () · 2ND {} · ALPHA []). K/L stay
+        // typeable via the physical keyboard.
+        "(":     "[", ")":     "]", ",":    "J",
         "÷":     "M", "×":     "R", "−":    "W",
         "x²":    "I",
         "7":     "O", "8":     "P", "9":    "Q",
@@ -381,6 +388,8 @@ ApplicationWindow {
                 ".": ".",
                 "+": "+", "-": "−", "*": "×", "/": "÷",
                 "^": "^", "(": "(", ")": ")",
+                "[": "[", "]": "]",   // matrix-literal brackets [[1,2][3,4]]
+                "{": "{", "}": "}",   // list-literal braces {1,2,3}
                 "s": "sin(", "c": "cos(", "t": "tan(",
                 "l": "log(", "n": "ln(", "r": "√(", "p": "π",
                 "i": "i",  // imaginary unit
@@ -698,8 +707,8 @@ ApplicationWindow {
             CalcKey { label: "√(";    keyType: "function"; onPressed: root.handleKey("√(")    }
             CalcKey { label: "ln(";   keyType: "function"; secondLabel: "eˣ"; alphaLabel: "S"; onPressed: root.handleKey("ln(")   }
             CalcKey { label: "log(";  keyType: "function"; alphaLabel: "N"; onPressed: root.handleKey("log(")  }
-            CalcKey { label: "π";     keyType: "function"; onPressed: root.handleKey("π")    }
-            CalcKey { label: "e";     keyType: "function"; onPressed: root.handleKey("e")    }
+            CalcKey { label: "π";     keyType: "function"; alphaLabel: "K"; onPressed: root.handleKey("π")    }
+            CalcKey { label: "e";     keyType: "function"; alphaLabel: "L"; onPressed: root.handleKey("e")    }
         }
 
         // ── 6. NUMERIC section ──────────────────────────
@@ -711,8 +720,8 @@ ApplicationWindow {
             columnSpacing: 6
 
             // Row 1
-            CalcKey { label: "(";  keyType: "function"; secondLabel: "{"; alphaLabel: "K"; onPressed: root.handleKey("(") }
-            CalcKey { label: ")";  keyType: "function"; secondLabel: "}"; alphaLabel: "L"; onPressed: root.handleKey(")") }
+            CalcKey { label: "(";  keyType: "function"; secondLabel: "{"; alphaLabel: "["; onPressed: root.handleKey("(") }
+            CalcKey { label: ")";  keyType: "function"; secondLabel: "}"; alphaLabel: "]"; onPressed: root.handleKey(")") }
             CalcKey { label: ",";  keyType: "function"; alphaLabel: "J"; onPressed: root.handleKey(",") }
             // X inserts the graph variable; 2ND+X opens the Y-VARS picker
             // (the only on-screen way to enter a Y-function token — BUG-023).

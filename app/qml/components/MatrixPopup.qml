@@ -257,11 +257,13 @@ Popup {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            // NAMES tab — list of matrix references
+            // NAMES tab — matrix references plus the literal brackets
+            // `[` / `]` so a matrix literal `[[1,2][3,4]]` can be built
+            // on-screen (they also map to the physical [ and ] keys).
             Item {
                 ListView {
                     anchors.fill: parent
-                    model: ["[A]", "[B]", "[C]", "[D]", "[E]"]
+                    model: ["[A]", "[B]", "[C]", "[D]", "[E]", "[", "]"]
                     spacing: 4
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds

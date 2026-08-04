@@ -464,6 +464,17 @@ int main(int argc, char *argv[]) {
     // Type mismatch: a scalar can't be stored into a matrix register.
     check("5→[A] → type error", eval(c, "5→[A]"), "ERR:DATA TYPE");
 
+    // GUI bracket-entry: build [[1,2][3,4]] one token at a time via
+    // processInput (the on-screen keypad / physical-keyboard path routes
+    // each key through processInput, not the string tokeniser).
+    c.processInput(QStringLiteral("CLEAR"));
+    const char *seq[] = {"[", "[", "1", ",", "2", "]",
+                         "[", "3", ",", "4", "]", "]"};
+    for (auto s : seq) c.processInput(QString::fromUtf8(s));
+    c.processInput(QStringLiteral("ENTER"));
+    check("keypad-built [[1,2][3,4]] evaluates",
+          c.currentDisplay(), "[[1,2][3,4]]");
+
     // Restore [A] to the value later matrix sections assume.
     c.updateMatrix("[A]", 2, 2, QVariantList{1.0, 2.0, 3.0, 4.0});
   }
