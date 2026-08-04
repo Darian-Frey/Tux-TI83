@@ -2040,15 +2040,18 @@ int main(int argc, char *argv[]) {
               c.property("plotMode").toInt() == 0);
     checkTrue("screenMode defaults to 0 (Full)",
               c.property("screenMode").toInt() == 0);
+    checkTrue("theme defaults to 0 (Dark)", c.property("theme").toInt() == 0);
     c.setProperty("coordMode", 1);       // PolarGC
     c.setProperty("exprOn", false);      // ExprOff
     c.setProperty("plotMode", 1);        // Simul
     c.setProperty("screenMode", 2);      // G-T
+    c.setProperty("theme", 2);           // Amber
     checkTrue("format save writes", c.exportState("fmt"));
     c.setProperty("coordMode", 0);
     c.setProperty("exprOn", true);
     c.setProperty("plotMode", 0);
     c.setProperty("screenMode", 0);
+    c.setProperty("theme", 0);
     checkTrue("format import succeeds", c.importState("fmt"));
     checkTrue("coordMode restored to PolarGC",
               c.property("coordMode").toInt() == 1);
@@ -2057,11 +2060,14 @@ int main(int argc, char *argv[]) {
               c.property("plotMode").toInt() == 1);
     checkTrue("screenMode restored to G-T",
               c.property("screenMode").toInt() == 2);
+    checkTrue("theme restored to 2 (Amber)",
+              c.property("theme").toInt() == 2);
     c.deleteSave("fmt");
     c.setProperty("coordMode", 0);       // reset to defaults
     c.setProperty("exprOn", true);
     c.setProperty("plotMode", 0);
     c.setProperty("screenMode", 0);
+    c.setProperty("theme", 0);
 
     // Name sanitisation + missing-save handling.
     checkTrue("blank name rejected", !c.exportState("   "));

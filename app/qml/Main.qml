@@ -11,6 +11,15 @@ ApplicationWindow {
     title: "Tux-TI83"
     color: Style.bgShell
 
+    // Keep the Style singleton's theme flag in sync with the persisted
+    // controller setting, so the whole UI restyles when the theme is
+    // toggled in MODE. The LCD panel stays dark either way (see Style).
+    Binding {
+        target: Style
+        property: "theme"
+        value: uiController.theme
+    }
+
     // ─────────────────────────────────────────────────────
     // Modifier state (2ND / ALPHA)
     //

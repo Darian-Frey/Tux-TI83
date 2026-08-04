@@ -444,6 +444,7 @@ QJsonObject UIController::buildStateJson() const {
   mode["drawMode"]    = m_drawMode;
   mode["plotMode"]    = m_plotMode;
   mode["screenMode"]  = m_screenMode;
+  mode["theme"]       = m_theme;
   mode["graphMode"]   = m_graphMode;
   mode["statPlotOn"]    = m_statPlotOn;
   mode["statPlotType"]  = m_statPlotType;
@@ -590,6 +591,13 @@ void UIController::applyStateJson(const QJsonObject &root) {
     const int s = mode["screenMode"].toInt();
     m_screenMode = (s >= 0 && s <= 2) ? s : 0;
   }
+  if (mode.contains("theme")) {
+    const int t = mode["theme"].toInt();
+    m_theme = (t >= 0 && t <= 2) ? t : 0;
+  } else if (mode.contains("darkTheme")) {
+    // Back-compat with the earlier bool-based setting.
+    m_theme = mode["darkTheme"].toBool(true) ? 0 : 1;
+  }
   if (mode.contains("graphMode"))
   {
     const int g = mode["graphMode"].toInt();
@@ -689,6 +697,9 @@ void UIController::applyStateJson(const QJsonObject &root) {
   emit activeFunctionIndexChanged();
   emit functionsChanged();
   emit drawObjectsChanged();
+  emit plotModeChanged();
+  emit screenModeChanged();
+  emit themeChanged();
 
   CrashLogger::logEvent(QStringLiteral("loadState ok"));
 }
@@ -769,6 +780,7 @@ void UIController::resetAll() {
   m_drawMode = 0;
   m_plotMode = 0;
   m_screenMode = 0;
+  m_theme = 0;
   m_graphMode = 0;
   m_statPlotOn = false;
   m_statPlotType = 0;
@@ -821,6 +833,9 @@ void UIController::resetAll() {
   emit traceChanged();
   emit functionsChanged();
   emit drawObjectsChanged();
+  emit plotModeChanged();
+  emit screenModeChanged();
+  emit themeChanged();
 }
 
 void UIController::clearAllLists() {

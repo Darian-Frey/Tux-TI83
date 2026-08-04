@@ -145,7 +145,7 @@ Rectangle {
                 const px = toPx(x, 0)
                 const isAxis = Math.abs(x) < xStep * 0.001
                 if (isAxis ? axesOn : gridOn) {
-                    ctx.strokeStyle = isAxis ? Style.textMuted : Style.bgSection
+                    ctx.strokeStyle = isAxis ? Style.textMuted : Style.gridLine
                     ctx.beginPath()
                     ctx.moveTo(px.x, 0)
                     ctx.lineTo(px.x, height)
@@ -169,7 +169,7 @@ Rectangle {
                 const py = toPx(0, y)
                 const isAxis = Math.abs(y) < yStep * 0.001
                 if (isAxis ? axesOn : gridOn) {
-                    ctx.strokeStyle = isAxis ? Style.textMuted : Style.bgSection
+                    ctx.strokeStyle = isAxis ? Style.textMuted : Style.gridLine
                     ctx.beginPath()
                     ctx.moveTo(0, py.y)
                     ctx.lineTo(width, py.y)
@@ -279,7 +279,7 @@ Rectangle {
                 } else if (sp.type === 2) {
                     // histogram — bars, frequency (count) on the y-axis
                     ctx.fillStyle = spCol
-                    ctx.strokeStyle = Style.bgShell
+                    ctx.strokeStyle = Style.lcdOverlay
                     ctx.lineWidth = 1
                     for (let i = 0; i < sp.bins.length; i++) {
                         const b = sp.bins[i]
@@ -401,7 +401,7 @@ Rectangle {
                                  "=" + uiController.functionBufferText(activeIdx)
                     ctx.font = "11px " + Style.monoFamily
                     const ew = ctx.measureText(expr).width
-                    ctx.fillStyle = Style.bgShell
+                    ctx.fillStyle = Style.lcdOverlay
                     ctx.globalAlpha = 0.85
                     ctx.fillRect(0, 0, ew + 12, 18)
                     ctx.globalAlpha = 1.0
@@ -433,7 +433,7 @@ Rectangle {
                     const padX = 6, padY = 4
                     const rectW = textW + padX * 2
                     const rectH = 18
-                    ctx.fillStyle = Style.bgShell
+                    ctx.fillStyle = Style.lcdOverlay
                     ctx.globalAlpha = 0.85
                     ctx.fillRect(0, height - rectH, rectW, rectH)
                     ctx.globalAlpha = 1.0
@@ -528,6 +528,7 @@ Rectangle {
             function onFormatChanged() { canvas.requestPaint() }
             function onDrawObjectsChanged() { canvas.requestPaint() }
             function onTraceChanged() { canvas.requestPaint() }
+            function onThemeChanged() { canvas.requestPaint() }
         }
     }
 }

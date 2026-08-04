@@ -31,7 +31,7 @@ Popup {
     // Height bumped a second time (was 420) to fit the RESET button
     // added below the option rows — DONE was clipped off the bottom.
     width: 420
-    height: 500
+    height: 540
     padding: 14
 
     x: (parent.width - width) / 2
@@ -226,6 +226,16 @@ Popup {
             selectedIndex: uiController.screenMode
             active: true
             onSelected: (index) => uiController.screenMode = index
+        }
+        // Theme: Dark / Light / Amber — app-wide UI theme (not a TI-83
+        // setting, but the MODE screen is our settings hub). Amber is an
+        // orange-on-black terminal look. The LCD panel stays dark in all.
+        ModeRow {
+            label: "Theme"
+            options: ["Dark", "Light", "Amber"]
+            selectedIndex: uiController.theme
+            active: true
+            onSelected: (index) => uiController.theme = index
         }
 
         Item { Layout.fillHeight: true }
