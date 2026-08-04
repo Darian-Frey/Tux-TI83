@@ -5,11 +5,13 @@ and every feature currently shipping. If you're looking for project
 architecture or contributor workflows, see [README.md](README.md) and
 [CLAUDE.md](CLAUDE.md) instead.
 
-> **Status:** actively maintained. Core calculation, variables, matrices,
-> lists, statistics/regressions, calculus, and graphing (including polar)
-> all ship today. A few sections still flag *"planned content"* for
-> worked examples and screenshots. See [ROADMAP.md](ROADMAP.md) for the
-> full, current feature ledger.
+> **Status:** actively maintained. Core calculation, variables, matrices
+> (including typed literals), lists, statistics/regressions, probability
+> distributions, calculus, complex numbers, and graphing in all four modes
+> (Func / Par / Pol / Seq) ship today, along with the full MODE menu and
+> three UI themes (Dark / Light / Amber). A few sections still flag
+> *"planned content"* for worked examples and screenshots. See
+> [ROADMAP.md](ROADMAP.md) for the full, current feature ledger.
 
 ## Contents
 
@@ -28,11 +30,12 @@ architecture or contributor workflows, see [README.md](README.md) and
 13. [CLI Usage](#cli-usage-one-shot)
 14. [REPL Usage](#repl-usage-interactive)
 15. [Ans and Conversions](#ans-and-conversions)
-16. [Error Messages](#error-messages)
-17. [Tips & Tricks](#tips--tricks)
-18. [Troubleshooting](#troubleshooting)
-19. [Glossary](#glossary)
-20. [Appendix: Function Reference](#appendix-function-reference)
+16. [Complex Numbers](#complex-numbers)
+17. [Error Messages](#error-messages)
+18. [Tips & Tricks](#tips--tricks)
+19. [Troubleshooting](#troubleshooting)
+20. [Glossary](#glossary)
+21. [Appendix: Function Reference](#appendix-function-reference)
 
 ---
 
@@ -73,9 +76,12 @@ for what you're looking at.
 
 *Screenshots and per-region labelling planned.* In brief, top to bottom:
 
-- **Header strip** — brand name, mode indicators (`NORMAL`, `DEG`)
+- **Header strip** — brand name; mode indicators for notation
+  (`NORMAL` / `SCI` / `ENG`), angle (`RAD` / `DEG`), graph mode
+  (`POL` / `PAR` / `SEQ` when not in Func), and complex mode (`a+bi` /
+  `re^θi` when not Real)
 - **Function selector** — `Y1` / `Y2` / `Y3` tabs (which function slot
-  you're editing)
+  you're editing; the engine has ten slots, `Y1`–`Y9`, `Y0`)
 - **LCD display** — top line shows the last evaluated expression,
   bottom line shows the live input or the computed result
 - **Soft-key row** — `Y=` · `WINDOW` · `ZOOM` · `TRACE` · `GRAPH`
@@ -142,6 +148,14 @@ Most keys carry a **2ND** function (amber, top-left corner) and an
 amber label, or `ALPHA` then the key for the green letter. `2ND` then
 `ALPHA` engages **A-LOCK** for typing several letters in a row.
 
+**Brackets.** All three bracket pairs live on the `(` / `)` keys:
+primary `(` `)`, `2ND` → `{` `}` (list literals), `ALPHA` → `[` `]`
+(matrix literals). The displaced letters `K` / `L` moved to `ALPHA` +
+`π` / `e`.
+
+**Y-VARS.** `2ND` + `X` opens the **Y-VARS picker** — buttons `Y1`–`Y0`
+that insert a function-reference token (see [Variables & Storage](#variables--storage)).
+
 ## The MATH Menu
 
 The `MATH` key (top-left of SCIENTIFIC) opens a popup listing
@@ -177,6 +191,15 @@ additional functions that don't have dedicated keypad keys:
 (e.g. `sum(L1)`) reduces the list; the multi-argument forms
 (`sum(X,X,1,4)`, `min(3,7)`) keep their original meaning.
 
+**Probability distributions** are also available (MATH menu / by name):
+`normalpdf(`, `normalcdf(`, `invNorm(`, `binompdf(`, `binomcdf(`,
+`poissonpdf(`, `poissoncdf(`, `geometpdf(`, `geometcdf(`, `tpdf(`,
+`tcdf(`, `χ²pdf(`, `χ²cdf(`, `Fpdf(`, `Fcdf(`. The `…pdf`/`…cdf` forms
+with a trailing `count` argument return a list.
+
+**Random functions:** `rand`, `randInt(`, `randNorm(`, `randBin(` (a
+trailing count gives a list), and `randM(r,c)` for a random matrix.
+
 *Worked examples planned.*
 
 ## Variables & Storage
@@ -200,26 +223,46 @@ the graphing sweep variable and as an ordinary scalar on the home screen.
 **Last-entry recall.** `2ND` + `ENTER` walks backward through a 10-deep
 history of what you typed, so you can fix a typo or reuse an expression.
 
-**Y-VARS.** Reference `Y1`, `Y2`, `Y3` from another expression — define
-`Y1 = X²`, then `Y2 = Y1+10` plots `X²+10`. The argument form `Y1(3)`
-evaluates `Y1` at `X = 3`. Self-reference and cycles raise `ERR:RECURSION`.
+**Y-VARS.** Reference any of the ten function slots `Y1`–`Y9`, `Y0` from
+another expression — define `Y1 = X²`, then `Y2 = Y1+10` plots `X²+10`.
+The argument form `Y5(3)` evaluates `Y5` at `X = 3`. Self-reference and
+cycles raise `ERR:RECURSION`.
+
+You can also **store an expression into a slot** from the home screen:
+`<expr>→Yn` saves the expression (not its value) into that function
+buffer, so it plots and shows in the Y= editor. It reports `Done`.
+
+To insert a `Yn` token on-screen, use the **Y-VARS picker** (`2ND` + `X`).
+On the physical keyboard, press the letter `Y` then a digit (`Y` `1` →
+the `Y1` token). Entering "Y1" any other way inserts the *letter-Y
+variable* times 1.
 
 **Persistence.** Scalars, matrices, lists, `Y=` buffers, the viewport, and
-MODE settings are saved to `~/.local/state/tux-ti83/state.json` (both
-periodically and on clean exit) and restored on the next launch. The
-**RESET** button in the MODE popup wipes everything back to defaults.
+all MODE settings (including the theme) are saved to
+`~/.local/state/tux-ti83/state.json` (both periodically and on clean exit)
+and restored on the next launch. You can also keep **named snapshots**
+under `~/.local/state/tux-ti83/saves/<name>.t83` — export/import a named
+state to switch between different working setups. The **RESET** button in
+the MODE popup wipes everything back to defaults.
 
 ## Matrices
 
 Press the `MATRX` key (SCIENTIFIC section, row 2). The popup has three
 tabs:
 
-- **NAMES** — click `[A]`–`[E]` to insert it at the cursor
-- **MATH** — insert `det(`, `T(` (transpose), `rref(`, or `^-1` (inverse)
+- **NAMES** — click `[A]`–`[E]` to insert a matrix reference, or `[` / `]`
+  to insert the literal brackets
+- **MATH** — insert matrix functions (see the table below)
 - **EDIT** — the matrix editor v2: pick a matrix with the `[A]`–`[E]`
   selector, set its dimensions with the `R`/`C` steppers (up to 6×6), fill
   the grid, and click `SAVE TO [x]`. Existing values are read back when
   you open a matrix, so you can edit rather than retype.
+
+**Typed matrix literals.** You can also type a matrix directly:
+`[[1,2][3,4]]` (outer brackets wrap the matrix; each `[…]` is a row;
+elements are comma-separated and may be expressions). Enter the brackets
+via `ALPHA` + `(` / `)`, the physical `[` / `]` keys, or the NAMES tab.
+Store a matrix into a register with `→`: `[[1,2][3,4]]→[A]`.
 
 Operations currently supported:
 
@@ -231,7 +274,13 @@ Operations currently supported:
 | Determinant | `det([A])` (square only) |
 | Transpose | `T([A])` |
 | Inverse | `[A]^-1` (square, non-singular) |
-| Reduced row-echelon | `rref([A])` |
+| Row-echelon / reduced | `ref([A])` / `rref([A])` |
+| Identity | `identity(n)` → n×n identity |
+| Dimensions | `dim([A])` → `{rows,cols}` (or list length) |
+| Augment | `augment([A],[B])` (equal rows) or list‖list |
+| Random matrix | `randM(r,c)` → ints in [−9,9] |
+| List → matrix | `List▶Matr(L1,…,Ln)` → each list a column |
+| Matrix → list | `Matr▶List([A],col)` → that column as a list |
 
 Errors surface as `ERR:INVALID DIM` (mismatched shapes),
 `ERR:DATA TYPE` (mixing matrix and scalar where not allowed),
@@ -279,6 +328,10 @@ then use the editor's buttons:
 Exp/Ln/Pwr models require positive data where the maths demands it
 (`ERR:DOMAIN` otherwise); mismatched list lengths give `ERR:INVALID DIM`.
 
+**List ↔ matrix.** `List▶Matr(L1,…,Ln)` builds a matrix with each list as
+a column; `Matr▶List([A],col)` extracts a column back out as a list.
+Store the results with `→[A]` / `→Ln`.
+
 ## Graph Mode
 
 Press the `GRAPH` soft-key (top-right of the soft-key row) to switch
@@ -290,36 +343,49 @@ To plot a function:
 2. Enter an expression using `X` as the variable (e.g., `X^2-2`)
 3. Press `GRAPH`
 
-The canvas shows all three Y slots' curves simultaneously, each in
-its own colour. Axis labels and grid lines scale dynamically with the
+The canvas shows every enabled function slot's curve simultaneously,
+each in its own colour. Axis labels and grid lines scale with the
 viewport.
+
+**The Y= editor.** Press `Y=` from the keypad to open the editor for all
+ten slots (`Y1`–`Y9`, `Y0`). Each row has an **on/off** toggle (disabled
+slots don't plot) and a **line style** cycle (thin / thick / dotted).
 
 **Interacting with the graph:**
 - Click-drag to **pan**
 - Scroll-wheel to **zoom** centred on the cursor
 
 **Changing the viewport:**
-Press the `WINDOW` soft-key to open the viewport editor. Enter
-Xmin / Xmax / Ymin / Ymax values. The `ZOOM` soft-key offers presets:
-ZStandard (`-10..10`), ZoomFit (auto-scale Y), Zoom In/Out, ZSquare,
-ZTrig, ZDecimal, and ZInteger.
+Press the `WINDOW` soft-key to open the viewport editor: Xmin / Xmax /
+Ymin / Ymax, plus **Xscl / Yscl** (axis tick spacing) and **Xres** (Func
+sample stride, 1–8; higher = coarser/faster). Par/Pol modes add a
+`T`/`θ` window (min/max/step); Seq mode adds `nMax` and the initial
+terms. The `ZOOM` soft-key offers presets: ZStandard (`-10..10`),
+ZoomFit (auto-scale Y), Zoom In/Out, ZSquare, ZTrig, ZDecimal, ZInteger.
 
 **Trace.** The `TRACE` soft-key drops a crosshair on the active curve
-with a live X/Y readout; `←`/`→` step along the curve and `↑`/`↓` cycle
-between Y1/Y2/Y3.
+with a live readout; `←`/`→` step along the curve and `↑`/`↓` cycle
+between slots.
+
+**FORMAT** (`2ND` + `ZOOM`): toggle **Grid**, **Axes**, **Coord** (the
+trace readout), and **Label**; choose **RectGC / PolarGC** (trace readout
+as `X=/Y=` or `R=/θ=`); and **ExprOn / ExprOff** (show the traced
+function's equation top-left).
+
+**DRAW** (`2ND` + `TRACE`): overlay a `Line`, `Horizontal`, `Vertical`,
+`Pt-On`, or `Text`, delete overlays one at a time, or `ClrDraw` them all.
 
 **Table.** `2ND` + `GRAPH` opens the `TABLE` view — a scrollable
 `X | Y1 | Y2 | Y3` grid. `2ND` + `WINDOW` opens `TBLSET` to set the table
 start and step.
 
-**Polar mode.** Set MODE → Graph → **Pol** to plot `r = f(θ)`. The three
-slots become `r1`/`r2`/`r3`; enter the function using `X` as the angle θ
-(e.g. `r1 = 4sin(3X)` draws a rose). See [The MODE Menu](#the-mode-menu).
+**Graph modes** (MODE → Graph): **Func** (`y=f(x)`), **Par**
+(parametric `X1T`/`Y1T`, …), **Pol** (`r=f(θ)`, e.g. `r1 = 4sin(3X)`
+where `X` stands in for θ), and **Seq** (sequences `u`/`v`/`w`, with
+`Ans` as the previous term for recursion). See
+[The MODE Menu](#the-mode-menu).
 
 Press `Y=` to return to the keypad.
-
-*Planned: a full Y-editor with on/off toggles and function styles (thick /
-dotted / shaded).*
 
 ## The MODE Menu
 
@@ -331,13 +397,28 @@ effect immediately and are reflected in the header indicator:
 | **Angle** | Radian / Degree | How trig functions interpret their input |
 | **Notation** | Normal / Sci / Eng | Number display format |
 | **Decimal** | Float / Fix 0–9 | Fixed decimal places |
-| **Base** | Dec / Hex / Oct / Bin | Integer results shown in the chosen base (`0xFF`, `0o77`, `0b1010`); non-integers fall back to decimal |
-| **Graph** | Func / Pol | Cartesian `y=f(x)` or polar `r=f(θ)` |
+| **Base** | Dec / Hex / Oct / Bin | Integer results in the chosen base (`0xFF`, `0o77`, `0b1010`); non-integers fall back to decimal |
+| **Graph** | Func / Par / Pol / Seq | Cartesian, parametric, polar, or sequence graphing |
 | **Draw** | Connected / Dot | How graph curves are drawn |
+| **Plot** | Sequential / Simul | Draw-animation order — one curve fully, or all curves together |
+| **Complex** | Real / a+bi / re^θi | Whether non-real results are allowed, and how they display |
+| **Screen** | Full / Horiz / G-T | Single view, graph-over-keypad, or graph-beside-table |
+| **Theme** | Dark / Light / Amber | App-wide UI theme (see below) |
 
-`RESET` (in this popup) restores factory defaults and clears all saved
-state. The remaining rows (Plot, Complex, Screen, and Graph's Par/Seq)
-are shown greyed — placeholders for features not yet built.
+Every row is wired and takes effect immediately. `RESET` (in this popup)
+restores factory defaults and clears all saved state.
+
+### Themes
+
+Three UI themes, chosen from **MODE → Theme** and remembered across
+launches:
+
+- **Dark** — the default (Nord-ish dark).
+- **Light** — a light calculator body with dark text.
+- **Amber** — an orange-on-black terminal look (outlined keys, amber text).
+
+The LCD panel stays a dark "screen" in every theme (authentic to a real
+calculator); its readout text is themed to match.
 
 ## Keyboard Shortcuts
 
@@ -347,7 +428,10 @@ A–Z (Shift+letter)      scalar variables
 + − * /                 operators (converted to Unicode for display)
 ^                       power
 ( ) ,                   parens and argument separator
+[ ]                     matrix-literal brackets
+{ }                     list-literal braces
 !                       factorial (postfix)
+i                       imaginary unit
 Enter / =               evaluate
 Backspace               delete last token
 Escape                  CLEAR
@@ -355,13 +439,15 @@ Escape                  CLEAR
 s / c / t               sin( / cos( / tan(
 l / n / r               log( / ln( / √(
 p                       π
+Y then digit            Y-VARS token (Y 1 → Y1)
 |  (or ->)              STO▸
 ```
 
 Bare lowercase letters are function shortcuts (`s` → `sin(`); press
-**Shift+letter** for a scalar variable (`A`–`Z`), and type `Y1`/`Y2`/`Y3`
-directly for the Y-VARS. On the on-screen keypad, `2ND` reaches the amber
-labels — including `{` / `}` (2ND+`(` / `)`) and `L1`–`L6` (2ND+`1`–`6`).
+**Shift+letter** for a scalar variable (`A`–`Z`). Type the letter `Y`
+followed by a digit for a Y-VARS token (`Y` `1` → `Y1`). On the on-screen
+keypad, `2ND` reaches the amber labels — `{` / `}` (2ND+`(` / `)`) and
+`L1`–`L6` (2ND+`1`–`6`) — and `ALPHA` + `(` / `)` gives `[` / `]`.
 
 Functions without a dedicated shortcut (abs, round, min, max,
 hyperbolics, nCr, calculus, list functions, …) come from the MATH menu.
@@ -377,8 +463,12 @@ $ ./build/tux_ti83_cli "sin(0)"
 0
 $ ./build/tux_ti83_cli "nCr(52, 5)"
 2598960
+$ ./build/tux_ti83_cli "det([[1,2][3,4]])"
+-2
 ```
 
+Typed matrix literals work in the CLI/REPL too, so matrix math is fully
+available there (`[[1,2][3,4]]^-1`, `[[1,2][3,4]]*[[5,6][7,8]]`, …).
 Output is ANSI-coloured (green for results, red for errors) when
 stdout is a tty; plain when piped or redirected.
 
@@ -443,6 +533,24 @@ result without re-evaluating anything:
 
 `▶Frac` silently does nothing when the result is irrational — there's
 no exact fraction within tolerance for `e`, `π`, `√2`, etc.
+
+## Complex Numbers
+
+Set **MODE → Complex** to `a+bi` (rectangular) or `re^θi` (polar) to
+allow non-real results; the default `Real` rejects them with
+`ERR:NONREAL ANS`. The imaginary unit is `i` (keyboard `i`).
+
+```
+i^2                 → -1
+(2+3i)+(1-i)        → 3+2i
+(2+3i)(2-3i)        → 13
+√(-4)               → 2i        (in a+bi mode; ERR:NONREAL ANS in Real)
+```
+
+Complex-aware functions include `+ − × ÷ ^`, `√(`, `ln(`, `e^(`, the trig
+functions, plus `conj(`, `real(`, `imag(`, and `angle(`. The `re^θi`
+mode displays results in polar form; the header shows the active complex
+mode.
 
 ## Error Messages
 

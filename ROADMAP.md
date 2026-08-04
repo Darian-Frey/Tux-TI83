@@ -97,10 +97,13 @@ Candidate next areas (no commitment):
 - 🚧 [`USER_MANUAL.md`](USER_MANUAL.md) — end-user documentation covering
   the GUI keypad layout, MATH / MATRX / WINDOW menus, graph mode,
   keyboard shortcuts, CLI / REPL usage, error messages, and worked
-  examples. **Skeleton landed 2026-04-08** with all 17 sections stubbed;
-  sections marked *"planned"* will be fleshed out over time (screenshots,
-  worked examples, the function-reference appendix, troubleshooting
-  expansion).
+  examples. **Skeleton landed 2026-04-08**; **brought current 2026-08-01**
+  — now documents all four graph modes, the full Y= editor, the complete
+  MODE menu (incl. Plot/Complex/Screen), UI themes, complex numbers,
+  probability distributions, typed matrix literals + the matrix/list
+  toolkit, Y-VARS store, bracket entry, and named save snapshots. A few
+  sections still flag *"planned"* content (screenshots, the
+  function-reference appendix, more worked examples).
 - 💭 Test coverage measurement (gcov / lcov) once the test suite grows.
 - 💭 Property-based / fuzz testing for the parser (FuzzTest, libFuzzer).
 
