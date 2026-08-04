@@ -320,6 +320,7 @@ default on) gating the graph canvas. RESET restores them.
 ### Done
 - ✅ Nord palette extended with semantic roles (operator/enter/second/numeric/function categories)
 - ✅ `Style` singleton — single source of truth for colours, sizes, fonts
+- ✅ UI themes — Dark / Light / Amber (orange-on-black terminal), MODE → Theme, persisted (added 2026-08-01). `Style` is palette-indexed by `theme` (bound to `uiController.theme`); every body colour reads the active palette. The LCD *panel* stays dark in all themes (authentic screen) but its text is themed. LCD-drawn elements use theme-independent dark tones (`gridLine`, `lcdOverlay`) so they don't glare on the dark screen in the light theme. Graph curve palette is shared across themes for distinctness.
 - ✅ `CalcKey`, `Display`, `SoftKeyRow`, `HistoryPane`, `FunctionSelector`, `GraphCanvas` reusable components
 - ✅ Display state machine with three states + cursor blink
 - ✅ Keyboard shortcuts (literal CLAUDE.md keymap)
