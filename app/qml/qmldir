@@ -15,6 +15,7 @@ FormatPopup 1.0 components/FormatPopup.qml
 YEditorPopup 1.0 components/YEditorPopup.qml
 YVarsPopup 1.0 components/YVarsPopup.qml
 PRGMPopup 1.0 components/PRGMPopup.qml
+PrgmRunPopup 1.0 components/PrgmRunPopup.qml
 DRAWPopup 1.0 components/DRAWPopup.qml
 FunctionSelector 1.0 components/FunctionSelector.qml
 GraphCanvas 1.0 components/GraphCanvas.qml

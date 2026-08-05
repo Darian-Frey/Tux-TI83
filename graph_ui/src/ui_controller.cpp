@@ -831,18 +831,111 @@ void UIController::deleteProgram(const QString &name) {
   }
 }
 
+// Map an engine error_message to its TI-83 "ERR:…" display label. Mirrors
+// the inline mapping in evaluate(); shared by the program interpreter.
+static QString mapEngineError(const std::string &raw) {
+  const QString msg = QString::fromStdString(raw);
+  if (msg == "DIVIDE BY 0") return QStringLiteral("ERR:DIVIDE BY 0");
+  if (msg == "NONREAL ANS") return QStringLiteral("ERR:NONREAL ANS");
+  if (msg == "DOMAIN") return QStringLiteral("ERR:DOMAIN");
+  if (msg == "Type Error") return QStringLiteral("ERR:DATA TYPE");
+  if (msg == "Dim Mismatch") return QStringLiteral("ERR:INVALID DIM");
+  if (msg == "Undefined Matrix" || msg == "Undefined List")
+    return QStringLiteral("ERR:UNDEFINED");
+  if (msg == "SINGULAR MAT") return QStringLiteral("ERR:SINGULAR MAT");
+  if (msg == "Recursion") return QStringLiteral("ERR:RECURSION");
+  return QStringLiteral("ERR:SYNTAX");
+}
+
+QString UIController::formatCalcResult(const CalculationResult &r) const {
+  if (r.isMatrix) {
+    QString s = "[[";
+    for (int i = 0; i < r.matrixValue.rows; ++i) {
+      for (int j = 0; j < r.matrixValue.cols; ++j) {
+        s += formatScalar(r.matrixValue.at(i, j));
+        if (j < r.matrixValue.cols - 1)
+          s += ",";
+      }
+      if (i < r.matrixValue.rows - 1)
+        s += "][";
+    }
+    return s + "]]";
+  }
+  if (r.isList) {
+    QString s = "{";
+    for (size_t i = 0; i < r.listValue.size(); ++i) {
+      s += formatScalar(r.listValue[i]);
+      if (i + 1 < r.listValue.size())
+        s += ",";
+    }
+    return s + "}";
+  }
+  if (r.imag != 0.0)
+    return formatComplex(r.value, r.imag);
+  return formatScalar(r.value);
+}
+
+tux_ti83::EvalResult UIController::evalProgramSource(const std::string &src) {
+  tux_ti83::EvalResult out;
+  const QString q = QString::fromStdString(src);
+  const QStringList toks = tokenize(q);
+  if (toks.isEmpty()) {
+    // Blank statement — nothing to do; report success with no display.
+    out.ok = true;
+    return out;
+  }
+  std::vector<Token> buf;
+  buf.reserve(static_cast<size_t>(toks.size()));
+  const auto &fwd = inputToSpec();
+  for (const QString &t : toks) {
+    auto it = fwd.find(t);
+    if (it != fwd.end())
+      buf.push_back(it->second->token);
+    // (Control verbs like ▶Frac aren't program statements; ignore.)
+  }
+  MathStateMachine msm;
+  bindEngine(msm);
+  const double xVal =
+      MathStateMachine::varRegistry[static_cast<size_t>(
+          static_cast<int>(Token::VarX) - static_cast<int>(Token::VarA))];
+  const CalculationResult r = msm.evaluate(buf, xVal);
+  if (r.success) {
+    out.ok = true;
+    out.value = r.value;
+    out.display = formatCalcResult(r).toStdString();
+    MathStateMachine::lastResult = r;  // update Ans, like the home screen
+  } else {
+    out.ok = false;
+    out.error = mapEngineError(r.error_message).toStdString();
+  }
+  return out;
+}
+
 void UIController::runProgram(const QString &name) {
   const QString clean = normalizeProgramName(name);
   const auto *lines = m_programs.get(clean.toStdString());
   if (!lines)
     return;
   Interpreter interp;
+  interp.setEvaluator(
+      [this](const std::string &s) { return this->evalProgramSource(s); });
   interp.load(*lines);
-  interp.run();  // P0: runs the statements to Done (none execute yet).
-  // P1: surface completion in history. P2 replaces this with real Disp
-  // output rendered in a dedicated run/output view.
-  m_history.prepend(QStringLiteral("prgm") + clean + QStringLiteral(" done"));
-  emit historyChanged();
+  interp.run();  // P2: synchronous statements (expr / Sto / Disp / ClrHome /
+                 // Stop). No loops yet, so this always terminates.
+
+  m_programOutput.clear();
+  for (const auto &line : interp.output())
+    m_programOutput << QString::fromStdString(line);
+  if (interp.status() == RunStatus::Error) {
+    QString err = QString::fromStdString(interp.errorMessage());
+    if (err.isEmpty())
+      err = QStringLiteral("ERR:SYNTAX");
+    m_programOutput << (err + QStringLiteral("  (line ") +
+                        QString::number(interp.errorLine() + 1) +
+                        QStringLiteral(")"));
+  }
+  emit programOutputChanged();
+  emit programRunFinished();
 }
 
 void UIController::resetAll() {

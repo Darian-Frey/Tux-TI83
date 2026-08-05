@@ -175,12 +175,25 @@ and `Disp`s results.
 - ✅ 16 controller tests (CRUD, run, persistence round-trip).
 - Milestone reached: author, save, edit, delete, and persist a program.
 
-### P2 — Sequential interpreter core 📅
-- Execute line-by-line: bare expressions, `Sto`, `Disp` (numeric,
-  multi-arg), `ClrHome`, `Pause` (numeric), `Stop`.
-- A scrollable **run/output view** (the program's "home screen").
-- Wire EXEC to run the selected program.
-- Milestone: a program like `5→A : A²→B : Disp B` runs and shows `25`.
+### P2 — Sequential interpreter core ✅ (landed 2026-08-01)
+- ✅ Statement dispatch in `Interpreter::step()` (was a no-op): **bare
+  expressions**, **`Sto` (`→`)**, **`Disp`** (numeric, multi-arg, and quoted
+  string literals printed verbatim), **`ClrHome`**, **`Stop`**. Bare
+  expressions and stores echo their result (TI-authentic). Runtime errors
+  stop the run and record the line + `ERR:…` label.
+- ✅ **Injected evaluator** — the pure-C++ interpreter takes an
+  `Evaluator` callback (`EvalResult(std::string)`); the controller wires it
+  to its tokeniser + `MathStateMachine` + result formatter
+  (`evalProgramSource`/`formatCalcResult`). Programs thus reuse all existing
+  math and share the registries with the home screen (a program's `5→A` is
+  visible as `A` afterwards). Headless-friendly (no Qt in the interpreter).
+- ✅ **Run/output view** (`PrgmRunPopup`) — a dark LCD screen showing the
+  Disp/echo output, opened automatically when a program finishes
+  (`programRunFinished`). `ClrHome` clears it; errors render in red.
+- ✅ 8 execution tests incl. the milestone `5→A : A²→B : Disp B` → `25`.
+- 📅 `Pause` (numeric) moved to the interaction phase (P4) — it shares the
+  resumable input/keypress UI with `Input`/`Prompt`/`getKey`.
+- Milestone reached: programs compute and display results.
 
 ### P3 — Control flow 📅
 - `If` / `If…Then…Else…End`, `For(var,start,end[,step])…End`,

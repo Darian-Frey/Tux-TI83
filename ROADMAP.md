@@ -376,9 +376,12 @@ _pragmatic subset first_. Phases (each independently shippable):
   list (RUN/EDIT/✕/NEW) + a freeform multi-line source editor; `ProgramStore`
   in the controller (CRUD + `runProgram`); programs persist in state JSON;
   16 tests.
-- 📅 **P2 — Sequential core** — run line-by-line: expressions, `Sto`,
-  `Disp`, `ClrHome`, `Pause`, `Stop` + a run/output view. *(first milestone:
-  P0–P2 = author + run + `Disp`.)*
+- ✅ **P2 — Sequential core** — landed 2026-08-01: statement dispatch (bare
+  expr, `Sto`, `Disp` incl. multi-arg + string literals, `ClrHome`, `Stop`)
+  via an injected evaluator (reuses the tokeniser/`MathStateMachine`, shares
+  registries with the home screen); a `PrgmRunPopup` output view; errors
+  report the line. 8 tests. *(First milestone P0–P2 reached: author + run +
+  `Disp`.)* `Pause` deferred to P4 (shares the resumable-input UI).
 - 📅 **P3 — Control flow** — `If`/`Then`/`Else`/`End`, `For(`, `While`,
   `Repeat`, `Lbl`/`Goto`.
 - 📅 **P4 — Strings + I/O** — string type (`Str1`–`Str9`), `Input`, `Prompt`,

@@ -2267,12 +2267,10 @@ int main(int argc, char *argv[]) {
               pc.programNames().size() == 2 && pc.programNames()[0] == "ADD");
     checkTrue("invalid name not saved", pc.saveProgram("###", "x").isEmpty());
 
-    // Run (P1: runs to Done, records completion in history).
-    const int before = pc.history().size();
+    // Run (P2: executes statements, fills programOutput). BEE = "Disp 1".
     pc.runProgram("BEE");
-    checkTrue("runProgram appends history",
-              pc.history().size() == before + 1 &&
-              pc.history().first() == "prgmBEE done");
+    checkTrue("runProgram Disp 1 → output '1'",
+              pc.programOutput().size() == 1 && pc.programOutput().first() == "1");
 
     // Persistence round-trip via a named save.
     checkTrue("export writes", pc.exportState("prgtest"));
@@ -2287,6 +2285,52 @@ int main(int argc, char *argv[]) {
 
     pc.deleteProgram("ADD");
     pc.deleteProgram("BEE");
+  }
+
+  section("TI-BASIC interpreter — P2 (statement execution)");
+  {
+    UIController pc;
+
+    // Milestone: 5→A : A²→B : Disp B → 25 (Sto statements also echo).
+    pc.saveProgram("SQ", "5->A\nA^2->B\nDisp B");
+    pc.runProgram("SQ");
+    checkTrue("milestone: Disp B after squaring → 25",
+              !pc.programOutput().isEmpty() && pc.programOutput().last() == "25");
+
+    // Bare expression echoes; Disp with two args → two lines; string literal.
+    pc.saveProgram("T2", "3+4\nDisp 10,20\nDisp \"HI\"");
+    pc.runProgram("T2");
+    QStringList o = pc.programOutput();
+    checkTrue("bare expr echoes 7", o.size() == 4 && o[0] == "7");
+    checkTrue("Disp 10,20 → two lines", o[1] == "10" && o[2] == "20");
+    checkTrue("Disp \"HI\" prints literal text", o[3] == "HI");
+
+    // ClrHome wipes prior output.
+    pc.saveProgram("T3", "Disp 1\nClrHome\nDisp 2");
+    pc.runProgram("T3");
+    checkTrue("ClrHome clears → only '2'",
+              pc.programOutput().size() == 1 && pc.programOutput().first() == "2");
+
+    // Stop halts early.
+    pc.saveProgram("T4", "Disp 1\nStop\nDisp 999");
+    pc.runProgram("T4");
+    checkTrue("Stop halts before later output",
+              pc.programOutput().size() == 1 && pc.programOutput().first() == "1");
+
+    // Runtime error stops execution and reports the line.
+    pc.saveProgram("T5", "Disp 1\nDisp 5/0\nDisp 3");
+    pc.runProgram("T5");
+    QStringList e = pc.programOutput();
+    checkTrue("error stops run + reports line",
+              e.size() == 2 && e[0] == "1" &&
+              e[1].startsWith("ERR:DIVIDE BY 0"));
+
+    // A shared variable set by a program is visible on the home screen.
+    checkTrue("program-set A persists to home screen (A=5)",
+              eval(pc, "A") == "5");
+
+    for (const char *n : {"SQ", "T2", "T3", "T4", "T5"})
+      pc.deleteProgram(n);
   }
 
   std::cout << "\n----------------------------------------\n"

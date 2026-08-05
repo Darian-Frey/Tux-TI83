@@ -35,6 +35,8 @@ private:
     Q_PROPERTY(int xres MEMBER m_xres NOTIFY viewportChanged)
     Q_PROPERTY(QString currentDisplay READ currentDisplay NOTIFY displayChanged)
     Q_PROPERTY(QStringList history READ history NOTIFY historyChanged)
+    // TI-BASIC program run output (P2) — one entry per Disp/echo line.
+    Q_PROPERTY(QStringList programOutput READ programOutput NOTIFY programOutputChanged)
     Q_PROPERTY(int activeFunctionIndex READ activeFunctionIndex NOTIFY activeFunctionIndexChanged)
     Q_PROPERTY(bool isGraphMode MEMBER m_isGraphMode NOTIFY graphModeChanged)
     // TABLE mode — 2ND+GRAPH on real TI-83. Replaces the keypad page
@@ -150,6 +152,7 @@ public:
 
     QString currentDisplay() const;
     QStringList history() const { return m_history; }
+    QStringList programOutput() const { return m_programOutput; }
     int activeFunctionIndex() const { return m_activeIdx; }
     DisplayState displayState() const { return m_displayState; }
     QString displayExpression() const { return m_displayExpression; }
@@ -473,6 +476,8 @@ signals:
     void displayChanged();
     void historyChanged();
     void programsChanged();
+    void programOutputChanged();
+    void programRunFinished();  // a program finished — open the run view
     void activeFunctionIndexChanged();
     void functionsChanged();
     void drawObjectsChanged();
@@ -503,6 +508,15 @@ signals:
 private:
     // TI-BASIC program storage (P1). Name → source lines.
     ProgramStore m_programs;
+    // Program run output (P2) — filled by runProgram, shown in the run view.
+    QStringList m_programOutput;
+    // Evaluate a program source expression: tokenise → MathStateMachine →
+    // format. Injected into the Interpreter as its Evaluator (P2). Side
+    // effects (Sto) go through the shared registries, like the home screen.
+    tux_ti83::EvalResult evalProgramSource(const std::string &src);
+    // Format a CalculationResult to its display string (scalar / matrix /
+    // list / complex), matching the home-screen formatting.
+    QString formatCalcResult(const CalculationResult &r) const;
     // Bind this controller's Y-VARS buffer source onto a MathStateMachine
     // instance (IMP-045). Call on every engine the controller constructs.
     void bindEngine(MathStateMachine &m) const;

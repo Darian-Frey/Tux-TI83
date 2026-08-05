@@ -905,6 +905,16 @@ ApplicationWindow {
         id: prgmPopup
     }
 
+    PrgmRunPopup {
+        id: prgmRunPopup
+    }
+
+    // Open the run/output view whenever a program finishes.
+    Connections {
+        target: uiController
+        function onProgramRunFinished() { prgmRunPopup.open() }
+    }
+
     DRAWPopup {
         id: drawPopup
     }

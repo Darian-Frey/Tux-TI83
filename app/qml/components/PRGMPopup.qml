@@ -124,7 +124,7 @@ Popup {
                         Layout.fillWidth: false
                         label: "RUN"
                         keyType: "enter"
-                        onPressed: { uiController.runProgram(modelData); root.close() }
+                        onPressed: { root.close(); uiController.runProgram(modelData) }
                     }
                     CalcKey {
                         Layout.preferredWidth: 56
