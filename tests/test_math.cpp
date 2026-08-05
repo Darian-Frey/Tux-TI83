@@ -6,6 +6,7 @@
 // external test framework. Exit code: 0 on full pass, 1 on any failure.
 
 #include "ui_controller.hpp"
+#include "interpreter.hpp"
 #include <QCoreApplication>
 #include <QString>
 #include <iostream>
@@ -2189,6 +2190,56 @@ int main(int argc, char *argv[]) {
 
   section("Empty input");
   check("empty expression → ERR:SYNTAX", eval(c, ""), "ERR:SYNTAX");
+
+  section("TI-BASIC interpreter — P0 scaffolding");
+  {
+    using tux_ti83::Interpreter;
+    using tux_ti83::ProgramStore;
+    using tux_ti83::RunStatus;
+
+    // Statement splitter: ':' separates statements; blanks dropped; trimmed.
+    auto s1 = Interpreter::splitStatements("5\xE2\x86\x92""A:A\xC2\xB2\xE2\x86\x92""B: Disp B");
+    checkTrue("splitStatements → 3 statements", s1.size() == 3);
+    checkTrue("splitStatements trims + keeps arrow", s1.size() == 3 && s1[2] == "Disp B");
+    checkTrue("splitStatements drops blanks",
+              Interpreter::splitStatements("A::: B ::").size() == 2);
+    checkTrue("splitStatements empty line → 0", Interpreter::splitStatements("   ").empty());
+
+    // load() flattens lines (and inner ':') into one statement list.
+    Interpreter interp;
+    interp.load({"5\xE2\x86\x92""A", "A+1\xE2\x86\x92""A : Disp A", ""});
+    checkTrue("load flattens lines + colons → 3", interp.statementCount() == 3);
+
+    // P0 run: no statements execute yet; the program runs to Done.
+    checkTrue("fresh program status is Running", interp.status() == RunStatus::Running);
+    checkTrue("run() reaches Done", interp.run() == RunStatus::Done);
+    checkTrue("program counter at end", interp.programCounter() == 3);
+    checkTrue("no output yet (P0)", interp.output().empty());
+    checkTrue("no error", interp.errorLine() == -1);
+
+    // Empty program runs straight to Done.
+    Interpreter empty;
+    empty.load({});
+    checkTrue("empty program → Done immediately", empty.run() == RunStatus::Done);
+    checkTrue("empty program has 0 statements", empty.statementCount() == 0);
+
+    // reset() rewinds and re-runs.
+    interp.reset();
+    checkTrue("reset rewinds pc to 0", interp.programCounter() == 0);
+    checkTrue("reset → Running", interp.status() == RunStatus::Running);
+    checkTrue("re-run reaches Done", interp.run() == RunStatus::Done);
+
+    // ProgramStore: put / has / get / names / remove.
+    ProgramStore store;
+    store.put("ADD", {"prompt A", "prompt B", "Disp A+B"});
+    store.put("HELLO", {"Disp 42"});
+    checkTrue("store has ADD", store.has("ADD"));
+    checkTrue("store size 2", store.size() == 2);
+    checkTrue("get returns lines", store.get("ADD") != nullptr && store.get("ADD")->size() == 3);
+    checkTrue("names sorted", store.names().size() == 2 && store.names()[0] == "ADD");
+    checkTrue("remove works", store.remove("HELLO") && !store.has("HELLO"));
+    checkTrue("get missing → nullptr", store.get("NOPE") == nullptr);
+  }
 
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed

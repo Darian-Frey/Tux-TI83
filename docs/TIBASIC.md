@@ -142,12 +142,19 @@ Each phase is independently shippable and GUI-verifiable. Suggested first
 milestone: **P0 + P1 + P2** — write, save, and run a program that computes
 and `Disp`s results.
 
-### P0 — Scaffolding 📅
-- `Interpreter` skeleton: program store, statement splitter (`\n` / `:`),
-  the `RunStatus` enum, and the step loop.
-- Program persistence in state JSON / named saves.
-- Milestone: store a program, "run" it to completion (no statements yet),
-  reach `Done`.
+### P0 — Scaffolding 🚧 (core landed 2026-08-01)
+- ✅ New pure-C++ `interpreter` library (`interpreter/`), linked by
+  `graph_ui` + the test binary — reusable headless (CLI) and testable
+  without Qt.
+- ✅ `Interpreter`: `RunStatus` enum (`Running`/`Output`/`NeedInput`/
+  `NeedKey`/`Done`/`Error`), statement splitter (lines → statements on
+  top-level `:`), and the resumable `step()` / `run()` loop. P0 executes no
+  statements yet — a program advances its program counter to `Done`.
+- ✅ `ProgramStore` (name → source lines): put / has / get / names / remove.
+- ✅ 21 unit tests (splitter, load/flatten, run-to-Done, reset, store).
+- 📅 Program persistence in state JSON / named saves — deferred to P1 (no
+  way to create a program until the editor exists).
+- Milestone reached: store a program and run it to completion.
 
 ### P1 — Program editor (UI) 📅
 - **PRGM menu** with NEW / EDIT / EXEC (where does it live on our keypad?

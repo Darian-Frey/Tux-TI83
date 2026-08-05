@@ -368,8 +368,10 @@ single-expression evaluator. Full design + phased plan lives in
 **[docs/TIBASIC.md](docs/TIBASIC.md)**; scope decision (2026-08-01):
 _pragmatic subset first_. Phases (each independently shippable):
 
-- 📅 **P0 — Scaffolding** — `Interpreter` skeleton (program store, statement
-  splitter, resumable `RunStatus` step loop), program persistence.
+- 🚧 **P0 — Scaffolding** — core landed 2026-08-01: new pure-C++
+  `interpreter` library with the `Interpreter` (RunStatus step loop,
+  statement splitter, run-to-Done) and `ProgramStore`; 21 tests. Persistence
+  wiring deferred to P1 (nothing to persist until the editor exists).
 - 📅 **P1 — Program editor** — PRGM menu (NEW/EDIT/EXEC), multi-line editor,
   create/name/delete.
 - 📅 **P2 — Sequential core** — run line-by-line: expressions, `Sto`,
