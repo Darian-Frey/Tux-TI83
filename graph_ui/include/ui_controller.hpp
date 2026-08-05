@@ -7,6 +7,7 @@
 #include <deque>
 #include <vector>
 #include "capsules/capsule_math.hpp"
+#include "interpreter.hpp"
 
 namespace tux_ti83 {
 
@@ -317,6 +318,28 @@ public:
     // arming flags) likewise resets. No confirmation prompt — the
     // trigger is a deliberate click in the MODE popup.
     Q_INVOKABLE void resetAll();
+
+    // ── TI-BASIC programs (P1) ──────────────────────────────
+    // Programs are stored as source text (one entry per line) in a
+    // ProgramStore; the interpreter re-tokenises each line at run time.
+    // Names are normalised to 1–8 chars of A–Z/0–9 (uppercase), matching
+    // the TI-83. See docs/TIBASIC.md.
+    Q_INVOKABLE QStringList programNames() const;
+    Q_INVOKABLE bool programExists(const QString& name) const;
+    // Program body as one newline-joined string (for the editor).
+    Q_INVOKABLE QString programText(const QString& name) const;
+    // Create or replace a program from newline-separated source text.
+    // Returns the normalised name actually stored (empty if the name was
+    // invalid).
+    Q_INVOKABLE QString saveProgram(const QString& name, const QString& text);
+    Q_INVOKABLE void deleteProgram(const QString& name);
+    // Normalise a candidate program name (uppercase, A–Z/0–9, ≤8 chars).
+    Q_INVOKABLE QString normalizeProgramName(const QString& name) const;
+    // Run a program. P1: loads it into an Interpreter and runs to Done,
+    // recording completion in history — no statements execute yet (P2 adds
+    // real Disp output + a run view).
+    Q_INVOKABLE void runProgram(const QString& name);
+
     // MEM menu (2ND++): targeted clearing + a memory summary. Each
     // clears one category; memInfo() reports how much is currently in
     // use ({vars, matrices, lists, functions, entries}).
@@ -449,6 +472,7 @@ public:
 signals:
     void displayChanged();
     void historyChanged();
+    void programsChanged();
     void activeFunctionIndexChanged();
     void functionsChanged();
     void drawObjectsChanged();
@@ -477,6 +501,8 @@ signals:
     void traceChanged();
 
 private:
+    // TI-BASIC program storage (P1). Name → source lines.
+    ProgramStore m_programs;
     // Bind this controller's Y-VARS buffer source onto a MathStateMachine
     // instance (IMP-045). Call on every engine the controller constructs.
     void bindEngine(MathStateMachine &m) const;

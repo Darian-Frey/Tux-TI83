@@ -372,8 +372,10 @@ _pragmatic subset first_. Phases (each independently shippable):
   `interpreter` library with the `Interpreter` (RunStatus step loop,
   statement splitter, run-to-Done) and `ProgramStore`; 21 tests. Persistence
   wiring deferred to P1 (nothing to persist until the editor exists).
-- 📅 **P1 — Program editor** — PRGM menu (NEW/EDIT/EXEC), multi-line editor,
-  create/name/delete.
+- ✅ **P1 — Program editor** — landed 2026-08-01: PRGM popup (2ND+`√(`) with
+  list (RUN/EDIT/✕/NEW) + a freeform multi-line source editor; `ProgramStore`
+  in the controller (CRUD + `runProgram`); programs persist in state JSON;
+  16 tests.
 - 📅 **P2 — Sequential core** — run line-by-line: expressions, `Sto`,
   `Disp`, `ClrHome`, `Pause`, `Stop` + a run/output view. *(first milestone:
   P0–P2 = author + run + `Disp`.)*

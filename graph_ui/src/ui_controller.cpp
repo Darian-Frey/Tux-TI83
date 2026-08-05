@@ -401,6 +401,17 @@ QJsonObject UIController::buildStateJson() const {
   }
   root["lists"] = lists;
 
+  // TI-BASIC programs (P1): name → array of source lines.
+  QJsonObject programs;
+  for (const auto &name : m_programs.names()) {
+    const auto *lines = m_programs.get(name);
+    QJsonArray arr;
+    for (const auto &l : *lines)
+      arr.append(QString::fromStdString(l));
+    programs[QString::fromStdString(name)] = arr;
+  }
+  root["programs"] = programs;
+
   // Function buffers Y1/Y2/Y3 as their display strings. Round-trips
   // through processExpression on load.
   QJsonArray functions;
@@ -549,6 +560,18 @@ void UIController::applyStateJson(const QJsonObject &root) {
       vec.push_back(v.toDouble());
     const Token tok = static_cast<Token>(static_cast<int>(Token::L1) + i);
     MathStateMachine::listRegistry[tok] = vec;
+  }
+
+  // TI-BASIC programs (P1).
+  m_programs.clear();
+  QJsonObject programs = root.value("programs").toObject();
+  for (const QString &name : programs.keys()) {
+    QJsonArray arr = programs.value(name).toArray();
+    std::vector<std::string> lines;
+    lines.reserve(static_cast<size_t>(arr.size()));
+    for (auto v : arr)
+      lines.push_back(v.toString().toStdString());
+    m_programs.put(name.toStdString(), lines);
   }
 
   // MODE — apply before function buffers so any side effects use
@@ -700,6 +723,7 @@ void UIController::applyStateJson(const QJsonObject &root) {
   emit plotModeChanged();
   emit screenModeChanged();
   emit themeChanged();
+  emit programsChanged();
 
   CrashLogger::logEvent(QStringLiteral("loadState ok"));
 }
@@ -748,6 +772,79 @@ void UIController::deleteSave(const QString &name) {
     QFile::remove(resolveSavesDir() + "/" + clean + ".t83");
 }
 
+// ── TI-BASIC programs (P1) ────────────────────────────────────────────
+
+QString UIController::normalizeProgramName(const QString &name) const {
+  QString out;
+  for (QChar c : name.toUpper()) {
+    if ((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'))
+      out.append(c);
+    if (out.size() >= 8)
+      break;
+  }
+  return out;
+}
+
+QStringList UIController::programNames() const {
+  QStringList out;
+  for (const auto &n : m_programs.names())
+    out << QString::fromStdString(n);
+  return out;  // ProgramStore::names() is already sorted
+}
+
+bool UIController::programExists(const QString &name) const {
+  return m_programs.has(normalizeProgramName(name).toStdString());
+}
+
+QString UIController::programText(const QString &name) const {
+  const auto *lines = m_programs.get(normalizeProgramName(name).toStdString());
+  if (!lines)
+    return QString();
+  QStringList qs;
+  for (const auto &l : *lines)
+    qs << QString::fromStdString(l);
+  return qs.join('\n');
+}
+
+QString UIController::saveProgram(const QString &name, const QString &text) {
+  const QString clean = normalizeProgramName(name);
+  if (clean.isEmpty())
+    return QString();
+  std::vector<std::string> lines;
+  // Split on newlines; keep the per-line source as typed (trailing blank
+  // lines dropped so a program doesn't accumulate empties).
+  const QStringList raw = text.split('\n');
+  for (const QString &line : raw)
+    lines.push_back(line.toStdString());
+  while (!lines.empty() && QString::fromStdString(lines.back()).trimmed().isEmpty())
+    lines.pop_back();
+  m_programs.put(clean.toStdString(), lines);
+  emit programsChanged();
+  saveState();  // persist immediately
+  return clean;
+}
+
+void UIController::deleteProgram(const QString &name) {
+  if (m_programs.remove(normalizeProgramName(name).toStdString())) {
+    emit programsChanged();
+    saveState();
+  }
+}
+
+void UIController::runProgram(const QString &name) {
+  const QString clean = normalizeProgramName(name);
+  const auto *lines = m_programs.get(clean.toStdString());
+  if (!lines)
+    return;
+  Interpreter interp;
+  interp.load(*lines);
+  interp.run();  // P0: runs the statements to Done (none execute yet).
+  // P1: surface completion in history. P2 replaces this with real Disp
+  // output rendered in a dedicated run/output view.
+  m_history.prepend(QStringLiteral("prgm") + clean + QStringLiteral(" done"));
+  emit historyChanged();
+}
+
 void UIController::resetAll() {
   CrashLogger::logEvent(QStringLiteral("resetAll"));
 
@@ -781,6 +878,7 @@ void UIController::resetAll() {
   m_plotMode = 0;
   m_screenMode = 0;
   m_theme = 0;
+  m_programs.clear();
   m_graphMode = 0;
   m_statPlotOn = false;
   m_statPlotType = 0;
@@ -836,6 +934,7 @@ void UIController::resetAll() {
   emit plotModeChanged();
   emit screenModeChanged();
   emit themeChanged();
+  emit programsChanged();
 }
 
 void UIController::clearAllLists() {

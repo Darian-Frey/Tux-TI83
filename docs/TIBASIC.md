@@ -156,13 +156,24 @@ and `Disp`s results.
   way to create a program until the editor exists).
 - Milestone reached: store a program and run it to completion.
 
-### P1 — Program editor (UI) 📅
-- **PRGM menu** with NEW / EDIT / EXEC (where does it live on our keypad?
-  candidate: a soft-key 2ND slot or a MODE-adjacent entry — decide in P1).
-- Multi-line **program editor** view: a line list, add/insert/delete a
-  line, edit a line with the existing keypad + tokeniser.
-- Create / name / delete programs; list existing programs.
-- Milestone: author and persist a program by hand.
+### P1 — Program editor (UI) ✅ (landed 2026-08-01)
+- ✅ **PRGM popup** opened via **2ND + `√(`** (resolves open decision #1 —
+  this keypad has no dedicated PRGM key). List mode (RUN / EDIT / ✕ per
+  program + NEW) and edit mode (name field + multi-line source editor +
+  SAVE / CANCEL).
+- ✅ **Editor model:** chose a **freeform multi-line text editor** (source
+  text) over a keypad-driven line-list — pragmatic and robust, since
+  programs are stored as source and re-tokenised per line at run time.
+  Typed with the physical keyboard (`->` for →, `Disp`, `sin(`, … as text).
+- ✅ `ProgramStore` wired into `UIController`: `programNames` /
+  `programText` / `saveProgram` / `deleteProgram` / `normalizeProgramName`
+  / `runProgram`. Names normalised to A–Z/0–9, ≤8 chars.
+- ✅ **Persistence** — programs serialise into the state JSON (and named
+  saves) via `buildStateJson`/`applyStateJson`; cleared by RESET.
+- ✅ P1 RUN loads the program into an `Interpreter` and runs to `Done`,
+  recording completion in history. (Real `Disp` output + a run view = P2.)
+- ✅ 16 controller tests (CRUD, run, persistence round-trip).
+- Milestone reached: author, save, edit, delete, and persist a program.
 
 ### P2 — Sequential interpreter core 📅
 - Execute line-by-line: bare expressions, `Sto`, `Disp` (numeric,

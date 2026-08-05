@@ -2241,6 +2241,54 @@ int main(int argc, char *argv[]) {
     checkTrue("get missing → nullptr", store.get("NOPE") == nullptr);
   }
 
+  section("TI-BASIC programs — P1 (controller CRUD + persistence)");
+  {
+    UIController pc;
+    checkTrue("no programs initially", pc.programNames().isEmpty());
+
+    // Name normalisation: uppercase, strip non-alnum, cap at 8.
+    checkTrue("normalize uppercases + strips",
+              pc.normalizeProgramName("ab#3xyz") == "AB3XYZ");
+    checkTrue("normalize caps at 8",
+              pc.normalizeProgramName("abcdefghij") == "ABCDEFGH");
+    checkTrue("normalize junk → empty", pc.normalizeProgramName("!!!").isEmpty());
+
+    // Save / query / round-trip (ASCII '->' avoids arrow-encoding noise;
+    // the interpreter accepts it as Sto).
+    QString saved = pc.saveProgram("add", "5->A\nDisp A\n");
+    checkTrue("saveProgram returns normalised name", saved == "ADD");
+    checkTrue("programExists after save", pc.programExists("ADD"));
+    checkTrue("programNames contains it", pc.programNames().contains("ADD"));
+    checkTrue("programText round-trips (trailing blank dropped)",
+              pc.programText("ADD") == "5->A\nDisp A");
+
+    pc.saveProgram("BEE", "Disp 1");
+    checkTrue("two programs, sorted",
+              pc.programNames().size() == 2 && pc.programNames()[0] == "ADD");
+    checkTrue("invalid name not saved", pc.saveProgram("###", "x").isEmpty());
+
+    // Run (P1: runs to Done, records completion in history).
+    const int before = pc.history().size();
+    pc.runProgram("BEE");
+    checkTrue("runProgram appends history",
+              pc.history().size() == before + 1 &&
+              pc.history().first() == "prgmBEE done");
+
+    // Persistence round-trip via a named save.
+    checkTrue("export writes", pc.exportState("prgtest"));
+    pc.deleteProgram("ADD");
+    pc.deleteProgram("BEE");
+    checkTrue("programs cleared", pc.programNames().isEmpty());
+    checkTrue("import restores", pc.importState("prgtest"));
+    checkTrue("ADD restored", pc.programExists("ADD"));
+    checkTrue("BEE restored + body intact",
+              pc.programText("BEE") == "Disp 1");
+    pc.deleteSave("prgtest");
+
+    pc.deleteProgram("ADD");
+    pc.deleteProgram("BEE");
+  }
+
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed
             << "  Failed: " << gFailed << '\n';

@@ -713,7 +713,16 @@ ApplicationWindow {
             CalcKey { label: "tan(";  keyType: "function"; secondLabel: "tan⁻¹"; alphaLabel: "G"; onPressed: root.handleKey("tan(")  }
             CalcKey { label: "^";     keyType: "function"; secondLabel: "ˣ√"; alphaLabel: "H"; onPressed: root.handleKey("^") }
 
-            CalcKey { label: "√(";    keyType: "function"; onPressed: root.handleKey("√(")    }
+            // √( inserts the root; 2ND+√( opens the PRGM program manager
+            // (this keypad has no dedicated PRGM key — see docs/TIBASIC.md).
+            CalcKey { label: "√(";    keyType: "function"; secondLabel: "PRGM"; onPressed: {
+                if (root.secondArmed) {
+                    root.clearModifiers()
+                    prgmPopup.open()
+                } else {
+                    root.handleKey("√(")
+                }
+            } }
             CalcKey { label: "ln(";   keyType: "function"; secondLabel: "eˣ"; alphaLabel: "S"; onPressed: root.handleKey("ln(")   }
             CalcKey { label: "log(";  keyType: "function"; alphaLabel: "N"; onPressed: root.handleKey("log(")  }
             CalcKey { label: "π";     keyType: "function"; alphaLabel: "K"; onPressed: root.handleKey("π")    }
@@ -890,6 +899,10 @@ ApplicationWindow {
 
     YVarsPopup {
         id: yVarsPopup
+    }
+
+    PRGMPopup {
+        id: prgmPopup
     }
 
     DRAWPopup {
