@@ -362,16 +362,26 @@ default on) gating the graph canvas. RESET restores them.
 
 ## Programming (TI-BASIC subset)
 
-All long-term — no commitment, but worth listing because it's a major
-TI-83 capability the project is named after.
+The last major unbuilt feature and the capability the project is named
+after. It's a whole statement-level **interpreter** layered above the
+single-expression evaluator. Full design + phased plan lives in
+**[docs/TIBASIC.md](docs/TIBASIC.md)**; scope decision (2026-08-01):
+_pragmatic subset first_. Phases (each independently shippable):
 
-- 💭 Program editor (in-app text editor)
-- 💭 Control flow: `If`/`Then`/`Else`/`End`, `For`, `While`, `Repeat`
-- 💭 `Goto`/`Lbl`
-- 💭 I/O: `Input`, `Prompt`, `Disp`, `Output(`, `ClrHome`, `Pause`
-- 💭 `Menu(`, `getKey`, `DelVar`, `Stop`, `Return`
-- 💭 Subprogram calls
-- 💭 Run/edit/transmit menus
+- 📅 **P0 — Scaffolding** — `Interpreter` skeleton (program store, statement
+  splitter, resumable `RunStatus` step loop), program persistence.
+- 📅 **P1 — Program editor** — PRGM menu (NEW/EDIT/EXEC), multi-line editor,
+  create/name/delete.
+- 📅 **P2 — Sequential core** — run line-by-line: expressions, `Sto`,
+  `Disp`, `ClrHome`, `Pause`, `Stop` + a run/output view. *(first milestone:
+  P0–P2 = author + run + `Disp`.)*
+- 📅 **P3 — Control flow** — `If`/`Then`/`Else`/`End`, `For(`, `While`,
+  `Repeat`, `Lbl`/`Goto`.
+- 📅 **P4 — Strings + I/O** — string type (`Str1`–`Str9`), `Input`, `Prompt`,
+  `Output(`, `Menu(`.
+- 📅 **P5 — Program control** — `Return`, `prgmNAME` sub-calls, `DelVar`,
+  `getKey`, break/interrupt, error-with-line-number, in-editor command paste.
+- 💭 **P6 — Optional** — graphics from programs (reuse DRAW), `.8xp` import.
 
 ## Connectivity & data exchange
 
