@@ -100,8 +100,11 @@ public:
   static std::vector<std::string> splitStatements(const std::string &line);
 
   // Split a Disp/argument list on top-level ',' (ignoring commas nested in
-  // (), [], {}). Exposed for testing.
+  // (), [], {}, and inside "..." strings). Exposed for testing.
   static std::vector<std::string> splitArgs(const std::string &s);
+
+  // "Str1".."Str9" → 1..9; anything else → 0. Exposed for testing.
+  static int strVarIndex(const std::string &s);
 
 private:
   // Execute the statement at m_pc. Advances m_pc itself (normal statements
@@ -119,6 +122,18 @@ private:
   bool evalCond(const std::string &expr, bool &ok);
   // Report a runtime error at the current statement and return Error.
   RunStatus fail(const std::string &label);
+
+  // ── Strings (P4b, interpreter-level; the engine stays numeric) ──
+  // Try to evaluate a source expression as a string: a '+'-joined chain of
+  // "…" literals and Str1..Str9 references. NotString → it's numeric (use
+  // the engine); Ok → `out` holds the result; TypeError → mixed str/number.
+  enum class StrEval { NotString, Ok, TypeError };
+  StrEval evalStringExpr(const std::string &src, std::string &out) const;
+  // Split on top-level '+' (respecting quotes and brackets).
+  static std::vector<std::string> splitPlus(const std::string &s);
+  // If a statement is `<expr>→StrN` / `<expr>->StrN`, return N (1..9) and
+  // set `lhs`; else 0.
+  static int stringStoreTarget(const std::string &stmt, std::string &lhs);
 
   // Per-For loop state (endVal/step captured at loop entry, TI-style).
   struct ForFrame {
@@ -140,6 +155,8 @@ private:
   // Pending Input/Prompt target + prompt label (valid while NeedInput).
   std::string m_inputVar;
   std::string m_inputPrompt;
+  bool m_inputIsString = false;              // pending Input targets a StrN
+  std::map<int, std::string> m_strVars;      // Str1..Str9 (persist across runs)
 
   // Control-flow tables (indices into m_statements; -1 = none).
   std::vector<int> m_openerToEnd;   // Then/For/While/Repeat → matching End

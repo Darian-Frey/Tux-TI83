@@ -391,8 +391,11 @@ _pragmatic subset first_. Phases (each independently shippable):
   the controller holds the interpreter and drives `runProgram`/
   `provideProgramInput`/`resumeProgram`; run view gets an input field, a
   CONTINUE button, and a ◀ PRGM back button. Works across loops. 12 tests.
-  **String type 📅 (next):** `Str1`–`Str9`, `"…"` literals, concat, `sub(`/
-  `length(`/`inString(`/`expr(`, `Output(`, `Menu(`.
+  **String type ✅ (2026-08-01):** `Str1`–`Str9` vars, `"…"` literals, concat
+  (`+`), string store, `Disp`/text `Input` of strings — interpreter-level
+  (engine untouched); quote-aware statement/arg splitting; 10 tests. 📅 still:
+  string functions (`sub(`/`length(`/`inString(`/`expr(`), `Output(`, `Menu(`,
+  disk-persistence of Str vars.
 - 📅 **P5 — Program control** — `Return`, `prgmNAME` sub-calls, `DelVar`,
   `getKey`, break/interrupt, error-with-line-number, in-editor command paste.
 - 💭 **P6 — Optional** — graphics from programs (reuse DRAW), `.8xp` import.

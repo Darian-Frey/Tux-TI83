@@ -36,8 +36,11 @@ bool matchKeyword(const std::string &stmt, const std::string &kw) {
 std::vector<std::string> Interpreter::splitStatements(const std::string &line) {
   std::vector<std::string> out;
   std::string current;
+  bool inStr = false;
   for (char c : line) {
-    if (c == ':') {
+    if (c == '"')
+      inStr = !inStr;
+    if (c == ':' && !inStr) {
       const std::string t = trim(current);
       if (!t.empty())
         out.push_back(t);
@@ -100,12 +103,17 @@ std::vector<std::string> Interpreter::splitArgs(const std::string &s) {
   std::vector<std::string> out;
   std::string cur;
   int depth = 0;  // nesting depth across () [] {}
+  bool inStr = false;
   for (char c : s) {
-    if (c == '(' || c == '[' || c == '{')
-      ++depth;
-    else if (c == ')' || c == ']' || c == '}')
-      --depth;
-    if (c == ',' && depth <= 0) {
+    if (c == '"')
+      inStr = !inStr;
+    if (!inStr) {
+      if (c == '(' || c == '[' || c == '{')
+        ++depth;
+      else if (c == ')' || c == ']' || c == '}')
+        --depth;
+    }
+    if (c == ',' && depth <= 0 && !inStr) {
       out.push_back(cur);
       cur.clear();
     } else {
@@ -114,6 +122,99 @@ std::vector<std::string> Interpreter::splitArgs(const std::string &s) {
   }
   out.push_back(cur);
   return out;
+}
+
+int Interpreter::strVarIndex(const std::string &s) {
+  if (s.size() == 4 && s.compare(0, 3, "Str") == 0 && s[3] >= '1' &&
+      s[3] <= '9')
+    return s[3] - '0';
+  return 0;
+}
+
+std::vector<std::string> Interpreter::splitPlus(const std::string &s) {
+  std::vector<std::string> out;
+  std::string cur;
+  int depth = 0;
+  bool inStr = false;
+  for (char c : s) {
+    if (c == '"')
+      inStr = !inStr;
+    if (!inStr) {
+      if (c == '(' || c == '[' || c == '{')
+        ++depth;
+      else if (c == ')' || c == ']' || c == '}')
+        --depth;
+    }
+    if (c == '+' && depth <= 0 && !inStr) {
+      out.push_back(cur);
+      cur.clear();
+    } else {
+      cur.push_back(c);
+    }
+  }
+  out.push_back(cur);
+  return out;
+}
+
+int Interpreter::stringStoreTarget(const std::string &stmt, std::string &lhs) {
+  // Find the last top-level store arrow ("->" or "→", not inside a string).
+  std::size_t arrowPos = std::string::npos;
+  std::size_t arrowLen = 0;
+  bool inStr = false;
+  for (std::size_t i = 0; i < stmt.size(); ++i) {
+    const char c = stmt[i];
+    if (c == '"') {
+      inStr = !inStr;
+      continue;
+    }
+    if (inStr)
+      continue;
+    if (c == '-' && i + 1 < stmt.size() && stmt[i + 1] == '>') {
+      arrowPos = i;
+      arrowLen = 2;
+    } else if (static_cast<unsigned char>(c) == 0xE2 && i + 2 < stmt.size() &&
+               static_cast<unsigned char>(stmt[i + 1]) == 0x86 &&
+               static_cast<unsigned char>(stmt[i + 2]) == 0x92) {  // → UTF-8
+      arrowPos = i;
+      arrowLen = 3;
+    }
+  }
+  if (arrowPos == std::string::npos)
+    return 0;
+  const int n = strVarIndex(trim(stmt.substr(arrowPos + arrowLen)));
+  if (n == 0)
+    return 0;
+  lhs = trim(stmt.substr(0, arrowPos));
+  return n;
+}
+
+Interpreter::StrEval Interpreter::evalStringExpr(const std::string &src,
+                                                 std::string &out) const {
+  const auto terms = splitPlus(src);
+  const std::string first = terms.empty() ? "" : trim(terms.front());
+  const bool firstIsStr =
+      (!first.empty() && first.front() == '"') || strVarIndex(first) != 0;
+  if (!firstIsStr)
+    return StrEval::NotString;  // numeric — let the engine handle it
+
+  std::string result;
+  for (const auto &t : terms) {
+    const std::string term = trim(t);
+    if (!term.empty() && term.front() == '"') {
+      std::string inner = term.substr(1);
+      if (!inner.empty() && inner.back() == '"')
+        inner.pop_back();
+      result += inner;
+    } else if (const int n = strVarIndex(term)) {
+      auto it = m_strVars.find(n);
+      if (it != m_strVars.end())
+        result += it->second;
+    } else {
+      return StrEval::TypeError;  // a non-string term in a string chain
+    }
+  }
+  out = result;
+  return StrEval::Ok;
 }
 
 void Interpreter::reset() {
@@ -329,6 +430,7 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
       m_inputPrompt = "?";
       m_inputVar = rest;
     }
+    m_inputIsString = (strVarIndex(m_inputVar) != 0);
     return RunStatus::NeedInput;  // pc stays; provideInput() advances
   }
 
@@ -339,6 +441,7 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
       return fail("ERR:SYNTAX");
     m_inputVar = var;
     m_inputPrompt = var + "=?";
+    m_inputIsString = (strVarIndex(m_inputVar) != 0);
     return RunStatus::NeedInput;
   }
 
@@ -373,15 +476,16 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
         m_output.push_back("");
         continue;
       }
-      // Mini-string support: a quoted literal prints verbatim (the full
-      // string type — Str1..Str9, concat, sub( — arrives in P4).
-      if (arg.front() == '"') {
-        std::string inner = arg.substr(1);
-        if (!inner.empty() && inner.back() == '"')
-          inner.pop_back();
-        m_output.push_back(inner);
+      // String expression (literal / StrN / concat) prints its text;
+      // otherwise evaluate numerically.
+      std::string sout;
+      const StrEval se = evalStringExpr(arg, sout);
+      if (se == StrEval::Ok) {
+        m_output.push_back(sout);
         continue;
       }
+      if (se == StrEval::TypeError)
+        return fail("ERR:DATA TYPE");
       const EvalResult r = m_eval(arg);
       if (!r.ok)
         return fail(r.error);
@@ -391,7 +495,35 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
     return RunStatus::Running;
   }
 
-  // ── Bare expression / Sto ── evaluate; echo the result (TI-style).
+  // ── String store: <str expr>→StrN ──
+  {
+    std::string lhs;
+    if (const int n = stringStoreTarget(stmt, lhs)) {
+      std::string sout;
+      const StrEval se = evalStringExpr(lhs, sout);
+      if (se != StrEval::Ok)
+        return fail("ERR:DATA TYPE");  // can't store a non-string into StrN
+      m_strVars[n] = sout;
+      m_output.push_back(sout);  // echo (TI-style)
+      ++m_pc;
+      return RunStatus::Running;
+    }
+  }
+
+  // ── Bare string expression (e.g. Str1) ── echo its text. ──
+  {
+    std::string sout;
+    const StrEval se = evalStringExpr(stmt, sout);
+    if (se == StrEval::Ok) {
+      m_output.push_back(sout);
+      ++m_pc;
+      return RunStatus::Running;
+    }
+    if (se == StrEval::TypeError)
+      return fail("ERR:DATA TYPE");
+  }
+
+  // ── Bare numeric expression / Sto ── evaluate; echo the result. ──
   const EvalResult r = m_eval(stmt);
   if (!r.ok)
     return fail(r.error);
@@ -425,9 +557,14 @@ RunStatus Interpreter::step() {
 void Interpreter::provideInput(const std::string &valueSource) {
   if (m_status != RunStatus::NeedInput)
     return;
-  const EvalResult r = m_eval("(" + valueSource + ")->" + m_inputVar);
-  if (!r.ok)
-    return;  // invalid value — stay NeedInput so the caller re-prompts
+  if (m_inputIsString) {
+    // Input into a StrN stores the raw typed text (no evaluation).
+    m_strVars[strVarIndex(m_inputVar)] = valueSource;
+  } else {
+    const EvalResult r = m_eval("(" + valueSource + ")->" + m_inputVar);
+    if (!r.ok)
+      return;  // invalid value — stay NeedInput so the caller re-prompts
+  }
   ++m_pc;  // past the Input/Prompt statement
   m_status = RunStatus::Running;
 }

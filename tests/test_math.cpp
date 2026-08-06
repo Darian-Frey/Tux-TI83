@@ -2450,6 +2450,58 @@ int main(int argc, char *argv[]) {
       pc.deleteProgram(n);
   }
 
+  section("TI-BASIC interpreter — P4b (strings)");
+  {
+    UIController pc;
+    auto runP = [&](const QString &src) -> QStringList {
+      pc.saveProgram("P", src);
+      pc.runProgram("P");
+      return pc.programOutput();
+    };
+    auto last = [](const QStringList &o) {
+      return o.isEmpty() ? QString() : o.last();
+    };
+
+    // Store + display a string variable.
+    checkTrue("store + Disp Str1",
+              last(runP("\"HELLO\"->Str1:Disp Str1")) == "HELLO");
+    // Concatenation of two Str vars.
+    checkTrue("concat Str1+Str2",
+              last(runP("\"AB\"->Str1:\"CD\"->Str2:Disp Str1+Str2")) == "ABCD");
+    // Literal + variable concatenation.
+    checkTrue("literal + var concat",
+              last(runP("\"BOB\"->Str1:Disp \"HI \"+Str1")) == "HI BOB");
+    // Mixed Disp args: a string label then a number.
+    {
+      QStringList o = runP("5->A:Disp \"A=\",A");
+      checkTrue("Disp string label + number", o.last() == "5" && o.contains("A="));
+    }
+    // Quote-aware splitting: a ':' inside a string is not a separator.
+    checkTrue("':' inside a string isn't a separator",
+              last(runP("Disp \"A:B\"")) == "A:B");
+    // Type errors.
+    checkTrue("number → StrN is a type error",
+              last(runP("5->Str1")).startsWith("ERR:DATA TYPE"));
+    checkTrue("string + number is a type error",
+              last(runP("Disp \"X\"+5")).startsWith("ERR:DATA TYPE"));
+
+    // Str vars persist across runs (in session).
+    runP("\"XYZ\"->Str1");
+    checkTrue("Str1 persists across runs", last(runP("Disp Str1")) == "XYZ");
+
+    // Input into a string stores the raw typed text (no evaluation).
+    pc.saveProgram("NM", "Input \"NAME?\",Str1:Disp \"HELLO \"+Str1");
+    pc.runProgram("NM");
+    checkTrue("string Input pauses with prompt",
+              pc.programWaitingInput() && pc.programInputPrompt() == "NAME?");
+    pc.provideProgramInput("SAM");
+    checkTrue("string Input → greeting",
+              !pc.programWaitingInput() && pc.programOutput().last() == "HELLO SAM");
+
+    pc.deleteProgram("P");
+    pc.deleteProgram("NM");
+  }
+
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed
             << "  Failed: " << gFailed << '\n';

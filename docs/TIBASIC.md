@@ -239,10 +239,25 @@ resumable model and hits the milestone with numeric input + string-literal
 - ✅ 12 tests (Prompt→branch→result, prompt text, re-prompt, Pause, Input in
   a loop). Milestone reached: interactive prompt → branch → labelled result.
 
-**P4b — String type 📅 (next increment)**
-- `Str1`–`Str9`, `"…"` string literals as a value kind, concat (`+`),
-  `sub(`, `length(`, `inString(`, `expr(`; `Disp` of string variables,
-  `Output(row,col,value)`, `Menu(`. (Needs core_math value-system work.)
+**P4b — String type ✅ (core landed 2026-08-01)**
+- ✅ **Design decision:** strings live at the **interpreter level**, not in
+  the engine. The engine's token stream (enum `Token`s) can't carry
+  arbitrary string content, and strings are a program feature — so `core_math`
+  stays untouched. The interpreter resolves `Str1`–`Str9` and `"…"` literals
+  itself.
+- ✅ `Str1`–`Str9` string variables (registry in the interpreter; persist
+  across runs in a session), `"…"` literals, concatenation with `+`
+  (`evalStringExpr` / `splitPlus`).
+- ✅ String store `<strexpr>→StrN` (`stringStoreTarget`), `Disp` of string
+  expressions (with mixed string/number args), text `Input` into `StrN`
+  (stores the raw typed line). Type mismatches → `ERR:DATA TYPE`.
+- ✅ Quote-aware `splitStatements` / `splitArgs` — a `:` or `,` inside a
+  `"…"` string is no longer a separator.
+- ✅ 10 tests (store/Disp, concat, literal+var, mixed args, quote-aware
+  split, type errors, cross-run persistence, string Input).
+- 📅 Remaining P4 pieces: string functions `sub(` / `length(` / `inString(`
+  / `expr(`, `Output(row,col,value)`, `Menu(`, and disk-persistence of Str
+  vars.
 
 ### P5 — Program control & robustness 📅
 - `Return`, `prgmNAME` sub-program calls (call stack; recursion depth cap),
