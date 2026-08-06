@@ -311,9 +311,54 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
     ++m_pc;
     return RunStatus::Running;
   }
+  if (matchKeyword(stmt, "Input")) {
+    // Input VAR  |  Input "prompt",VAR  — pause for a value into VAR.
+    const std::string rest = trim(stmt.substr(5));
+    if (rest.empty())
+      return fail("ERR:SYNTAX");
+    if (rest.front() == '"') {
+      const auto args = splitArgs(rest);
+      if (args.size() < 2)
+        return fail("ERR:SYNTAX");
+      std::string p = trim(args[0]);
+      if (p.size() >= 2 && p.front() == '"' && p.back() == '"')
+        p = p.substr(1, p.size() - 2);
+      m_inputPrompt = p;
+      m_inputVar = trim(args[1]);
+    } else {
+      m_inputPrompt = "?";
+      m_inputVar = rest;
+    }
+    return RunStatus::NeedInput;  // pc stays; provideInput() advances
+  }
+
+  if (matchKeyword(stmt, "Prompt")) {
+    // Prompt VAR — auto-labelled "VAR=?" (single variable for now).
+    const std::string var = trim(stmt.substr(6));
+    if (var.empty())
+      return fail("ERR:SYNTAX");
+    m_inputVar = var;
+    m_inputPrompt = var + "=?";
+    return RunStatus::NeedInput;
+  }
+
   if (matchKeyword(stmt, "Pause")) {
-    ++m_pc;  // P4 — real Pause shares the resumable-input UI
-    return RunStatus::Running;
+    // Optional argument is displayed, then the run waits for a keypress.
+    const std::string rest = trim(stmt.substr(5));
+    if (!rest.empty()) {
+      if (rest.front() == '"') {
+        std::string inner = rest.substr(1);
+        if (!inner.empty() && inner.back() == '"')
+          inner.pop_back();
+        m_output.push_back(inner);
+      } else {
+        const EvalResult r = m_eval(rest);
+        if (!r.ok)
+          return fail(r.error);
+        m_output.push_back(r.display);
+      }
+    }
+    return RunStatus::NeedKey;  // pc stays; resumeFromPause() advances
   }
   if (matchKeyword(stmt, "Disp")) {
     const std::string rest = trim(stmt.substr(4));
@@ -368,9 +413,30 @@ RunStatus Interpreter::step() {
     m_status = RunStatus::Error;
     return m_status;
   }
+  if (st == RunStatus::NeedInput || st == RunStatus::NeedKey) {
+    m_status = st;  // pause for interaction (pc unchanged)
+    return m_status;
+  }
   if (m_stopRequested || m_pc >= m_statements.size())
     m_status = RunStatus::Done;
   return m_status;
+}
+
+void Interpreter::provideInput(const std::string &valueSource) {
+  if (m_status != RunStatus::NeedInput)
+    return;
+  const EvalResult r = m_eval("(" + valueSource + ")->" + m_inputVar);
+  if (!r.ok)
+    return;  // invalid value — stay NeedInput so the caller re-prompts
+  ++m_pc;  // past the Input/Prompt statement
+  m_status = RunStatus::Running;
+}
+
+void Interpreter::resumeFromPause() {
+  if (m_status != RunStatus::NeedKey)
+    return;
+  ++m_pc;
+  m_status = RunStatus::Running;
 }
 
 RunStatus Interpreter::run() {

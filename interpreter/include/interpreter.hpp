@@ -79,6 +79,17 @@ public:
   const std::vector<std::string> &output() const { return m_output; }
   int errorLine() const { return m_errorLine; }
   const std::string &errorMessage() const { return m_errorMessage; }
+
+  // ── Resumable interaction (P4) ──
+  // When status() is NeedInput, the run paused on Input/Prompt; inputPrompt()
+  // is the label to show. Feed the user's entered value (a source expression)
+  // to resume: on success it stores into the target variable and advances;
+  // on a bad value the run stays NeedInput (re-prompt). When status() is
+  // NeedKey (Pause), call resumeFromPause() to continue. After either, call
+  // run() again to keep stepping.
+  const std::string &inputPrompt() const { return m_inputPrompt; }
+  void provideInput(const std::string &valueSource);
+  void resumeFromPause();
   std::size_t statementCount() const { return m_statements.size(); }
   std::size_t programCounter() const { return m_pc; }
   const std::vector<std::string> &statements() const { return m_statements; }
@@ -126,6 +137,9 @@ private:
   bool m_stopRequested = false;
   int m_errorLine = -1;
   std::string m_errorMessage;
+  // Pending Input/Prompt target + prompt label (valid while NeedInput).
+  std::string m_inputVar;
+  std::string m_inputPrompt;
 
   // Control-flow tables (indices into m_statements; -1 = none).
   std::vector<int> m_openerToEnd;   // Then/For/While/Repeat → matching End

@@ -215,14 +215,34 @@ and `Disp`s results.
   Goto, nested loops, missing-label error).
 - Milestone reached: loops and branches run.
 
-### P4 — Strings + real interaction 📅
-- **String type** (§2.5): `Str1`–`Str9`, `"…"` literals, concat, `sub(`,
-  `length(`, `inString(`, `expr(`.
-- `Disp` (strings + mixed), `Output(row,col,value)`.
-- `Input` (var/list), `Input "prompt",var`, `Prompt var` — resumable.
-- `Menu(` — titled choice list that jumps to labels.
-- Milestone: an interactive program (prompt for input, branch on it, print
-  a labelled result).
+### P4 — Strings + real interaction 🚧
+Split into two increments; interaction landed first (it validates the
+resumable model and hits the milestone with numeric input + string-literal
+`Disp`).
+
+**P4a — Interaction ✅ (landed 2026-08-01)**
+- ✅ `Input VAR` / `Input "prompt",VAR` / `Prompt VAR` — pause the run
+  (`NeedInput`), show an input field in the run view, resume with the typed
+  value (stored into VAR). A bad value re-prompts.
+- ✅ `Pause` (optional displayed arg) — pause (`NeedKey`); the run view
+  shows a "▶ CONTINUE" button.
+- ✅ **Resumable execution proven out:** the controller now holds the
+  `Interpreter` as a member; `runProgram` steps until Done/Error/NeedInput/
+  NeedKey; `provideProgramInput` / `resumeProgram` feed input and continue.
+  Works across loops (repeated suspend/resume). `execStatement` returns the
+  I/O statuses without advancing the PC; `provideInput`/`resumeFromPause`
+  advance it.
+- ✅ Run view: an input row (prompt + field + ENTER) and a CONTINUE button,
+  plus a **◀ PRGM** button to return to the program manager.
+- ✅ Fix: `evalProgramSource` now distinguishes a blank statement from an
+  unparseable one, so bad Input values re-prompt (`ERR:SYNTAX`).
+- ✅ 12 tests (Prompt→branch→result, prompt text, re-prompt, Pause, Input in
+  a loop). Milestone reached: interactive prompt → branch → labelled result.
+
+**P4b — String type 📅 (next increment)**
+- `Str1`–`Str9`, `"…"` string literals as a value kind, concat (`+`),
+  `sub(`, `length(`, `inString(`, `expr(`; `Disp` of string variables,
+  `Output(row,col,value)`, `Menu(`. (Needs core_math value-system work.)
 
 ### P5 — Program control & robustness 📅
 - `Return`, `prgmNAME` sub-program calls (call stack; recursion depth cap),

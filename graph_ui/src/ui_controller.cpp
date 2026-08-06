@@ -880,8 +880,13 @@ tux_ti83::EvalResult UIController::evalProgramSource(const std::string &src) {
   const QString q = QString::fromStdString(src);
   const QStringList toks = tokenize(q);
   if (toks.isEmpty()) {
-    // Blank statement — nothing to do; report success with no display.
-    out.ok = true;
+    // tokenize() returns empty for both a blank line and an unparseable one.
+    if (q.trimmed().isEmpty()) {
+      out.ok = true;  // blank statement — no-op success
+    } else {
+      out.ok = false;
+      out.error = QStringLiteral("ERR:SYNTAX").toStdString();
+    }
     return out;
   }
   std::vector<Token> buf;
@@ -928,31 +933,55 @@ tux_ti83::EvalResult UIController::evalProgramSource(const std::string &src) {
   return out;
 }
 
+void UIController::publishProgramState() {
+  m_programOutput.clear();
+  for (const auto &line : m_interp.output())
+    m_programOutput << QString::fromStdString(line);
+
+  const RunStatus st = m_interp.status();
+  if (st == RunStatus::Error) {
+    QString err = QString::fromStdString(m_interp.errorMessage());
+    if (err.isEmpty())
+      err = QStringLiteral("ERR:SYNTAX");
+    m_programOutput << (err + QStringLiteral("  (line ") +
+                        QString::number(m_interp.errorLine() + 1) +
+                        QStringLiteral(")"));
+  }
+  m_progWaitingInput = (st == RunStatus::NeedInput);
+  m_progInputPrompt = m_progWaitingInput
+                          ? QString::fromStdString(m_interp.inputPrompt())
+                          : QString();
+  m_progWaitingKey = (st == RunStatus::NeedKey);
+
+  emit programOutputChanged();
+  emit programRunStateChanged();
+  emit programRunUpdated();
+}
+
+void UIController::stepProgramToPause() {
+  m_interp.run();  // runs until Done / Error / NeedInput / NeedKey
+  publishProgramState();
+}
+
 void UIController::runProgram(const QString &name) {
   const QString clean = normalizeProgramName(name);
   const auto *lines = m_programs.get(clean.toStdString());
   if (!lines)
     return;
-  Interpreter interp;
-  interp.setEvaluator(
+  m_interp.setEvaluator(
       [this](const std::string &s) { return this->evalProgramSource(s); });
-  interp.load(*lines);
-  interp.run();  // P2: synchronous statements (expr / Sto / Disp / ClrHome /
-                 // Stop). No loops yet, so this always terminates.
+  m_interp.load(*lines);
+  stepProgramToPause();
+}
 
-  m_programOutput.clear();
-  for (const auto &line : interp.output())
-    m_programOutput << QString::fromStdString(line);
-  if (interp.status() == RunStatus::Error) {
-    QString err = QString::fromStdString(interp.errorMessage());
-    if (err.isEmpty())
-      err = QStringLiteral("ERR:SYNTAX");
-    m_programOutput << (err + QStringLiteral("  (line ") +
-                        QString::number(interp.errorLine() + 1) +
-                        QStringLiteral(")"));
-  }
-  emit programOutputChanged();
-  emit programRunFinished();
+void UIController::provideProgramInput(const QString &value) {
+  m_interp.provideInput(value.toStdString());
+  stepProgramToPause();
+}
+
+void UIController::resumeProgram() {
+  m_interp.resumeFromPause();
+  stepProgramToPause();
 }
 
 void UIController::resetAll() {

@@ -2394,6 +2394,62 @@ int main(int argc, char *argv[]) {
     pc.deleteProgram("P");
   }
 
+  section("TI-BASIC interpreter — P4 (interactive I/O)");
+  {
+    UIController pc;
+
+    // Milestone: Prompt → branch → labelled result.
+    pc.saveProgram("ASK",
+        "Prompt A:If A>3:Then:Disp \"BIG\":Else:Disp \"SMALL\":End");
+    pc.runProgram("ASK");
+    checkTrue("Prompt pauses for input", pc.programWaitingInput());
+    checkTrue("prompt label is A=?", pc.programInputPrompt() == "A=?");
+    pc.provideProgramInput("5");
+    checkTrue("input resumes + true branch → BIG",
+              !pc.programWaitingInput() && pc.programOutput().last() == "BIG");
+    checkTrue("Input value stored to A (home screen)", eval(pc, "A") == "5");
+
+    pc.runProgram("ASK");
+    pc.provideProgramInput("2");
+    checkTrue("else branch → SMALL", pc.programOutput().last() == "SMALL");
+
+    // Input with a prompt string, value used in an expression.
+    pc.saveProgram("IN", "Input \"X=\",N:Disp N+1");
+    pc.runProgram("IN");
+    checkTrue("Input prompt text = X=", pc.programInputPrompt() == "X=");
+    pc.provideProgramInput("7");
+    checkTrue("Input value used → 8", pc.programOutput().last() == "8");
+
+    // Invalid input re-prompts; a valid one then proceeds.
+    pc.runProgram("IN");
+    pc.provideProgramInput("@@@");  // unparseable
+    checkTrue("bad input keeps waiting", pc.programWaitingInput());
+    pc.provideProgramInput("3");
+    checkTrue("valid input then proceeds → 4",
+              !pc.programWaitingInput() && pc.programOutput().last() == "4");
+
+    // Pause waits for a keypress, then continues.
+    pc.saveProgram("PZ", "Disp 1:Pause:Disp 2");
+    pc.runProgram("PZ");
+    checkTrue("Pause waits for key",
+              pc.programWaitingKey() && pc.programOutput().last() == "1");
+    pc.resumeProgram();
+    checkTrue("resume continues past Pause → 2",
+              !pc.programWaitingKey() && pc.programOutput().last() == "2");
+
+    // Input inside a loop (exercises repeated suspend/resume).
+    pc.saveProgram("LP", "0->S:For(I,1,3):Input N:S+N->S:End:Disp S");
+    pc.runProgram("LP");
+    pc.provideProgramInput("10");
+    pc.provideProgramInput("20");
+    pc.provideProgramInput("30");
+    checkTrue("looped Input sums → 60",
+              !pc.programWaitingInput() && pc.programOutput().last() == "60");
+
+    for (const char *n : {"ASK", "IN", "PZ", "LP"})
+      pc.deleteProgram(n);
+  }
+
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed
             << "  Failed: " << gFailed << '\n';

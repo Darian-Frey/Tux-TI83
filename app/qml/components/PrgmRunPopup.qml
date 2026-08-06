@@ -10,6 +10,10 @@ import ".."
 Popup {
     id: root
 
+    // Emitted by the "◀ PRGM" button — the owner returns to the program
+    // manager (this run view is a sibling of the PRGM popup).
+    signal backToPrograms()
+
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
@@ -78,6 +82,7 @@ Popup {
             Text {
                 anchors.centerIn: parent
                 visible: uiController.programOutput.length === 0
+                        && !uiController.programWaitingInput
                 text: "(no output)"
                 color: Style.textMuted
                 font.family: Style.monoFamily
@@ -85,10 +90,77 @@ Popup {
             }
         }
 
-        CalcKey {
-            label: "DONE"
-            keyType: "enter"
-            onPressed: root.close()
+        // ── Input row (Input / Prompt) ──
+        RowLayout {
+            Layout.fillWidth: true
+            visible: uiController.programWaitingInput
+            spacing: 6
+
+            Text {
+                text: uiController.programInputPrompt
+                color: Style.textResult
+                font.family: Style.monoFamily
+                font.pixelSize: Style.keyLabelPixelSize
+            }
+            TextField {
+                id: inputField
+                Layout.fillWidth: true
+                color: Style.textDisplay
+                selectByMouse: true
+                font.family: Style.monoFamily
+                font.pixelSize: Style.keyLabelPixelSize
+                background: Rectangle {
+                    color: Style.bgDisplay
+                    radius: 4
+                    border.color: inputField.activeFocus ? Style.textExpr : Style.keyBorderNeutral
+                    border.width: 1
+                }
+                onAccepted: root.submitInput()
+                // Grab focus when the prompt appears.
+                Connections {
+                    target: uiController
+                    function onProgramRunStateChanged() {
+                        if (uiController.programWaitingInput)
+                            inputField.forceActiveFocus()
+                    }
+                }
+            }
+            CalcKey {
+                Layout.preferredWidth: 64
+                Layout.fillWidth: false
+                label: "ENTER"
+                keyType: "enter"
+                onPressed: root.submitInput()
+            }
         }
+
+        // ── Continue (Pause) ──
+        CalcKey {
+            Layout.fillWidth: true
+            visible: uiController.programWaitingKey
+            label: "▶ CONTINUE"
+            keyType: "function"
+            onPressed: uiController.resumeProgram()
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 6
+            CalcKey {
+                label: "◀ PRGM"
+                keyType: "function"
+                onPressed: root.backToPrograms()
+            }
+            CalcKey {
+                label: "DONE"
+                keyType: "enter"
+                onPressed: root.close()
+            }
+        }
+    }
+
+    function submitInput() {
+        uiController.provideProgramInput(inputField.text)
+        inputField.text = ""
     }
 }

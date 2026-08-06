@@ -37,6 +37,11 @@ private:
     Q_PROPERTY(QStringList history READ history NOTIFY historyChanged)
     // TI-BASIC program run output (P2) — one entry per Disp/echo line.
     Q_PROPERTY(QStringList programOutput READ programOutput NOTIFY programOutputChanged)
+    // Resumable run state (P4): the run view shows an input field while
+    // waiting for Input/Prompt, or a "continue" button while waiting on Pause.
+    Q_PROPERTY(bool programWaitingInput READ programWaitingInput NOTIFY programRunStateChanged)
+    Q_PROPERTY(QString programInputPrompt READ programInputPrompt NOTIFY programRunStateChanged)
+    Q_PROPERTY(bool programWaitingKey READ programWaitingKey NOTIFY programRunStateChanged)
     Q_PROPERTY(int activeFunctionIndex READ activeFunctionIndex NOTIFY activeFunctionIndexChanged)
     Q_PROPERTY(bool isGraphMode MEMBER m_isGraphMode NOTIFY graphModeChanged)
     // TABLE mode — 2ND+GRAPH on real TI-83. Replaces the keypad page
@@ -153,6 +158,9 @@ public:
     QString currentDisplay() const;
     QStringList history() const { return m_history; }
     QStringList programOutput() const { return m_programOutput; }
+    bool programWaitingInput() const { return m_progWaitingInput; }
+    QString programInputPrompt() const { return m_progInputPrompt; }
+    bool programWaitingKey() const { return m_progWaitingKey; }
     int activeFunctionIndex() const { return m_activeIdx; }
     DisplayState displayState() const { return m_displayState; }
     QString displayExpression() const { return m_displayExpression; }
@@ -338,10 +346,14 @@ public:
     Q_INVOKABLE void deleteProgram(const QString& name);
     // Normalise a candidate program name (uppercase, A–Z/0–9, ≤8 chars).
     Q_INVOKABLE QString normalizeProgramName(const QString& name) const;
-    // Run a program. P1: loads it into an Interpreter and runs to Done,
-    // recording completion in history — no statements execute yet (P2 adds
-    // real Disp output + a run view).
+    // Run a program: loads it into the interpreter and steps until it
+    // finishes, errors, or pauses for interaction (P4). Output goes to the
+    // run view.
     Q_INVOKABLE void runProgram(const QString& name);
+    // Supply the value a paused Input/Prompt is waiting for, then continue.
+    Q_INVOKABLE void provideProgramInput(const QString& value);
+    // Continue a program paused on Pause.
+    Q_INVOKABLE void resumeProgram();
 
     // MEM menu (2ND++): targeted clearing + a memory summary. Each
     // clears one category; memInfo() reports how much is currently in
@@ -477,7 +489,8 @@ signals:
     void historyChanged();
     void programsChanged();
     void programOutputChanged();
-    void programRunFinished();  // a program finished — open the run view
+    void programRunStateChanged();  // waiting-input / waiting-key changed
+    void programRunUpdated();       // run state changed — open/refresh the view
     void activeFunctionIndexChanged();
     void functionsChanged();
     void drawObjectsChanged();
@@ -510,6 +523,15 @@ private:
     ProgramStore m_programs;
     // Program run output (P2) — filled by runProgram, shown in the run view.
     QStringList m_programOutput;
+    // The live interpreter for the current run (P4: held so Input/Prompt/
+    // Pause can suspend and resume).
+    tux_ti83::Interpreter m_interp;
+    bool m_progWaitingInput = false;
+    QString m_progInputPrompt;
+    bool m_progWaitingKey = false;
+    // Step the interpreter until it pauses / finishes, then publish state.
+    void stepProgramToPause();
+    void publishProgramState();
     // Evaluate a program source expression: tokenise → MathStateMachine →
     // format. Injected into the Interpreter as its Evaluator (P2). Side
     // effects (Sto) go through the shared registries, like the home screen.

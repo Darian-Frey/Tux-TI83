@@ -386,8 +386,13 @@ _pragmatic subset first_. Phases (each independently shippable):
   `End`), `For(` (asc/step/desc), `While`, `Repeat`, `Lbl`/`Goto`. Structural
   pre-pass jump table + For-frame stack; `execStatement` owns the PC; a 5M-step
   runaway guard. Unary-minus fix in the program evaluator. 13 tests.
-- 📅 **P4 — Strings + I/O** — string type (`Str1`–`Str9`), `Input`, `Prompt`,
-  `Output(`, `Menu(`.
+- 🚧 **P4 — Strings + I/O** — split in two. **Interaction ✅ (2026-08-01):**
+  `Input`/`Prompt`/`Pause` via the resumable step model (`NeedInput`/`NeedKey`);
+  the controller holds the interpreter and drives `runProgram`/
+  `provideProgramInput`/`resumeProgram`; run view gets an input field, a
+  CONTINUE button, and a ◀ PRGM back button. Works across loops. 12 tests.
+  **String type 📅 (next):** `Str1`–`Str9`, `"…"` literals, concat, `sub(`/
+  `length(`/`inString(`/`expr(`, `Output(`, `Menu(`.
 - 📅 **P5 — Program control** — `Return`, `prgmNAME` sub-calls, `DelVar`,
   `getKey`, break/interrupt, error-with-line-number, in-editor command paste.
 - 💭 **P6 — Optional** — graphics from programs (reuse DRAW), `.8xp` import.

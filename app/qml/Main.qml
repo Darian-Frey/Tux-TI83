@@ -907,12 +907,18 @@ ApplicationWindow {
 
     PrgmRunPopup {
         id: prgmRunPopup
+        // "◀ PRGM" — leave the run view and return to the program manager.
+        onBackToPrograms: {
+            prgmRunPopup.close()
+            prgmPopup.open()
+        }
     }
 
-    // Open the run/output view whenever a program finishes.
+    // Open (or refresh) the run/output view whenever a program's run state
+    // changes — on start, on each pause for input, and on completion.
     Connections {
         target: uiController
-        function onProgramRunFinished() { prgmRunPopup.open() }
+        function onProgramRunUpdated() { prgmRunPopup.open() }
     }
 
     DRAWPopup {
