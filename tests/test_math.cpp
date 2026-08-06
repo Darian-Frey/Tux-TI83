@@ -2333,6 +2333,67 @@ int main(int argc, char *argv[]) {
       pc.deleteProgram(n);
   }
 
+  section("TI-BASIC interpreter — P3 (control flow)");
+  {
+    UIController pc;
+    auto runP = [&](const QString &src) -> QStringList {
+      pc.saveProgram("P", src);
+      pc.runProgram("P");
+      return pc.programOutput();
+    };
+    auto last = [](const QStringList &o) {
+      return o.isEmpty() ? QString() : o.last();
+    };
+
+    // Single-statement If (conditions the tokeniser accepts: < > <= >= =).
+    checkTrue("If true → next runs",
+              last(runP("5->A:If A>3:Disp 7")) == "7");
+    {
+      QStringList o = runP("2->A:If A>3:Disp 7:Disp 8");
+      checkTrue("If false → skips just one statement",
+                o.last() == "8" && !o.contains("7"));
+    }
+
+    // If / Then / Else / End.
+    checkTrue("If-Then true branch",
+              last(runP("5->A:If A>3:Then:Disp 99:Else:Disp 11:End")) == "99");
+    checkTrue("If-Then else branch",
+              last(runP("2->A:If A>3:Then:Disp 99:Else:Disp 11:End")) == "11");
+
+    // For( — ascending, custom step, descending (unary-minus step).
+    checkTrue("For sum 1..5 → 15",
+              last(runP("0->S:For(I,1,5):S+I->S:End:Disp S")) == "15");
+    {
+      QStringList o = runP("For(I,0,6,2):Disp I:End");
+      checkTrue("For step 2 → 0,2,4,6",
+                o.size() == 4 && o[0] == "0" && o[3] == "6");
+    }
+    checkTrue("For descending step -1 → 3",
+              last(runP("9->S:For(I,3,1,-1):S-I->S:End:Disp S")) == "3");
+
+    // While / Repeat (Repeat body always runs once; loops until true).
+    checkTrue("While A<4 → A=4",
+              last(runP("0->A:While A<4:A+1->A:End:Disp A")) == "4");
+    checkTrue("Repeat until A>=3 → A=3",
+              last(runP("0->A:Repeat A>=3:A+1->A:End:Disp A")) == "3");
+
+    // Lbl / Goto.
+    checkTrue("Goto loop → A=3",
+              last(runP("0->A:Lbl P:A+1->A:If A<3:Goto P:Disp A")) == "3");
+    checkTrue("Goto to a missing label → ERR:LABEL",
+              last(runP("Goto Z:Disp 1")).startsWith("ERR:LABEL"));
+
+    // Nested loops.
+    checkTrue("nested For(3)×For(3) → 9",
+              last(runP("0->S:For(I,1,3):For(J,1,3):S+1->S:End:End:Disp S")) == "9");
+
+    // Program-computed variable is visible on the home screen.
+    runP("42->A");
+    checkTrue("program state shared with home screen", eval(pc, "A") == "42");
+
+    pc.deleteProgram("P");
+  }
+
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed
             << "  Failed: " << gFailed << '\n';

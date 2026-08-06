@@ -93,10 +93,30 @@ public:
   static std::vector<std::string> splitArgs(const std::string &s);
 
 private:
-  // Execute one statement (P2 dispatch: Disp / ClrHome / Stop / bare
-  // expression / Sto). Returns Running normally, or Error (with
-  // m_errorLine / m_errorMessage set). No-op when no evaluator is set.
+  // Execute the statement at m_pc. Advances m_pc itself (normal statements
+  // ++; control statements jump), so step() never increments. Returns
+  // Running, or Error (with m_errorLine / m_errorMessage set). No-op when no
+  // evaluator is set.
   RunStatus execStatement(const std::string &stmt);
+
+  // Pre-pass over the flattened program (structural, no eval): match block
+  // openers (Then / For( / While / Repeat) to their Else/End, and collect
+  // Lbl targets. Built once in load().
+  void buildControlTables();
+  // Evaluate a condition expression → {ok, truthy}. Sets error state on
+  // failure. Non-zero is true (relational/boolean ops return 1/0).
+  bool evalCond(const std::string &expr, bool &ok);
+  // Report a runtime error at the current statement and return Error.
+  RunStatus fail(const std::string &label);
+
+  // Per-For loop state (endVal/step captured at loop entry, TI-style).
+  struct ForFrame {
+    std::string var;      // loop variable (e.g. "A")
+    double endVal = 0.0;
+    double stepVal = 1.0;
+    std::string stepSrc;  // original step source, for in-engine increment
+    std::size_t bodyStart = 0;
+  };
 
   Evaluator m_eval;
   std::vector<std::string> m_statements;  // flattened program
@@ -106,6 +126,14 @@ private:
   bool m_stopRequested = false;
   int m_errorLine = -1;
   std::string m_errorMessage;
+
+  // Control-flow tables (indices into m_statements; -1 = none).
+  std::vector<int> m_openerToEnd;   // Then/For/While/Repeat → matching End
+  std::vector<int> m_thenToElse;    // Then → its Else (or -1)
+  std::vector<int> m_elseToEnd;     // Else → its End (or -1)
+  std::vector<int> m_endToOpener;   // End → its opener (or -1)
+  std::map<std::string, int> m_labels;  // Lbl name → Lbl statement index
+  std::vector<ForFrame> m_forStack;     // active For loops
 };
 
 // Named program storage: program name → source lines. Persistence (state

@@ -889,9 +889,26 @@ tux_ti83::EvalResult UIController::evalProgramSource(const std::string &src) {
   const auto &fwd = inputToSpec();
   for (const QString &t : toks) {
     auto it = fwd.find(t);
-    if (it != fwd.end())
-      buf.push_back(it->second->token);
-    // (Control verbs like ▶Frac aren't program statements; ignore.)
+    if (it == fwd.end())
+      continue;  // control verbs (▶Frac …) aren't program statements
+    Token tok = it->second->token;
+    // Sub → Neg in unary contexts, mirroring insertToken's disambiguation
+    // (the engine expects Neg for unary minus). Programs build left to
+    // right, so "previous token" is the back of the buffer.
+    if (tok == Token::Sub) {
+      bool unary = buf.empty();
+      if (!unary) {
+        const Token prev = buf.back();
+        unary = (prev == Token::LeftParen || prev == Token::Comma ||
+                 prev == Token::Add || prev == Token::Sub ||
+                 prev == Token::Mul || prev == Token::Div ||
+                 prev == Token::Pow || prev == Token::NthRoot ||
+                 EOSPrecedence::is_function(prev));
+      }
+      if (unary)
+        tok = Token::Neg;
+    }
+    buf.push_back(tok);
   }
   MathStateMachine msm;
   bindEngine(msm);

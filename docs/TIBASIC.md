@@ -195,12 +195,25 @@ and `Disp`s results.
   resumable input/keypress UI with `Input`/`Prompt`/`getKey`.
 - Milestone reached: programs compute and display results.
 
-### P3 — Control flow 📅
-- `If` / `If…Then…Else…End`, `For(var,start,end[,step])…End`,
-  `While…End`, `Repeat…End` with correct nested-`End` matching.
-- `Lbl` / `Goto` (label table + jump).
-- Conditions reuse the existing relational/boolean operators.
-- Milestone: loops and branches (FizzBuzz, a counter, a guarded solver).
+### P3 — Control flow ✅ (landed 2026-08-01)
+- ✅ `If` — single-statement (`If cond` guards the next statement) and block
+  form (`If/Then/Else/End`).
+- ✅ `For(var,start,end[,step])…End` (custom + negative steps; end/step
+  captured once at entry, TI-style), `While…End`, `Repeat…End` (body runs
+  once, loops until true).
+- ✅ `Lbl` / `Goto` (missing label → `ERR:LABEL`).
+- ✅ **Design:** a structural pre-pass (`buildControlTables`) matches block
+  openers (`Then`/`For(`/`While`/`Repeat`) to their `Else`/`End` and collects
+  `Lbl` targets; `execStatement` now owns the program counter so control
+  statements jump. A small For-frame stack holds per-loop state. Conditions
+  reuse the engine's relational/boolean operators (non-zero = true).
+- ✅ Unary-minus fix: `evalProgramSource` promotes `Sub`→`Neg` in unary
+  contexts (mirrors `insertToken`), so `For(I,3,1,-1)` and `Disp -5` work.
+- ✅ A 5M-step guard stops runaway loops from hanging the caller (a real
+  user break lands in P5).
+- ✅ 13 control-flow tests (If forms, For asc/step/desc, While, Repeat,
+  Goto, nested loops, missing-label error).
+- Milestone reached: loops and branches run.
 
 ### P4 — Strings + real interaction 📅
 - **String type** (§2.5): `Str1`–`Str9`, `"…"` literals, concat, `sub(`,

@@ -382,8 +382,10 @@ _pragmatic subset first_. Phases (each independently shippable):
   registries with the home screen); a `PrgmRunPopup` output view; errors
   report the line. 8 tests. *(First milestone P0–P2 reached: author + run +
   `Disp`.)* `Pause` deferred to P4 (shares the resumable-input UI).
-- 📅 **P3 — Control flow** — `If`/`Then`/`Else`/`End`, `For(`, `While`,
-  `Repeat`, `Lbl`/`Goto`.
+- ✅ **P3 — Control flow** — landed 2026-08-01: `If` (single + `Then`/`Else`/
+  `End`), `For(` (asc/step/desc), `While`, `Repeat`, `Lbl`/`Goto`. Structural
+  pre-pass jump table + For-frame stack; `execStatement` owns the PC; a 5M-step
+  runaway guard. Unary-minus fix in the program evaluator. 13 tests.
 - 📅 **P4 — Strings + I/O** — string type (`Str1`–`Str9`), `Input`, `Prompt`,
   `Output(`, `Menu(`.
 - 📅 **P5 — Program control** — `Return`, `prgmNAME` sub-calls, `DelVar`,

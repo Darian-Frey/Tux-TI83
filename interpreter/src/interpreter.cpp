@@ -58,7 +58,42 @@ void Interpreter::load(const std::vector<std::string> &lines) {
     auto stmts = splitStatements(line);
     m_statements.insert(m_statements.end(), stmts.begin(), stmts.end());
   }
+  buildControlTables();
   reset();
+}
+
+void Interpreter::buildControlTables() {
+  const int n = static_cast<int>(m_statements.size());
+  m_openerToEnd.assign(static_cast<size_t>(n), -1);
+  m_thenToElse.assign(static_cast<size_t>(n), -1);
+  m_elseToEnd.assign(static_cast<size_t>(n), -1);
+  m_endToOpener.assign(static_cast<size_t>(n), -1);
+  m_labels.clear();
+  std::vector<int> stack;  // open Then/For/While/Repeat indices
+  for (int i = 0; i < n; ++i) {
+    const std::string &s = m_statements[static_cast<size_t>(i)];
+    if (matchKeyword(s, "Lbl")) {
+      m_labels[trim(s.substr(3))] = i;
+    } else if (matchKeyword(s, "Then") || matchKeyword(s, "For") ||
+               matchKeyword(s, "While") || matchKeyword(s, "Repeat")) {
+      stack.push_back(i);
+    } else if (matchKeyword(s, "Else")) {
+      if (!stack.empty() &&
+          matchKeyword(m_statements[static_cast<size_t>(stack.back())], "Then"))
+        m_thenToElse[static_cast<size_t>(stack.back())] = i;
+    } else if (matchKeyword(s, "End")) {
+      if (!stack.empty()) {
+        const int opener = stack.back();
+        stack.pop_back();
+        m_openerToEnd[static_cast<size_t>(opener)] = i;
+        m_endToOpener[static_cast<size_t>(i)] = opener;
+        // If this block was an If-Then with an Else, map that Else → End.
+        const int elseIdx = m_thenToElse[static_cast<size_t>(opener)];
+        if (elseIdx >= 0)
+          m_elseToEnd[static_cast<size_t>(elseIdx)] = i;
+      }
+    }
+  }
 }
 
 std::vector<std::string> Interpreter::splitArgs(const std::string &s) {
@@ -87,34 +122,204 @@ void Interpreter::reset() {
   m_errorLine = -1;
   m_errorMessage.clear();
   m_stopRequested = false;
+  m_forStack.clear();
   m_status = RunStatus::Running;
 }
 
-RunStatus Interpreter::execStatement(const std::string &stmt) {
-  // Without an evaluator the interpreter can't compute — treat every
-  // statement as a no-op (the P0 behaviour; keeps structural tests valid).
-  if (!m_eval)
-    return RunStatus::Running;
+bool Interpreter::evalCond(const std::string &expr, bool &ok) {
+  const EvalResult r = m_eval(expr);
+  ok = r.ok;
+  if (!ok) {
+    m_errorLine = static_cast<int>(m_pc);
+    m_errorMessage = r.error;
+    return false;
+  }
+  return r.value != 0.0;
+}
 
-  // ── Keyword statements ──
+RunStatus Interpreter::fail(const std::string &label) {
+  m_errorLine = static_cast<int>(m_pc);
+  m_errorMessage = label;
+  return RunStatus::Error;
+}
+
+RunStatus Interpreter::execStatement(const std::string &stmt) {
+  // Without an evaluator, no-op (P0 behaviour) but still advance so a
+  // program without one runs to Done.
+  if (!m_eval) {
+    ++m_pc;
+    return RunStatus::Running;
+  }
+
+  const std::size_t here = m_pc;
+  const std::size_t N = m_statements.size();
+
+  // ─────────────────────── Control flow ───────────────────────
+  if (matchKeyword(stmt, "If")) {
+    bool ok;
+    const bool truthy = evalCond(trim(stmt.substr(2)), ok);
+    if (!ok)
+      return RunStatus::Error;
+    const std::size_t next = here + 1;
+    const bool blockForm = next < N && matchKeyword(m_statements[next], "Then");
+    if (blockForm) {
+      const std::size_t thenIdx = next;
+      if (truthy) {
+        m_pc = thenIdx + 1;  // enter the Then body
+      } else {
+        const int elseIdx = m_thenToElse[thenIdx];
+        if (elseIdx >= 0) {
+          m_pc = static_cast<std::size_t>(elseIdx) + 1;  // enter Else body
+        } else {
+          const int endIdx = m_openerToEnd[thenIdx];
+          m_pc = (endIdx >= 0) ? static_cast<std::size_t>(endIdx) + 1 : N;
+        }
+      }
+    } else {
+      // Single-statement If: the next statement runs iff the condition holds.
+      m_pc = truthy ? here + 1 : here + 2;
+    }
+    return RunStatus::Running;
+  }
+
+  if (matchKeyword(stmt, "Then") || matchKeyword(stmt, "Lbl")) {
+    ++m_pc;  // structural markers — no-op
+    return RunStatus::Running;
+  }
+
+  if (matchKeyword(stmt, "Else")) {
+    // Reached only after the true branch fell through — skip past the End.
+    const int endIdx = m_elseToEnd[here];
+    m_pc = (endIdx >= 0) ? static_cast<std::size_t>(endIdx) + 1 : N;
+    return RunStatus::Running;
+  }
+
+  if (matchKeyword(stmt, "Goto")) {
+    auto it = m_labels.find(trim(stmt.substr(4)));
+    if (it == m_labels.end())
+      return fail("ERR:LABEL");
+    m_pc = static_cast<std::size_t>(it->second);
+    return RunStatus::Running;
+  }
+
+  if (matchKeyword(stmt, "While")) {
+    bool ok;
+    const bool truthy = evalCond(trim(stmt.substr(5)), ok);
+    if (!ok)
+      return RunStatus::Error;
+    if (truthy) {
+      m_pc = here + 1;  // enter body
+    } else {
+      const int endIdx = m_openerToEnd[here];
+      m_pc = (endIdx >= 0) ? static_cast<std::size_t>(endIdx) + 1 : N;
+    }
+    return RunStatus::Running;
+  }
+
+  if (matchKeyword(stmt, "Repeat")) {
+    // Repeat always runs its body once; the condition is checked at End.
+    m_pc = here + 1;
+    return RunStatus::Running;
+  }
+
+  if (matchKeyword(stmt, "For")) {
+    // For(var, start, end [, step])
+    const auto lp = stmt.find('(');
+    const auto rp = stmt.rfind(')');
+    if (lp == std::string::npos || rp == std::string::npos || rp <= lp)
+      return fail("ERR:SYNTAX");
+    const auto args = splitArgs(stmt.substr(lp + 1, rp - lp - 1));
+    if (args.size() < 3)
+      return fail("ERR:SYNTAX");
+    const std::string var = trim(args[0]);
+    const std::string startSrc = trim(args[1]);
+    const std::string endSrc = trim(args[2]);
+    const std::string stepSrc = (args.size() >= 4) ? trim(args[3]) : "1";
+    // Initialise the loop variable; capture end/step once (TI-style).
+    if (!m_eval("(" + startSrc + ")->" + var).ok)
+      return fail("ERR:SYNTAX");
+    const EvalResult er = m_eval(endSrc);
+    if (!er.ok)
+      return fail(er.error);
+    const EvalResult sr = m_eval(stepSrc);
+    if (!sr.ok)
+      return fail(sr.error);
+    const double cur = m_eval(var).value;
+    const bool inRange = (sr.value >= 0) ? (cur <= er.value + 1e-9)
+                                         : (cur >= er.value - 1e-9);
+    const int endIdx = m_openerToEnd[here];
+    if (inRange) {
+      m_forStack.push_back({var, er.value, sr.value, stepSrc, here + 1});
+      m_pc = here + 1;  // enter body
+    } else {
+      m_pc = (endIdx >= 0) ? static_cast<std::size_t>(endIdx) + 1 : N;
+    }
+    return RunStatus::Running;
+  }
+
+  if (matchKeyword(stmt, "End")) {
+    const int opener = m_endToOpener[here];
+    if (opener < 0) {  // stray End — treat as no-op
+      ++m_pc;
+      return RunStatus::Running;
+    }
+    const std::string &op = m_statements[static_cast<std::size_t>(opener)];
+    if (matchKeyword(op, "For")) {
+      if (m_forStack.empty()) {
+        ++m_pc;
+        return RunStatus::Running;
+      }
+      ForFrame &f = m_forStack.back();
+      if (!m_eval(f.var + "+(" + f.stepSrc + ")->" + f.var).ok)
+        return fail("ERR:SYNTAX");
+      const double cur = m_eval(f.var).value;
+      const bool inRange = (f.stepVal >= 0) ? (cur <= f.endVal + 1e-9)
+                                            : (cur >= f.endVal - 1e-9);
+      if (inRange) {
+        m_pc = f.bodyStart;  // loop
+      } else {
+        m_forStack.pop_back();
+        ++m_pc;  // exit
+      }
+    } else if (matchKeyword(op, "While")) {
+      bool ok;
+      const bool truthy = evalCond(trim(op.substr(5)), ok);
+      if (!ok)
+        return RunStatus::Error;
+      m_pc = truthy ? static_cast<std::size_t>(opener) + 1 : here + 1;
+    } else if (matchKeyword(op, "Repeat")) {
+      bool ok;
+      const bool truthy = evalCond(trim(op.substr(6)), ok);
+      if (!ok)
+        return RunStatus::Error;
+      // Repeat loops *until* the condition becomes true.
+      m_pc = truthy ? here + 1 : static_cast<std::size_t>(opener) + 1;
+    } else {
+      ++m_pc;  // If-Then block — just continue
+    }
+    return RunStatus::Running;
+  }
+
+  // ─────────────────────── P2 statements ───────────────────────
   if (matchKeyword(stmt, "ClrHome")) {
     m_output.clear();
+    ++m_pc;
     return RunStatus::Running;
   }
   if (matchKeyword(stmt, "Stop")) {
     m_stopRequested = true;
+    ++m_pc;
     return RunStatus::Running;
   }
   if (matchKeyword(stmt, "Pause")) {
-    // P2: no-op. Real Pause (display + wait for a keypress) lands with the
-    // interaction phase (P4/P5), which shares the resumable-input UI.
+    ++m_pc;  // P4 — real Pause shares the resumable-input UI
     return RunStatus::Running;
   }
   if (matchKeyword(stmt, "Disp")) {
-    // Everything after "Disp", split on top-level commas → one line each.
     const std::string rest = trim(stmt.substr(4));
     if (rest.empty()) {
       m_output.push_back("");
+      ++m_pc;
       return RunStatus::Running;
     }
     for (const std::string &raw : splitArgs(rest)) {
@@ -123,7 +328,7 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
         m_output.push_back("");
         continue;
       }
-      // Mini-string support: a quoted literal is printed verbatim (the full
+      // Mini-string support: a quoted literal prints verbatim (the full
       // string type — Str1..Str9, concat, sub( — arrives in P4).
       if (arg.front() == '"') {
         std::string inner = arg.substr(1);
@@ -133,26 +338,20 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
         continue;
       }
       const EvalResult r = m_eval(arg);
-      if (!r.ok) {
-        m_errorLine = static_cast<int>(m_pc);
-        m_errorMessage = r.error;
-        return RunStatus::Error;
-      }
+      if (!r.ok)
+        return fail(r.error);
       m_output.push_back(r.display);
     }
+    ++m_pc;
     return RunStatus::Running;
   }
 
-  // ── Bare expression / Sto ──
-  // Evaluate; Sto's side effects happen inside the evaluator. Like the
-  // TI-83, an expression statement echoes its result to the output.
+  // ── Bare expression / Sto ── evaluate; echo the result (TI-style).
   const EvalResult r = m_eval(stmt);
-  if (!r.ok) {
-    m_errorLine = static_cast<int>(m_pc);
-    m_errorMessage = r.error;
-    return RunStatus::Error;
-  }
+  if (!r.ok)
+    return fail(r.error);
   m_output.push_back(r.display);
+  ++m_pc;
   return RunStatus::Running;
 }
 
@@ -169,16 +368,25 @@ RunStatus Interpreter::step() {
     m_status = RunStatus::Error;
     return m_status;
   }
-
-  ++m_pc;
   if (m_stopRequested || m_pc >= m_statements.size())
     m_status = RunStatus::Done;
   return m_status;
 }
 
 RunStatus Interpreter::run() {
-  while (m_status == RunStatus::Running)
+  // Guard against runaway loops hanging the caller until P5 adds a real
+  // user-triggered break/interrupt.
+  const long kMaxSteps = 5'000'000;
+  long guard = 0;
+  while (m_status == RunStatus::Running) {
+    if (++guard > kMaxSteps) {
+      m_errorLine = static_cast<int>(m_pc);
+      m_errorMessage = "ERR:BREAK";
+      m_status = RunStatus::Error;
+      break;
+    }
     step();
+  }
   return m_status;
 }
 
