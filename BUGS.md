@@ -23,7 +23,24 @@ Each entry uses this template:
 
 ## Open
 
-(none)
+### BUG-024: Saved programs (and all state) vanish — the test suite overwrites the real state file, plus non-atomic writes + multi-instance last-write-wins
+
+- **Status:** fix implemented (2026-08-06), pending GUI verification
+- **Found:** 2026-08-06 (TI-BASIC P5 session; user reported programs missing after rebuild/restart)
+- **Location:** [tests/test_math.cpp:75](tests/test_math.cpp#L75) (**primary** — tests wrote the real state path), [graph_ui/src/ui_controller.cpp:492](graph_ui/src/ui_controller.cpp#L492) (`writeJsonFile` truncate-then-write), [app/main.cpp](app/main.cpp) (30s autosave / exit save / no single-instance guard), [graph_ui/src/ui_controller.cpp:509](graph_ui/src/ui_controller.cpp#L509) (`loadState` skips on parse error)
+- **Severity:** high (silent, permanent loss of user-created programs and all persisted state)
+- **Description:** State (`~/.local/state/tux-ti83/state.json`) is written by immediate `saveState()` on `saveProgram`/`deleteProgram`, a 30s autosave timer, and a save-on-exit — each dumping the **entire in-memory state**. Four compounding defects made this lossy:
+  0. **(PRIMARY) The test suite was not isolated from the real state file.** `tux_ti83_tests` constructs `UIController`s and calls `saveProgram`/`deleteProgram`, each of which calls `saveState()` → the real `~/.local/state/tux-ti83/state.json` (resolved from `XDG_STATE_HOME`). The interpreter tests create temp programs and delete them all in cleanup, so the **final write leaves `programs: {}`**. Every `./tux_ti83_tests` run — i.e. after every rebuild during development — silently wiped the user's saved programs. Confirmed by watching the real file's mtime change across a test run. This is almost certainly the main cause of the user's report.
+  1. **Non-atomic write.** `writeJsonFile` opened the real file with `Truncate` then wrote. A kill mid-write (IDE stop during a rebuild) left `state.json` truncated/corrupt.
+  2. **Corrupt/failed load → silent empty → overwrite.** `loadState` bailed on a bad file leaving `m_programs` **empty**; the next autosave/exit-save wrote that emptiness back, making a transient bad read permanent.
+  3. **Multi-instance last-write-wins.** No single-instance guard. Leaving the pre-rebuild process running while launching the new build gave two instances one file; the stale instance's autosave/exit-save clobbered the new instance's programs — the "when we rebuild" correlation.
+- **Reproduction (primary):** Note saved programs exist; run `./tux_ti83_tests`; relaunch app → programs gone. (Confirmed: real `state.json` mtime updates on every test run, ending with `programs: {}`.)
+- **Fix (implemented, pending GUI verify):**
+  0. **Test isolation** — `tests/test_math.cpp` `main()` now `qputenv("XDG_STATE_HOME", <tempdir>)` before constructing any `UIController`, so the suite writes a throwaway dir and never touches `~/.local/state`. Verified: real file mtime unchanged across a run; 720 tests still green.
+  a. **Atomic write** — `writeJsonFile` uses `QSaveFile` (temp + `commit()` rename); a kill mid-write can't corrupt the live file.
+  b. **Preserve corrupt data** — `loadState` distinguishes missing file (first run) from an existing-but-unparseable one, and renames the latter to `state.json.corrupt` instead of leaving it to be silently overwritten.
+  c. **Single-instance guard** — `main()` takes a `QLockFile` beside `state.json`; a second instance exits with a warning (stale locks from a dead PID auto-reclaimed). Verified with two headless instances.
+- **Notes:** The user's DBL/RET/TEST programs (wiped by the test-suite bug during this session) were restored to `state.json` from the confirmed-passing source. Move to Fixed once the user confirms programs survive a rebuild+test+restart cycle in the GUI.
 
 ---
 

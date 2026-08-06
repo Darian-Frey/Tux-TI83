@@ -2,6 +2,8 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QDebug>
+#include <QFileInfo>
+#include <QLockFile>
 #include <QTimer>
 #include "ui_controller.hpp"
 #include "crash_logger.hpp"
@@ -9,6 +11,21 @@
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("tux-ti83"));
+
+    // Single-instance guard (BUG-024). Two instances sharing one state.json
+    // race on save (last write wins), silently dropping saved programs —
+    // most visibly after a rebuild if the old process is still running.
+    // The lock sits beside state.json; QLockFile auto-reclaims a stale lock
+    // left by a crashed process (dead PID), so this doesn't wedge on kill.
+    const QString lockPath =
+        QFileInfo(tux_ti83::UIController::stateFilePath()).absolutePath() +
+        QStringLiteral("/tux-ti83.lock");
+    QLockFile instanceLock(lockPath);
+    if (!instanceLock.tryLock(200)) {
+        qWarning() << "Another Tux-TI83 instance is already running — "
+                      "exiting to protect saved state.";
+        return 0;
+    }
 
     // Crash logger comes up before anything else so it captures the
     // entire session — see graph_ui/include/crash_logger.hpp.

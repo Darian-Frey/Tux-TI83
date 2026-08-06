@@ -489,15 +489,19 @@ QJsonObject UIController::buildStateJson() const {
   return root;
 }
 
-// Write the JSON document to `path`; returns false on open/write failure.
+// Write the JSON document to `path` atomically; returns false on
+// open/write failure. QSaveFile writes to a temporary sibling and only
+// renames it into place on commit(), so a crash or kill mid-write can
+// never leave the live file truncated/corrupt (BUG-024).
 static bool writeJsonFile(const QString &path, const QJsonObject &root) {
-  QFile f(path);
-  if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
+  QSaveFile f(path);
+  if (!f.open(QIODevice::WriteOnly))
     return false;
   f.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
-  f.close();
-  return true;
+  return f.commit();  // atomic rename; discards the temp on failure
 }
+
+QString UIController::stateFilePath() { return resolveStateFilePath(); }
 
 void UIController::saveState() const {
   if (writeJsonFile(resolveStateFilePath(), buildStateJson()))
@@ -505,14 +509,29 @@ void UIController::saveState() const {
 }
 
 void UIController::loadState() {
-  QFile f(resolveStateFilePath());
-  if (!f.exists() || !f.open(QIODevice::ReadOnly))
+  const QString path = resolveStateFilePath();
+  QFile f(path);
+  if (!f.exists())
+    return;  // first run — nothing to load (not an error)
+  if (!f.open(QIODevice::ReadOnly)) {
+    CrashLogger::logEvent(QStringLiteral("loadState skipped: open failed"));
     return;
-  QJsonParseError err;
-  QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &err);
+  }
+  const QByteArray raw = f.readAll();
   f.close();
+  QJsonParseError err;
+  QJsonDocument doc = QJsonDocument::fromJson(raw, &err);
   if (err.error != QJsonParseError::NoError || !doc.isObject()) {
-    CrashLogger::logEvent(QStringLiteral("loadState skipped: parse error"));
+    // The file exists but won't parse (e.g. a truncated pre-atomic-write
+    // save). Preserve it as `.corrupt` for manual recovery rather than
+    // leaving it in place for the next save to silently overwrite (BUG-024).
+    const QString backup = path + QStringLiteral(".corrupt");
+    QFile::remove(backup);
+    if (QFile::rename(path, backup))
+      CrashLogger::logEvent(QStringLiteral(
+          "loadState: corrupt state preserved as state.json.corrupt"));
+    else
+      CrashLogger::logEvent(QStringLiteral("loadState skipped: parse error"));
     return;
   }
   applyStateJson(doc.object());

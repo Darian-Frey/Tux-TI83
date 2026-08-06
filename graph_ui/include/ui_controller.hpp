@@ -315,6 +315,9 @@ public:
     // (~/.local/state/tux-ti83/state.json on most Linux desktops).
     Q_INVOKABLE void saveState() const;
     Q_INVOKABLE void loadState();
+    // Absolute path of the on-disk state file. Exposed so main() can place
+    // a single-instance lock file alongside it (BUG-024).
+    static QString stateFilePath();
     // Save/load export (Phase F #34): named snapshots under a `saves/`
     // dir, sharing the auto-state JSON via buildStateJson/applyStateJson.
     Q_INVOKABLE bool exportState(const QString& name);

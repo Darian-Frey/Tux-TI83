@@ -8,6 +8,7 @@
 #include "ui_controller.hpp"
 #include "interpreter.hpp"
 #include <QCoreApplication>
+#include <QDir>
 #include <QString>
 #include <iostream>
 #include <string>
@@ -73,6 +74,17 @@ QString evalChained(UIController &c, const QString &expr) {
 
 int main(int argc, char *argv[]) {
   QCoreApplication app(argc, argv);
+
+  // Isolate persistence BEFORE constructing any UIController. The interpreter
+  // tests call saveProgram/deleteProgram, which call saveState() → the on-disk
+  // state file (resolved from XDG_STATE_HOME). Point that at a throwaway dir so
+  // running the suite never overwrites the user's real ~/.local/state — which
+  // it used to, silently wiping saved TI-BASIC programs (BUG-024).
+  const QByteArray testStateHome =
+      (QDir::tempPath() + QStringLiteral("/tux-ti83-test-state")).toUtf8();
+  qputenv("XDG_STATE_HOME", testStateHome);
+  QDir().mkpath(QString::fromUtf8(testStateHome) + "/tux-ti83");
+
   UIController c;
 
   section("Basic arithmetic");
