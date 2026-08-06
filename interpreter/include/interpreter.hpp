@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <functional>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -60,6 +61,14 @@ public:
   // interpreter runs every statement as a no-op (the P0 behaviour) — it
   // can't compute anything on its own.
   void setEvaluator(Evaluator e) { m_eval = std::move(e); }
+
+  // Inject a loader that returns a named program's source lines, or
+  // std::nullopt if no such program exists (→ ERR:UNDEFINED at the call
+  // site). Used by `prgmNAME` sub-program calls (P5).
+  void setProgramLoader(
+      std::function<std::optional<std::vector<std::string>>(const std::string &)> l) {
+    m_progLoader = std::move(l);
+  }
 
   // Load a program from its source lines. Each line is split on top-level
   // ':' separators into individual statements; blank statements are
@@ -113,10 +122,20 @@ private:
   // evaluator is set.
   RunStatus execStatement(const std::string &stmt);
 
+  // Fill m_statements from source lines (split each on top-level ':') and
+  // build the control tables. Shared by load() and prgm sub-calls; unlike
+  // load() it does NOT touch output / status / the call stack.
+  void loadStatements(const std::vector<std::string> &lines);
+
   // Pre-pass over the flattened program (structural, no eval): match block
   // openers (Then / For( / While / Repeat) to their Else/End, and collect
   // Lbl targets. Built once in load().
   void buildControlTables();
+
+  // Pop one sub-program call frame, restoring the caller's statements / PC /
+  // control tables / For stack. Returns false if the call stack is empty
+  // (we're in the main program). See prgmNAME (P5).
+  bool returnFromCall();
   // Evaluate a condition expression → {ok, truthy}. Sets error state on
   // failure. Non-zero is true (relational/boolean ops return 1/0).
   bool evalCond(const std::string &expr, bool &ok);
@@ -144,7 +163,21 @@ private:
     std::size_t bodyStart = 0;
   };
 
+  // One suspended caller, saved when a `prgmNAME` sub-call begins (P5).
+  // Globals (variables, lists, strings) are shared across programs the
+  // TI-BASIC way, so only the per-program execution state is saved here.
+  struct CallFrame {
+    std::vector<std::string> statements;
+    std::size_t pc = 0;
+    std::vector<int> openerToEnd, thenToElse, elseToEnd, endToOpener;
+    std::map<std::string, int> labels;
+    std::vector<ForFrame> forStack;
+  };
+
   Evaluator m_eval;
+  std::function<std::optional<std::vector<std::string>>(const std::string &)>
+      m_progLoader;
+  std::vector<CallFrame> m_callStack;     // suspended callers (prgmNAME)
   std::vector<std::string> m_statements;  // flattened program
   std::vector<std::string> m_output;      // one entry per Disp/Output line
   std::size_t m_pc = 0;                    // program counter (statement idx)

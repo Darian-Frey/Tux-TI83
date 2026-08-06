@@ -152,11 +152,29 @@ Popup {
                 onPressed: root.backToPrograms()
             }
             CalcKey {
+                id: copyKey
+                label: "COPY"
+                keyType: "function"
+                enabled: uiController.programOutput.length > 0
+                onPressed: {
+                    uiController.copyProgramOutput()
+                    copyKey.label = "COPIED!"
+                    copyResetTimer.restart()
+                }
+            }
+            CalcKey {
                 label: "DONE"
                 keyType: "enter"
                 onPressed: root.close()
             }
         }
+    }
+
+    // Revert the COPY button label after the brief confirmation.
+    Timer {
+        id: copyResetTimer
+        interval: 1200
+        onTriggered: copyKey.label = "COPY"
     }
 
     function submitInput() {

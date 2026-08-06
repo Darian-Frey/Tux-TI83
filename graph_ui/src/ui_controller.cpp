@@ -1,7 +1,10 @@
 #include "ui_controller.hpp"
 #include "crash_logger.hpp"
+#include <QClipboard>
 #include <QDir>
 #include <QFile>
+#include <QGuiApplication>
+#include <QSaveFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -970,6 +973,17 @@ void UIController::runProgram(const QString &name) {
     return;
   m_interp.setEvaluator(
       [this](const std::string &s) { return this->evalProgramSource(s); });
+  // prgmNAME sub-calls load another stored program's source by name;
+  // nullopt for an unknown name → ERR:UNDEFINED at the call site.
+  m_interp.setProgramLoader(
+      [this](const std::string &n)
+          -> std::optional<std::vector<std::string>> {
+        const auto *sub = m_programs.get(
+            normalizeProgramName(QString::fromStdString(n)).toStdString());
+        if (!sub)
+          return std::nullopt;
+        return *sub;
+      });
   m_interp.load(*lines);
   stepProgramToPause();
 }
@@ -982,6 +996,11 @@ void UIController::provideProgramInput(const QString &value) {
 void UIController::resumeProgram() {
   m_interp.resumeFromPause();
   stepProgramToPause();
+}
+
+void UIController::copyProgramOutput() const {
+  if (QClipboard *cb = QGuiApplication::clipboard())
+    cb->setText(m_programOutput.join(QLatin1Char('\n')));
 }
 
 void UIController::resetAll() {

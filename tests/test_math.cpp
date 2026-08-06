@@ -2502,6 +2502,82 @@ int main(int argc, char *argv[]) {
     pc.deleteProgram("NM");
   }
 
+  section("TI-BASIC interpreter — P5 (sub-calls, Return, DelVar)");
+  {
+    UIController pc;
+
+    // Milestone: a program calls a sub-program that mutates a shared global,
+    // then control returns to the caller.
+    pc.saveProgram("INC", "A+1->A");
+    pc.saveProgram("MAIN", "5->A:prgmINC:Disp A");
+    pc.runProgram("MAIN");
+    checkTrue("prgmNAME runs sub then returns → 6",
+              pc.programOutput().last() == "6");
+    checkTrue("sub's global mutation persists (A=6)", eval(pc, "A") == "6");
+
+    // Sub called inside a loop runs each iteration.
+    pc.saveProgram("SUM", "0->S:For(I,1,3):prgmADD:End:Disp S");
+    pc.saveProgram("ADD", "S+I->S");
+    pc.runProgram("SUM");
+    checkTrue("sub-call inside a loop → 6", pc.programOutput().last() == "6");
+
+    // Return exits the sub early; the caller then continues.
+    pc.saveProgram("SUB", "Disp 1:Return:Disp 2");
+    pc.saveProgram("CALL", "prgmSUB:Disp 9");
+    pc.runProgram("CALL");
+    {
+      const QStringList o = pc.programOutput();
+      checkTrue("Return skips rest of sub (no '2')", !o.contains("2"));
+      checkTrue("Return resumes caller → 1 then 9",
+                o.contains("1") && o.last() == "9");
+    }
+
+    // Return in the main program ends the run.
+    pc.saveProgram("RM", "Disp 1:Return:Disp 2");
+    pc.runProgram("RM");
+    {
+      const QStringList o = pc.programOutput();
+      checkTrue("Return in main ends run (only '1')",
+                o.last() == "1" && !o.contains("2"));
+    }
+
+    // Nested sub-calls (A → B → C) unwind correctly.
+    pc.saveProgram("C", "3->Z");
+    pc.saveProgram("B", "prgmC:Z+10->Z");
+    pc.saveProgram("A", "prgmB:Disp Z");
+    pc.runProgram("A");
+    checkTrue("nested sub-calls unwind → 13", pc.programOutput().last() == "13");
+
+    // Calling a program that doesn't exist is a loud error, not a silent
+    // no-op (matches the TI-83; also makes a mistyped name obvious).
+    pc.saveProgram("BADCALL", "Disp 1:prgmNOPE:Disp 2");
+    pc.runProgram("BADCALL");
+    {
+      const QStringList o = pc.programOutput();
+      checkTrue("missing sub-program → ERR:UNDEFINED",
+                o.last().startsWith("ERR:UNDEFINED") && !o.contains("2"));
+    }
+
+    // Unbounded recursion is caught by the depth cap (no hang).
+    pc.saveProgram("SELF", "prgmSELF");
+    pc.runProgram("SELF");
+    checkTrue("runaway recursion → ERR:MEMORY",
+              pc.programOutput().last().startsWith("ERR:MEMORY"));
+
+    // DelVar resets a scalar; DelVar on a string clears it.
+    pc.saveProgram("DV", "5->A:DelVar A:Disp A");
+    pc.runProgram("DV");
+    checkTrue("DelVar scalar → 0", pc.programOutput().last() == "0");
+    pc.saveProgram("DVS", "\"HI\"->Str1:DelVar Str1:Disp \"[\"+Str1+\"]\"");
+    pc.runProgram("DVS");
+    checkTrue("DelVar Str1 clears it → []",
+              pc.programOutput().last() == "[]");
+
+    for (const char *n : {"INC", "MAIN", "SUM", "ADD", "SUB", "CALL", "RM",
+                          "A", "B", "C", "BADCALL", "SELF", "DV", "DVS"})
+      pc.deleteProgram(n);
+  }
+
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed
             << "  Failed: " << gFailed << '\n';

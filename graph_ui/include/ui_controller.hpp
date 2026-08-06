@@ -354,6 +354,9 @@ public:
     Q_INVOKABLE void provideProgramInput(const QString& value);
     // Continue a program paused on Pause.
     Q_INVOKABLE void resumeProgram();
+    // Copy the current program output (all lines, newline-joined) to the
+    // system clipboard, so a run's results can be pasted elsewhere.
+    Q_INVOKABLE void copyProgramOutput() const;
 
     // MEM menu (2ND++): targeted clearing + a memory summary. Each
     // clears one category; memInfo() reports how much is currently in

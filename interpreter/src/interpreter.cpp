@@ -55,14 +55,34 @@ std::vector<std::string> Interpreter::splitStatements(const std::string &line) {
   return out;
 }
 
-void Interpreter::load(const std::vector<std::string> &lines) {
+void Interpreter::loadStatements(const std::vector<std::string> &lines) {
   m_statements.clear();
   for (const auto &line : lines) {
     auto stmts = splitStatements(line);
     m_statements.insert(m_statements.end(), stmts.begin(), stmts.end());
   }
   buildControlTables();
+}
+
+void Interpreter::load(const std::vector<std::string> &lines) {
+  loadStatements(lines);
   reset();
+}
+
+bool Interpreter::returnFromCall() {
+  if (m_callStack.empty())
+    return false;
+  CallFrame f = std::move(m_callStack.back());
+  m_callStack.pop_back();
+  m_statements = std::move(f.statements);
+  m_pc = f.pc;
+  m_openerToEnd = std::move(f.openerToEnd);
+  m_thenToElse = std::move(f.thenToElse);
+  m_elseToEnd = std::move(f.elseToEnd);
+  m_endToOpener = std::move(f.endToOpener);
+  m_labels = std::move(f.labels);
+  m_forStack = std::move(f.forStack);
+  return true;
 }
 
 void Interpreter::buildControlTables() {
@@ -224,6 +244,7 @@ void Interpreter::reset() {
   m_errorMessage.clear();
   m_stopRequested = false;
   m_forStack.clear();
+  m_callStack.clear();
   m_status = RunStatus::Running;
 }
 
@@ -401,9 +422,48 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
     return RunStatus::Running;
   }
 
+  // ── prgmNAME: call another program as a sub-routine (P5) ──
+  // "prgm" is followed directly by the program name (no delimiter), so this
+  // is a plain prefix check rather than matchKeyword.
+  if (stmt.size() > 4 && stmt.compare(0, 4, "prgm") == 0) {
+    const std::string name = trim(stmt.substr(4));
+    if (!m_progLoader)
+      return fail("ERR:UNDEFINED");
+    if (m_callStack.size() >= 128)
+      return fail("ERR:MEMORY");  // recursion / nesting too deep
+    const auto subLines = m_progLoader(name);
+    if (!subLines)
+      return fail("ERR:UNDEFINED");  // no such program
+    // Suspend the caller, to resume at the statement AFTER this call.
+    m_callStack.push_back({m_statements, here + 1, m_openerToEnd, m_thenToElse,
+                           m_elseToEnd, m_endToOpener, m_labels, m_forStack});
+    loadStatements(*subLines);  // sub's statements + fresh control tables
+    m_forStack.clear();
+    m_pc = 0;
+    return RunStatus::Running;
+  }
+
+  if (matchKeyword(stmt, "Return")) {
+    // Return to the caller; in the main program it ends the run.
+    if (!returnFromCall())
+      m_stopRequested = true;
+    return RunStatus::Running;
+  }
+
   // ─────────────────────── P2 statements ───────────────────────
   if (matchKeyword(stmt, "ClrHome")) {
     m_output.clear();
+    ++m_pc;
+    return RunStatus::Running;
+  }
+  if (matchKeyword(stmt, "DelVar")) {
+    const std::string v = trim(stmt.substr(6));
+    if (v.empty())
+      return fail("ERR:SYNTAX");
+    if (const int n = strVarIndex(v))
+      m_strVars.erase(n);  // clear a string variable
+    else
+      m_eval("0->" + v);  // scalar: reset to 0 (our "deleted" state)
     ++m_pc;
     return RunStatus::Running;
   }
@@ -535,9 +595,13 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
 RunStatus Interpreter::step() {
   if (m_status != RunStatus::Running)
     return m_status;
-  if (m_pc >= m_statements.size()) {
-    m_status = RunStatus::Done;
-    return m_status;
+  // Past the end of the current (sub)program: return to the caller if there
+  // is one (loop, in case the caller was also at its end), else finish.
+  while (m_pc >= m_statements.size()) {
+    if (!returnFromCall()) {
+      m_status = RunStatus::Done;
+      return m_status;
+    }
   }
 
   const RunStatus st = execStatement(m_statements[m_pc]);
@@ -549,9 +613,9 @@ RunStatus Interpreter::step() {
     m_status = st;  // pause for interaction (pc unchanged)
     return m_status;
   }
-  if (m_stopRequested || m_pc >= m_statements.size())
+  if (m_stopRequested)  // Stop, or Return in the main program: end everything
     m_status = RunStatus::Done;
-  return m_status;
+  return m_status;  // next step() handles a natural end-of-program
 }
 
 void Interpreter::provideInput(const std::string &valueSource) {

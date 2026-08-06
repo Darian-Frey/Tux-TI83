@@ -259,17 +259,29 @@ resumable model and hits the milestone with numeric input + string-literal
   / `expr(`, `Output(row,col,value)`, `Menu(`, and disk-persistence of Str
   vars.
 
-### P5 — Program control & robustness 📅
-- `Return`, `prgmNAME` sub-program calls (call stack; recursion depth cap),
-  `DelVar`.
+### P5a — Program control (sub-calls) ✅ (2026-08-06)
+- `prgmNAME` **sub-program calls** — a call stack saves/restores each
+  caller's execution frame (statements, PC, control tables, For stack);
+  globals (vars/lists/`Str`) are shared TI-style. A program loader is
+  injected into the interpreter (the controller looks names up in its
+  `ProgramStore`). Nesting/recursion depth cap (128) → `ERR:MEMORY`.
+- `Return` — pops one frame back to the caller; in the main program it
+  ends the run. A missing sub-program → **`ERR:UNDEFINED`** (loud, not a
+  silent no-op), matching the TI-83.
+- `DelVar` — resets a scalar to 0 / clears a `Str` variable.
+- +11 tests (sub-calls, nested unwind, `Return`, undefined program,
+  recursion cap, `DelVar`). Also added a **COPY** button to the program
+  run/output view (`copyProgramOutput()` → system clipboard) so a run's
+  output can be pasted out.
+
+### P5b — Program control (remaining) 📅
 - `getKey` (real-time key code polling).
 - **Break / interrupt** (an ON-equivalent to stop a running/looping
-  program) and runtime error reporting with the **line number**, with
-  jump-to-line in the editor.
+  program — the 5M-step guard is only a backstop) and jump-to-line in the
+  editor on a runtime error.
 - In-editor **command paste** menu (PRGM ▸ CTL / I/O tabs) so keywords
   don't have to be typed by hand.
-- Milestone: multi-program projects; a runaway loop is interruptible;
-  errors point at the offending line.
+- Milestone: a runaway loop is interruptible; errors point at the line.
 
 ### P6 — Advanced / optional 💭
 - Graphics from programs (reuse the existing DRAW primitives: `Line(`,

@@ -396,8 +396,12 @@ _pragmatic subset first_. Phases (each independently shippable):
   (engine untouched); quote-aware statement/arg splitting; 10 tests. 📅 still:
   string functions (`sub(`/`length(`/`inString(`/`expr(`), `Output(`, `Menu(`,
   disk-persistence of Str vars.
-- 📅 **P5 — Program control** — `Return`, `prgmNAME` sub-calls, `DelVar`,
-  `getKey`, break/interrupt, error-with-line-number, in-editor command paste.
+- **P5a — Program control (sub-calls) ✅ (2026-08-06)** — `prgmNAME`
+  sub-program calls (call stack, depth cap → `ERR:MEMORY`), `Return`,
+  `DelVar`; a missing sub-program → `ERR:UNDEFINED`. Plus a COPY-output
+  button on the program run view. 11 tests. 📅 **P5b still:** `getKey`,
+  break/interrupt (user-triggered stop), error-with-line jump-to-editor,
+  in-editor command paste.
 - 💭 **P6 — Optional** — graphics from programs (reuse DRAW), `.8xp` import.
 
 ## Connectivity & data exchange
