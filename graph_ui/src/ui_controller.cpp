@@ -1,6 +1,7 @@
 #include "ui_controller.hpp"
 #include "crash_logger.hpp"
 #include <QClipboard>
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QGuiApplication>
@@ -981,7 +982,33 @@ void UIController::publishProgramState() {
 }
 
 void UIController::stepProgramToPause() {
-  m_interp.run();  // runs until Done / Error / NeedInput / NeedKey
+  // Re-entrancy guard: the slice loop below pumps the event queue, which can
+  // deliver a QML call (e.g. a second RUN) that re-enters here — ignore it so
+  // the single m_interp is never stepped re-entrantly.
+  if (m_inProgramRun)
+    return;
+  m_inProgramRun = true;
+
+  // Announce "running" first so the run view opens with a live STOP button
+  // before we start churning (a tight loop would otherwise never yield).
+  m_progRunning = true;
+  publishProgramState();
+
+  // Execute in bounded slices, pumping events between them so the STOP button
+  // stays responsive and a runaway loop can be interrupted (P5b). Normal
+  // programs finish inside the first slice, so no event pumping happens for
+  // them (keeps the CLI/tests fully synchronous).
+  const long kSlice = 50000;
+  while (m_interp.runSlice(kSlice) == tux_ti83::RunStatus::Running) {
+    QCoreApplication::processEvents();
+    if (m_progBreakRequested) {
+      m_interp.interrupt();  // → ERR:BREAK
+      break;
+    }
+  }
+
+  m_progRunning = false;
+  m_inProgramRun = false;
   publishProgramState();
 }
 
@@ -1004,6 +1031,7 @@ void UIController::runProgram(const QString &name) {
         return *sub;
       });
   m_interp.load(*lines);
+  m_progBreakRequested = false;  // fresh run
   stepProgramToPause();
 }
 
@@ -1015,6 +1043,13 @@ void UIController::provideProgramInput(const QString &value) {
 void UIController::resumeProgram() {
   m_interp.resumeFromPause();
   stepProgramToPause();
+}
+
+void UIController::stopProgram() {
+  // Called from the STOP button (delivered via processEvents mid-run). Just
+  // raise the flag; the slice loop sees it and interrupts. Safe to call when
+  // nothing is running — the flag is cleared at the next runProgram.
+  m_progBreakRequested = true;
 }
 
 void UIController::copyProgramOutput() const {

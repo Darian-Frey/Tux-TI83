@@ -243,6 +243,7 @@ void Interpreter::reset() {
   m_errorLine = -1;
   m_errorMessage.clear();
   m_stopRequested = false;
+  m_totalSteps = 0;
   m_forStack.clear();
   m_callStack.clear();
   m_status = RunStatus::Running;
@@ -640,13 +641,15 @@ void Interpreter::resumeFromPause() {
   m_status = RunStatus::Running;
 }
 
-RunStatus Interpreter::run() {
-  // Guard against runaway loops hanging the caller until P5 adds a real
-  // user-triggered break/interrupt.
-  const long kMaxSteps = 5'000'000;
-  long guard = 0;
-  while (m_status == RunStatus::Running) {
-    if (++guard > kMaxSteps) {
+namespace {
+// Lifetime step ceiling — a backstop against a runaway loop hanging a
+// headless caller (CLI / tests). The GUI adds a real user break on top.
+constexpr long kMaxSteps = 5'000'000;
+}  // namespace
+
+RunStatus Interpreter::runSlice(long maxSteps) {
+  while (m_status == RunStatus::Running && maxSteps-- > 0) {
+    if (++m_totalSteps > kMaxSteps) {
       m_errorLine = static_cast<int>(m_pc);
       m_errorMessage = "ERR:BREAK";
       m_status = RunStatus::Error;
@@ -655,6 +658,20 @@ RunStatus Interpreter::run() {
     step();
   }
   return m_status;
+}
+
+RunStatus Interpreter::run() {
+  // Run to completion/pause in one call — the lifetime guard inside
+  // runSlice still bounds a runaway loop.
+  return runSlice(kMaxSteps + 1);
+}
+
+void Interpreter::interrupt() {
+  if (m_status == RunStatus::Running) {
+    m_errorLine = static_cast<int>(m_pc);
+    m_errorMessage = "ERR:BREAK";
+    m_status = RunStatus::Error;
+  }
 }
 
 // ── ProgramStore ──────────────────────────────────────────────────────

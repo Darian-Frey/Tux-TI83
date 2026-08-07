@@ -42,6 +42,7 @@ private:
     Q_PROPERTY(bool programWaitingInput READ programWaitingInput NOTIFY programRunStateChanged)
     Q_PROPERTY(QString programInputPrompt READ programInputPrompt NOTIFY programRunStateChanged)
     Q_PROPERTY(bool programWaitingKey READ programWaitingKey NOTIFY programRunStateChanged)
+    Q_PROPERTY(bool programRunning READ programRunning NOTIFY programRunStateChanged)
     Q_PROPERTY(int activeFunctionIndex READ activeFunctionIndex NOTIFY activeFunctionIndexChanged)
     Q_PROPERTY(bool isGraphMode MEMBER m_isGraphMode NOTIFY graphModeChanged)
     // TABLE mode — 2ND+GRAPH on real TI-83. Replaces the keypad page
@@ -161,6 +162,7 @@ public:
     bool programWaitingInput() const { return m_progWaitingInput; }
     QString programInputPrompt() const { return m_progInputPrompt; }
     bool programWaitingKey() const { return m_progWaitingKey; }
+    bool programRunning() const { return m_progRunning; }
     int activeFunctionIndex() const { return m_activeIdx; }
     DisplayState displayState() const { return m_displayState; }
     QString displayExpression() const { return m_displayExpression; }
@@ -357,6 +359,9 @@ public:
     Q_INVOKABLE void provideProgramInput(const QString& value);
     // Continue a program paused on Pause.
     Q_INVOKABLE void resumeProgram();
+    // Request that a running program stop now (the STOP key / ON-break).
+    // Sets a flag the slice loop checks; the run ends with ERR:BREAK (P5b).
+    Q_INVOKABLE void stopProgram();
     // Copy the current program output (all lines, newline-joined) to the
     // system clipboard, so a run's results can be pasted elsewhere.
     Q_INVOKABLE void copyProgramOutput() const;
@@ -535,6 +540,9 @@ private:
     bool m_progWaitingInput = false;
     QString m_progInputPrompt;
     bool m_progWaitingKey = false;
+    bool m_progRunning = false;        // actively stepping (STOP button live)
+    bool m_progBreakRequested = false; // STOP pressed → break at next slice
+    bool m_inProgramRun = false;       // re-entrancy guard (processEvents)
     // Step the interpreter until it pauses / finishes, then publish state.
     void stepProgramToPause();
     void publishProgramState();

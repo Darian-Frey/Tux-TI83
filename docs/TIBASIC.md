@@ -274,14 +274,24 @@ resumable model and hits the milestone with numeric input + string-literal
   run/output view (`copyProgramOutput()` → system clipboard) so a run's
   output can be pasted out.
 
+### P5b-1 — Break / interrupt ✅ (2026-08-07)
+- **User-triggered break** — a running program is now interruptible instead
+  of blocking the UI. The interpreter runs in bounded slices
+  (`runSlice(maxSteps)`); the controller (`stepProgramToPause`) pumps the
+  event queue between slices so a **■ STOP** button in the run view stays
+  live, and `interrupt()` ends the run with `ERR:BREAK` (TI-83 ON-key
+  behaviour). The 5M-step lifetime guard remains as a headless backstop
+  (moved into `runSlice`). Normal programs finish in the first slice → the
+  CLI/tests stay fully synchronous; a re-entrancy guard blocks a stray
+  event from re-entering the interpreter. +9 tests.
+
 ### P5b — Program control (remaining) 📅
 - `getKey` (real-time key code polling).
-- **Break / interrupt** (an ON-equivalent to stop a running/looping
-  program — the 5M-step guard is only a backstop) and jump-to-line in the
-  editor on a runtime error.
+- **Jump-to-line** in the editor on a runtime error (the run view already
+  reports `ERR:… (line N)`; this opens the editor at that line).
 - In-editor **command paste** menu (PRGM ▸ CTL / I/O tabs) so keywords
   don't have to be typed by hand.
-- Milestone: a runaway loop is interruptible; errors point at the line.
+- Milestone: errors point at the line; keywords are insertable.
 
 ### P6 — Advanced / optional 💭
 - Graphics from programs (reuse the existing DRAW primitives: `Line(`,

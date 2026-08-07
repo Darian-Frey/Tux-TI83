@@ -83,7 +83,7 @@ Popup {
                 anchors.centerIn: parent
                 visible: uiController.programOutput.length === 0
                         && !uiController.programWaitingInput
-                text: "(no output)"
+                text: uiController.programRunning ? "running…" : "(no output)"
                 color: Style.textMuted
                 font.family: Style.monoFamily
                 font.pixelSize: Style.keyLabelPixelSize
@@ -143,8 +143,20 @@ Popup {
             onPressed: uiController.resumeProgram()
         }
 
+        // ── Stop (interrupt a running program) ──
+        CalcKey {
+            Layout.fillWidth: true
+            visible: uiController.programRunning
+            label: "■ STOP"
+            keyType: "control"
+            onPressed: uiController.stopProgram()
+        }
+
+        // Navigation is hidden while the program is actively running — only
+        // STOP is offered so a tight loop can't be left mid-run.
         RowLayout {
             Layout.fillWidth: true
+            visible: !uiController.programRunning
             spacing: 6
             CalcKey {
                 label: "◀ PRGM"

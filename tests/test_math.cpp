@@ -2590,6 +2590,52 @@ int main(int argc, char *argv[]) {
       pc.deleteProgram(n);
   }
 
+  section("TI-BASIC interpreter — P5b (slice / interrupt / break guard)");
+  {
+    using tux_ti83::Interpreter;
+    using tux_ti83::RunStatus;
+    using tux_ti83::EvalResult;
+
+    // Trivial evaluators so statements execute without the real engine.
+    auto evZero = [](const std::string &) { return EvalResult{true, 0.0, "0", ""}; };
+    auto evTrue = [](const std::string &) { return EvalResult{true, 1.0, "1", ""}; };
+
+    std::vector<std::string> many(100, "0");  // 100 bare statements
+
+    // runSlice runs a bounded number of steps, then can resume.
+    Interpreter it;
+    it.setEvaluator(evZero);
+    it.load(many);
+    checkTrue("runSlice(10) leaves it Running", it.runSlice(10) == RunStatus::Running);
+    checkTrue("runSlice(10) advanced pc by 10", it.programCounter() == 10);
+    checkTrue("runSlice resumes to Done", it.runSlice(1000) == RunStatus::Done);
+
+    // interrupt() stops a Running program with ERR:BREAK.
+    Interpreter it2;
+    it2.setEvaluator(evZero);
+    it2.load(many);
+    it2.runSlice(5);
+    checkTrue("mid-run is Running", it2.status() == RunStatus::Running);
+    it2.interrupt();
+    checkTrue("interrupt → Error", it2.status() == RunStatus::Error);
+    checkTrue("interrupt → ERR:BREAK", it2.errorMessage() == "ERR:BREAK");
+
+    // interrupt() on a finished program is a no-op.
+    Interpreter it3;
+    it3.setEvaluator(evZero);
+    it3.load({"0"});
+    it3.run();
+    it3.interrupt();
+    checkTrue("interrupt no-op when not Running", it3.status() == RunStatus::Done);
+
+    // A runaway loop is bounded by the lifetime guard → ERR:BREAK, not a hang.
+    Interpreter it4;
+    it4.setEvaluator(evTrue);
+    it4.load({"While 1", "End"});  // infinite loop
+    checkTrue("runaway loop hits guard → Error", it4.run() == RunStatus::Error);
+    checkTrue("guard → ERR:BREAK", it4.errorMessage() == "ERR:BREAK");
+  }
+
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed
             << "  Failed: " << gFailed << '\n';

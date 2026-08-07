@@ -84,6 +84,17 @@ public:
   // Step repeatedly until the program pauses (I/O), finishes, or errors.
   RunStatus run();
 
+  // Run at most `maxSteps` statements, then return — Running if the budget
+  // ran out mid-program (call again to continue), otherwise the terminal
+  // or pause status. A lifetime runaway-guard applies across the whole run
+  // regardless of slice size. The GUI executes in slices so the UI stays
+  // responsive and a user break can interrupt a tight loop (P5b).
+  RunStatus runSlice(long maxSteps);
+
+  // Force a Running program to stop now with ERR:BREAK (the user pressed a
+  // STOP / ON key). No-op if the program isn't currently Running.
+  void interrupt();
+
   RunStatus status() const { return m_status; }
   const std::vector<std::string> &output() const { return m_output; }
   int errorLine() const { return m_errorLine; }
@@ -183,6 +194,7 @@ private:
   std::size_t m_pc = 0;                    // program counter (statement idx)
   RunStatus m_status = RunStatus::Done;
   bool m_stopRequested = false;
+  long m_totalSteps = 0;                    // lifetime step count (runaway guard)
   int m_errorLine = -1;
   std::string m_errorMessage;
   // Pending Input/Prompt target + prompt label (valid while NeedInput).

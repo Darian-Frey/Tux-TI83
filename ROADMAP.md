@@ -399,9 +399,13 @@ _pragmatic subset first_. Phases (each independently shippable):
 - **P5a — Program control (sub-calls) ✅ (2026-08-06)** — `prgmNAME`
   sub-program calls (call stack, depth cap → `ERR:MEMORY`), `Return`,
   `DelVar`; a missing sub-program → `ERR:UNDEFINED`. Plus a COPY-output
-  button on the program run view. 11 tests. 📅 **P5b still:** `getKey`,
-  break/interrupt (user-triggered stop), error-with-line jump-to-editor,
-  in-editor command paste.
+  button on the program run view. 11 tests.
+- **P5b-1 — Break / interrupt ✅ (2026-08-07)** — a running program is
+  interruptible instead of blocking the UI: the interpreter runs in bounded
+  slices (`runSlice`), the controller pumps events between them so a ■ STOP
+  button stays live, and `interrupt()` ends the run with `ERR:BREAK`; 5M
+  guard kept as a headless backstop. 9 tests. 📅 **P5b still:** `getKey`,
+  error-with-line jump-to-editor, in-editor command paste.
 - 💭 **P6 — Optional** — graphics from programs (reuse DRAW), `.8xp` import.
 
 ## Connectivity & data exchange
