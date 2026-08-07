@@ -404,7 +404,12 @@ _pragmatic subset first_. Phases (each independently shippable):
   interruptible instead of blocking the UI: the interpreter runs in bounded
   slices (`runSlice`), the controller pumps events between them so a ■ STOP
   button stays live, and `interrupt()` ends the run with `ERR:BREAK`; 5M
-  guard kept as a headless backstop. 9 tests. 📅 **P5b still:** `getKey`,
+  guard kept as a headless backstop. 9 tests.
+- **P5b-2 — getKey ✅ (2026-08-08)** — non-blocking key poll; the run loop is
+  now time-bounded (~8 ms slices) with live Disp refresh, and the runaway
+  guard is headless-only so interactive loops aren't cut off. Physical keys →
+  TI-83 codes via `sendProgramKey()`. Fixed BUG-025 (stores echoed → flooded
+  getKey loops; now silent, TI-style). 6 tests. 📅 **P5b still:**
   error-with-line jump-to-editor, in-editor command paste.
 - 💭 **P6 — Optional** — graphics from programs (reuse DRAW), `.8xp` import.
 

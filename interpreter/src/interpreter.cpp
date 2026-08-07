@@ -22,6 +22,29 @@ std::string trim(const std::string &s) {
 // Does `stmt` begin with keyword `kw` as a whole word — i.e. followed by a
 // space, end of statement, or an opening delimiter (so "Disp X", "Disp",
 // and "Disp(…)" match, but "Disparate" would not)?
+// True if `stmt` has a top-level store arrow (`->` or `→`), outside any
+// string — i.e. it's an assignment. TI-83 assignments run silently in a
+// program (only a bare expression with no store echoes its value).
+bool isAssignment(const std::string &stmt) {
+  bool inStr = false;
+  for (std::size_t i = 0; i < stmt.size(); ++i) {
+    const char c = stmt[i];
+    if (c == '"') {
+      inStr = !inStr;
+      continue;
+    }
+    if (inStr)
+      continue;
+    if (c == '-' && i + 1 < stmt.size() && stmt[i + 1] == '>')
+      return true;
+    if (static_cast<unsigned char>(c) == 0xE2 && i + 2 < stmt.size() &&
+        static_cast<unsigned char>(stmt[i + 1]) == 0x86 &&
+        static_cast<unsigned char>(stmt[i + 2]) == 0x92)  // → (U+2192)
+      return true;
+  }
+  return false;
+}
+
 bool matchKeyword(const std::string &stmt, const std::string &kw) {
   if (stmt.size() < kw.size() || stmt.compare(0, kw.size(), kw) != 0)
     return false;
@@ -243,7 +266,6 @@ void Interpreter::reset() {
   m_errorLine = -1;
   m_errorMessage.clear();
   m_stopRequested = false;
-  m_totalSteps = 0;
   m_forStack.clear();
   m_callStack.clear();
   m_status = RunStatus::Running;
@@ -565,7 +587,7 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
       if (se != StrEval::Ok)
         return fail("ERR:DATA TYPE");  // can't store a non-string into StrN
       m_strVars[n] = sout;
-      m_output.push_back(sout);  // echo (TI-style)
+      // A store runs silently (TI-style) — no echo.
       ++m_pc;
       return RunStatus::Running;
     }
@@ -584,11 +606,15 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
       return fail("ERR:DATA TYPE");
   }
 
-  // ── Bare numeric expression / Sto ── evaluate; echo the result. ──
+  // ── Bare numeric expression / Sto ──
+  // Evaluate for its value + side effects. A bare expression echoes its
+  // result (like the home screen); an assignment (`…→var`) is silent, as on
+  // the TI-83 — otherwise a `getKey→K` poll loop floods the screen.
   const EvalResult r = m_eval(stmt);
   if (!r.ok)
     return fail(r.error);
-  m_output.push_back(r.display);
+  if (!isAssignment(stmt))
+    m_output.push_back(r.display);
   ++m_pc;
   return RunStatus::Running;
 }
@@ -643,13 +669,26 @@ void Interpreter::resumeFromPause() {
 
 namespace {
 // Lifetime step ceiling — a backstop against a runaway loop hanging a
-// headless caller (CLI / tests). The GUI adds a real user break on top.
+// headless caller (CLI / tests). It lives in run() only; the GUI drives
+// runSlice() (which is deliberately unguarded) and relies on the user's
+// STOP button instead, so an interactive getKey loop isn't cut off.
 constexpr long kMaxSteps = 5'000'000;
 }  // namespace
 
 RunStatus Interpreter::runSlice(long maxSteps) {
-  while (m_status == RunStatus::Running && maxSteps-- > 0) {
-    if (++m_totalSteps > kMaxSteps) {
+  // Bounded, unguarded stepping — the caller yields between slices and owns
+  // the stop policy (see UIController::stepProgramToPause).
+  while (m_status == RunStatus::Running && maxSteps-- > 0)
+    step();
+  return m_status;
+}
+
+RunStatus Interpreter::run() {
+  // Blocking run to completion/pause, with a runaway-loop backstop for
+  // headless callers (CLI / tests) that have no interactive break.
+  long guard = 0;
+  while (m_status == RunStatus::Running) {
+    if (++guard > kMaxSteps) {
       m_errorLine = static_cast<int>(m_pc);
       m_errorMessage = "ERR:BREAK";
       m_status = RunStatus::Error;
@@ -658,12 +697,6 @@ RunStatus Interpreter::runSlice(long maxSteps) {
     step();
   }
   return m_status;
-}
-
-RunStatus Interpreter::run() {
-  // Run to completion/pause in one call — the lifetime guard inside
-  // runSlice still bounds a runaway loop.
-  return runSlice(kMaxSteps + 1);
 }
 
 void Interpreter::interrupt() {

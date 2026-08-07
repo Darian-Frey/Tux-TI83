@@ -3,6 +3,7 @@
 #include <QClipboard>
 #include <QCoreApplication>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QGuiApplication>
 #include <QSaveFile>
@@ -900,7 +901,16 @@ QString UIController::formatCalcResult(const CalculationResult &r) const {
 
 tux_ti83::EvalResult UIController::evalProgramSource(const std::string &src) {
   tux_ti83::EvalResult out;
-  const QString q = QString::fromStdString(src);
+  QString q = QString::fromStdString(src);
+  // getKey (P5b): a non-blocking key poll. Substitute the live key code (0
+  // when no key is pending) before tokenising, then consume it — the TI-83
+  // returns a given keypress only once. The code is set by the run view's
+  // key handler via sendProgramKey(). Safe as a plain text replace: no other
+  // token contains "getKey" and the engine never sees the word itself.
+  if (q.contains(QStringLiteral("getKey"))) {
+    q.replace(QStringLiteral("getKey"), QString::number(m_progKey));
+    m_progKey = 0;
+  }
   const QStringList toks = tokenize(q);
   if (toks.isEmpty()) {
     // tokenize() returns empty for both a blank line and an unparseable one.
@@ -956,10 +966,14 @@ tux_ti83::EvalResult UIController::evalProgramSource(const std::string &src) {
   return out;
 }
 
-void UIController::publishProgramState() {
+void UIController::syncProgramOutput() {
   m_programOutput.clear();
   for (const auto &line : m_interp.output())
     m_programOutput << QString::fromStdString(line);
+}
+
+void UIController::publishProgramState() {
+  syncProgramOutput();
 
   const RunStatus st = m_interp.status();
   if (st == RunStatus::Error) {
@@ -994,12 +1008,23 @@ void UIController::stepProgramToPause() {
   m_progRunning = true;
   publishProgramState();
 
-  // Execute in bounded slices, pumping events between them so the STOP button
-  // stays responsive and a runaway loop can be interrupted (P5b). Normal
-  // programs finish inside the first slice, so no event pumping happens for
-  // them (keeps the CLI/tests fully synchronous).
-  const long kSlice = 50000;
-  while (m_interp.runSlice(kSlice) == tux_ti83::RunStatus::Running) {
+  // Execute in time-bounded slices, yielding to the event queue between them
+  // so the STOP button and getKey input stay responsive no matter how costly
+  // each statement is (a fixed step count would lag a loop of heavy evals).
+  // Normal programs finish inside the first slice, so no event pumping happens
+  // for them — the CLI/tests stay fully synchronous.
+  while (m_interp.status() == tux_ti83::RunStatus::Running) {
+    QElapsedTimer timer;
+    timer.start();
+    do {
+      m_interp.runSlice(2000);  // re-check the clock every 2000 statements
+    } while (m_interp.status() == tux_ti83::RunStatus::Running &&
+             timer.elapsed() < 8);
+    if (m_interp.status() != tux_ti83::RunStatus::Running)
+      break;  // paused / finished / errored during this slice
+    // Show Disp output produced inside a long/looping run as it happens.
+    syncProgramOutput();
+    emit programOutputChanged();
     QCoreApplication::processEvents();
     if (m_progBreakRequested) {
       m_interp.interrupt();  // → ERR:BREAK
@@ -1032,6 +1057,7 @@ void UIController::runProgram(const QString &name) {
       });
   m_interp.load(*lines);
   m_progBreakRequested = false;  // fresh run
+  m_progKey = 0;                 // no stale keypress carries into a new run
   stepProgramToPause();
 }
 
@@ -1050,6 +1076,12 @@ void UIController::stopProgram() {
   // raise the flag; the slice loop sees it and interrupts. Safe to call when
   // nothing is running — the flag is cleared at the next runProgram.
   m_progBreakRequested = true;
+}
+
+void UIController::sendProgramKey(int keyCode) {
+  // Latch the most recent keypress for the next getKey poll (P5b). Overwrites
+  // any un-consumed key, matching the TI-83 (getKey reports the latest press).
+  m_progKey = keyCode;
 }
 
 void UIController::copyProgramOutput() const {

@@ -285,8 +285,24 @@ resumable model and hits the milestone with numeric input + string-literal
   CLI/tests stay fully synchronous; a re-entrancy guard blocks a stray
   event from re-entering the interpreter. +9 tests.
 
+### P5b-2 — getKey ✅ (2026-08-08)
+- **`getKey`** — a non-blocking key poll: evaluates to the code of the key
+  pressed since the last poll, or `0` if none. Handled at the controller
+  level (live keyboard state, not math): `evalProgramSource` substitutes the
+  current code for `getKey` before tokenising, then consumes it (read-once).
+  The run view captures physical keys → TI-83 codes (arrows 24/25/26/34,
+  ENTER 105, CLEAR 45, DEL 23, digits, `.`) and reports them via
+  `sendProgramKey()`.
+- The run loop is now **time-bounded** (~8 ms slices) instead of fixed-step,
+  so key/STOP response stays snappy regardless of per-statement cost; the
+  runaway guard is headless-only (`run()`), so an interactive getKey loop
+  isn't cut off (STOP is the GUI control). Disp output now refreshes **live**
+  mid-run.
+- Fixed **BUG-025** on the way: assignments (`→var`) echoed their value,
+  which flooded a getKey loop with `0`s. Stores are now silent (TI-style);
+  only a bare expression echoes. +6 tests.
+
 ### P5b — Program control (remaining) 📅
-- `getKey` (real-time key code polling).
 - **Jump-to-line** in the editor on a runtime error (the run view already
   reports `ERR:… (line N)`; this opens the editor at that line).
 - In-editor **command paste** menu (PRGM ▸ CTL / I/O tabs) so keywords

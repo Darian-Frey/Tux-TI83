@@ -23,6 +23,17 @@ Each entry uses this template:
 
 ## Open
 
+### BUG-025: Assignments echo their value in programs (TI-83 stores are silent) — floods getKey loops
+
+- **Status:** fix implemented (2026-08-08), pending GUI verification
+- **Found:** 2026-08-08 (P5b getKey testing — a `getKey→K` poll loop printed `0` every iteration)
+- **Location:** [interpreter/src/interpreter.cpp](interpreter/src/interpreter.cpp) (execStatement bare-eval + string-store paths)
+- **Severity:** medium (wrong/cluttered program output; makes getKey loops unusable)
+- **Description:** `execStatement` echoed the result of *every* bare statement, including assignments (`5→A`, `getKey→K`, `"HI"→Str1`). On the TI-83 an assignment in a program runs **silently** — only a bare expression with no store echoes (like the home screen). The bug flooded any poll loop (`While 1:getKey→K:…:End` prints `0` thousands of times) and cluttered ordinary output (the earlier `TEST` run showed a stream of intermediate `T`/`P` values from `T+1→T` echoes).
+- **Reproduction (was):** Run `getKey→K:Disp K` in a loop → screen fills with `0`. Or `5→A` on its own program line → prints `5`.
+- **Fix:** Echo only when the statement is **not** an assignment — added `isAssignment()` (detects a top-level `→`/`->` outside strings); numeric store and string store (`→StrN`) are now silent. Bare expressions still echo. All 735 tests stay green (they assert `Disp`/`last` output or bare-expr echo, not store echoes).
+- **Notes:** Surfaced the same clutter in the P5 `TEST` self-check (now clean). Fixed alongside P5b getKey since it blocked verifying it.
+
 ### BUG-024: Saved programs (and all state) vanish — the test suite overwrites the real state file, plus non-atomic writes + multi-instance last-write-wins
 
 - **Status:** fix implemented (2026-08-06), pending GUI verification

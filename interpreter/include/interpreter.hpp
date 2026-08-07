@@ -194,7 +194,6 @@ private:
   std::size_t m_pc = 0;                    // program counter (statement idx)
   RunStatus m_status = RunStatus::Done;
   bool m_stopRequested = false;
-  long m_totalSteps = 0;                    // lifetime step count (runaway guard)
   int m_errorLine = -1;
   std::string m_errorMessage;
   // Pending Input/Prompt target + prompt label (valid while NeedInput).

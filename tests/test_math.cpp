@@ -2303,7 +2303,7 @@ int main(int argc, char *argv[]) {
   {
     UIController pc;
 
-    // Milestone: 5→A : A²→B : Disp B → 25 (Sto statements also echo).
+    // Milestone: 5→A : A²→B : Disp B → 25 (stores are silent; Disp shows it).
     pc.saveProgram("SQ", "5->A\nA^2->B\nDisp B");
     pc.runProgram("SQ");
     checkTrue("milestone: Disp B after squaring → 25",
@@ -2634,6 +2634,46 @@ int main(int argc, char *argv[]) {
     it4.load({"While 1", "End"});  // infinite loop
     checkTrue("runaway loop hits guard → Error", it4.run() == RunStatus::Error);
     checkTrue("guard → ERR:BREAK", it4.errorMessage() == "ERR:BREAK");
+  }
+
+  section("TI-BASIC — P5b getKey (non-blocking key poll)");
+  {
+    UIController pc;
+    auto last = [](const QStringList &o) {
+      return o.isEmpty() ? QString() : o.last();
+    };
+
+    // No key pending → getKey polls 0.
+    pc.saveProgram("GK0", "getKey->K:Disp K");
+    pc.runProgram("GK0");
+    checkTrue("getKey with no key → 0", last(pc.programOutput()) == "0");
+
+    // getKey composes inside an expression (0 + 7).
+    pc.saveProgram("GKX", "getKey+7->K:Disp K");
+    pc.runProgram("GKX");
+    checkTrue("getKey in an expression → 7", last(pc.programOutput()) == "7");
+
+    // A queued key is returned once, then consumed (the next poll is 0).
+    // Pause gives a headless injection point between the reset and the poll.
+    pc.saveProgram("GKP", "Pause:getKey->K:getKey->M:Disp K:Disp M");
+    pc.runProgram("GKP");
+    checkTrue("program paused for a key", pc.programWaitingKey());
+    pc.sendProgramKey(25);  // Up arrow
+    pc.resumeProgram();
+    {
+      const QStringList o = pc.programOutput();
+      checkTrue("getKey returns the queued key (25)",
+                o.size() >= 2 && o[o.size() - 2] == "25");
+      checkTrue("getKey is consumed → next poll 0", o.last() == "0");
+    }
+
+    // A stale key does not carry into a fresh run.
+    pc.sendProgramKey(105);
+    pc.runProgram("GK0");
+    checkTrue("stale key cleared on new run → 0", last(pc.programOutput()) == "0");
+
+    for (const char *n : {"GK0", "GKX", "GKP"})
+      pc.deleteProgram(n);
   }
 
   std::cout << "\n----------------------------------------\n"

@@ -18,6 +18,10 @@ Popup {
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
+    // When the run view opens on a running program, hand focus to the key
+    // catcher so getKey sees physical keypresses (P5b).
+    onOpened: if (uiController.programRunning) keyCatcher.forceActiveFocus()
+
     width: 360
     height: 460
     padding: 14
@@ -34,6 +38,32 @@ Popup {
 
     contentItem: ColumnLayout {
         spacing: 10
+
+        // Captures physical keypresses while a program is running and forwards
+        // them to getKey (P5b). Holds focus only during a run, so it doesn't
+        // fight the Input TextField (which grabs focus when awaiting input).
+        Item {
+            id: keyCatcher
+            Layout.preferredWidth: 0
+            Layout.preferredHeight: 0
+            focus: uiController.programRunning
+            Keys.onPressed: function(event) {
+                var code = root.tiKeyCode(event.key)
+                if (code > 0) {
+                    uiController.sendProgramKey(code)
+                    event.accepted = true
+                }
+            }
+            // Re-grab focus each time the program resumes running while the
+            // view is already open (e.g. after an Input pause).
+            Connections {
+                target: uiController
+                function onProgramRunStateChanged() {
+                    if (uiController.programRunning && root.visible)
+                        keyCatcher.forceActiveFocus()
+                }
+            }
+        }
 
         Text {
             Layout.fillWidth: true
@@ -192,5 +222,33 @@ Popup {
     function submitInput() {
         uiController.provideProgramInput(inputField.text)
         inputField.text = ""
+    }
+
+    // Map a physical key to its TI-83 getKey code (0 = not mapped). Covers the
+    // keys getKey programs actually use — arrows, ENTER, CLEAR, DEL, and the
+    // number pad; more can be added later.
+    function tiKeyCode(k) {
+        switch (k) {
+        case Qt.Key_Up:        return 25
+        case Qt.Key_Down:      return 34
+        case Qt.Key_Left:      return 24
+        case Qt.Key_Right:     return 26
+        case Qt.Key_Return:
+        case Qt.Key_Enter:     return 105
+        case Qt.Key_Escape:    return 45   // CLEAR
+        case Qt.Key_Backspace: return 23   // DEL
+        case Qt.Key_0:         return 102
+        case Qt.Key_1:         return 92
+        case Qt.Key_2:         return 93
+        case Qt.Key_3:         return 94
+        case Qt.Key_4:         return 82
+        case Qt.Key_5:         return 83
+        case Qt.Key_6:         return 84
+        case Qt.Key_7:         return 72
+        case Qt.Key_8:         return 73
+        case Qt.Key_9:         return 74
+        case Qt.Key_Period:    return 103
+        }
+        return 0
     }
 }

@@ -362,6 +362,10 @@ public:
     // Request that a running program stop now (the STOP key / ON-break).
     // Sets a flag the slice loop checks; the run ends with ERR:BREAK (P5b).
     Q_INVOKABLE void stopProgram();
+    // Report a keypress to a running program for getKey (P5b). `keyCode` is
+    // the TI-83 getKey code (see the run view's key map); the next getKey
+    // poll returns it once, then 0. Delivered mid-run via processEvents.
+    Q_INVOKABLE void sendProgramKey(int keyCode);
     // Copy the current program output (all lines, newline-joined) to the
     // system clipboard, so a run's results can be pasted elsewhere.
     Q_INVOKABLE void copyProgramOutput() const;
@@ -543,9 +547,13 @@ private:
     bool m_progRunning = false;        // actively stepping (STOP button live)
     bool m_progBreakRequested = false; // STOP pressed → break at next slice
     bool m_inProgramRun = false;       // re-entrancy guard (processEvents)
+    int m_progKey = 0;                 // pending getKey code (0 = none)
     // Step the interpreter until it pauses / finishes, then publish state.
     void stepProgramToPause();
     void publishProgramState();
+    // Copy the interpreter's output buffer into m_programOutput (no status /
+    // waiting-flag handling). Used for live mid-run refresh and by publish.
+    void syncProgramOutput();
     // Evaluate a program source expression: tokenise → MathStateMachine →
     // format. Injected into the Interpreter as its Evaluator (P2). Side
     // effects (Sto) go through the shared registries, like the home screen.
