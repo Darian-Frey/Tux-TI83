@@ -35,6 +35,31 @@ Popup {
     property string pendingEditName: ""
     property int pendingEditLine: -1
 
+    // ── Command-paste palette (insert keywords without hand-typing) ──
+    property bool cmdPaletteOpen: false
+    property string cmdCategory: "CTL"
+    // Category → the exact text each button inserts (trailing space on
+    // statement words; a bare "(" left open for the user to fill args).
+    readonly property var cmdSet: ({
+        "CTL": ["If ", "Then", "Else", "For(", "While ", "Repeat ", "End",
+                "Lbl ", "Goto ", "Pause", "Stop", "Return", "DelVar ",
+                "Menu(", "prgm"],
+        "I/O": ["Disp ", "Input ", "Prompt ", "Output(", "ClrHome", "getKey"],
+        "STR": ["Str1", "Str2", "Str3", "sub(", "length(", "inString(",
+                "expr(", "\"\""],
+        "FN":  ["→", ":", "sin(", "cos(", "tan(", "√(", "ln(", "log(", "abs(",
+                "round(", "int(", "nCr(", "nPr("]
+    })
+
+    // Insert `text` at the editor's cursor and keep focus there. For the
+    // quote pair, drop the cursor between the quotes ready for the string.
+    function insertCmd(text) {
+        var pos = bodyArea.cursorPosition
+        bodyArea.insert(pos, text)
+        bodyArea.cursorPosition = (text === "\"\"") ? pos + 1 : pos + text.length
+        bodyArea.forceActiveFocus()
+    }
+
     function refresh() { names = uiController.programNames() }
 
     function startNew() {
@@ -252,6 +277,84 @@ Popup {
                     font.family: Style.monoFamily
                     font.pixelSize: Style.keyLabelPixelSize
                     padding: 8
+                }
+            }
+
+            // ── Command-paste palette ──
+            CalcKey {
+                Layout.fillWidth: true
+                label: root.cmdPaletteOpen ? "⌨ COMMANDS ▴" : "⌨ COMMANDS ▾"
+                keyType: "function"
+                onPressed: root.cmdPaletteOpen = !root.cmdPaletteOpen
+            }
+            ColumnLayout {
+                Layout.fillWidth: true
+                visible: root.cmdPaletteOpen
+                spacing: 6
+
+                // Category tabs.
+                Row {
+                    Layout.fillWidth: true
+                    spacing: 4
+                    Repeater {
+                        model: ["CTL", "I/O", "STR", "FN"]
+                        Rectangle {
+                            width: tabText.width + 16
+                            height: 26
+                            radius: 4
+                            color: root.cmdCategory === modelData ? Style.opBg : Style.bgSurface
+                            border.width: 1
+                            border.color: root.cmdCategory === modelData
+                                          ? Style.textExpr : Style.keyBorderNeutral
+                            Text {
+                                id: tabText
+                                anchors.centerIn: parent
+                                text: modelData
+                                color: Style.textPrimary
+                                font.family: Style.monoFamily
+                                font.pixelSize: Style.keyLabelPixelSize
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: root.cmdCategory = modelData
+                            }
+                        }
+                    }
+                }
+
+                // Commands in the selected category (wrapping, scrollable).
+                ScrollView {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 96
+                    clip: true
+                    Flow {
+                        width: parent.width
+                        spacing: 4
+                        Repeater {
+                            model: root.cmdSet[root.cmdCategory]
+                            Rectangle {
+                                width: cmdText.width + 14
+                                height: 28
+                                radius: 4
+                                color: cmdMouse.pressed ? Style.bgSection : Style.bgSurface
+                                border.color: Style.keyBorderNeutral
+                                border.width: 1
+                                Text {
+                                    id: cmdText
+                                    anchors.centerIn: parent
+                                    text: modelData.trim().length ? modelData.trim() : modelData
+                                    color: Style.textDisplay
+                                    font.family: Style.monoFamily
+                                    font.pixelSize: Style.keyLabelPixelSize
+                                }
+                                MouseArea {
+                                    id: cmdMouse
+                                    anchors.fill: parent
+                                    onClicked: root.insertCmd(modelData)
+                                }
+                            }
+                        }
+                    }
                 }
             }
 

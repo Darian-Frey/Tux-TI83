@@ -337,10 +337,13 @@ resumable model and hits the milestone with numeric input + string-literal
   button; pressing it opens the editor for that program with the offending
   line highlighted (`PRGMPopup.openAtLine`). +6 tests.
 
-### P5b — Program control (remaining) 📅
-- In-editor **command paste** menu (PRGM ▸ CTL / I/O tabs) so keywords
-  don't have to be typed by hand.
-- Milestone: keywords are insertable without hand-typing.
+### P5b-4 — In-editor command-paste menu ✅ (2026-08-09)
+- A **⌨ COMMANDS** palette in the PRGM editor: category tabs (CTL / I/O /
+  STR / FN) each showing a wrapping grid of keyword buttons that insert at
+  the cursor (`PRGMPopup.insertCmd` → `bodyArea.insert`). Statement words
+  insert with a trailing space, function forms leave `(` open, `""` drops the
+  cursor between the quotes, and `→` / `√(` are one tap. QML-only.
+- Milestone: keywords are insertable without hand-typing. **P5 complete.**
 
 ### P6 — Advanced / optional 💭
 - Graphics from programs (reuse the existing DRAW primitives: `Line(`,

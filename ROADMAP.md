@@ -424,8 +424,12 @@ _pragmatic subset first_. Phases (each independently shippable):
   flattened statement to its editor source line and tracks the current
   program name (across `prgm` calls), so a runtime error reports the true
   line (even through `:`-chains) and the run view's ✎ EDIT LINE button opens
-  the editor there with the line highlighted. 6 tests. 📅 **P5b still:**
-  in-editor command paste.
+  the editor there with the line highlighted. 6 tests.
+- **P5b-4 — In-editor command-paste menu ✅ (2026-08-09)** — a ⌨ COMMANDS
+  palette in the PRGM editor (CTL / I/O / STR / FN tabs) inserts keywords at
+  the cursor (`→`, `√(`, `Disp`, `For(`, `Menu(`, `""` with cursor inside, …)
+  so they don't have to be hand-typed. QML-only. **P5 complete — the TI-BASIC
+  subset is feature-complete.**
 - 💭 **P6 — Optional** — graphics from programs (reuse DRAW), `.8xp` import.
 
 ## Connectivity & data exchange
