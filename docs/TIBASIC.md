@@ -266,8 +266,12 @@ resumable model and hits the milestone with numeric input + string-literal
   `evalStringChain`. Compose + nest (`sub(Str1,1,length(Str1))`,
   `If length(Str1)>3`, `"X"+sub(…)`, `expr(Str1)→A`); `sub(` out of range →
   `ERR:DOMAIN`, type mismatch → `ERR:DATA TYPE`. +13 tests.
-- 📅 Remaining P4 pieces: `Output(row,col,value)`, `Menu(`, and
-  disk-persistence of Str vars.
+- ✅ **Str-var disk-persistence** (2026-08-08): `Str1`–`Str9` serialise into
+  the state JSON (`"strings"` object) alongside scalars/lists/programs, so
+  they survive a restart. Interpreter exposes `stringVars()` /
+  `setStringVar()` / `clearStringVars()`; the controller reads/writes them in
+  `buildStateJson` / `applyStateJson`. +1 test (save→load round-trip).
+- 📅 Remaining P4 pieces: `Output(row,col,value)`, `Menu(`.
 
 ### P5a — Program control (sub-calls) ✅ (2026-08-06)
 - `prgmNAME` **sub-program calls** — a call stack saves/restores each

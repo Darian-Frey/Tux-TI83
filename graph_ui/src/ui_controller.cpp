@@ -417,6 +417,12 @@ QJsonObject UIController::buildStateJson() const {
   }
   root["programs"] = programs;
 
+  // TI-BASIC string variables Str1..Str9 (P4): index → text.
+  QJsonObject strings;
+  for (const auto &kv : m_interp.stringVars())
+    strings[QString::number(kv.first)] = QString::fromStdString(kv.second);
+  root["strings"] = strings;
+
   // Function buffers Y1/Y2/Y3 as their display strings. Round-trips
   // through processExpression on load.
   QJsonArray functions;
@@ -597,6 +603,13 @@ void UIController::applyStateJson(const QJsonObject &root) {
       lines.push_back(v.toString().toStdString());
     m_programs.put(name.toStdString(), lines);
   }
+
+  // TI-BASIC string variables Str1..Str9 (P4).
+  m_interp.clearStringVars();
+  const QJsonObject strings = root.value("strings").toObject();
+  for (const QString &key : strings.keys())
+    m_interp.setStringVar(key.toInt(),
+                          strings.value(key).toString().toStdString());
 
   // MODE — apply before function buffers so any side effects use
   // the right format settings.

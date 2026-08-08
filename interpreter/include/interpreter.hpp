@@ -134,6 +134,16 @@ public:
   // "Str1".."Str9" → 1..9; anything else → 0. Exposed for testing.
   static int strVarIndex(const std::string &s);
 
+  // ── Str1..Str9 registry access (for disk persistence, P4) ──
+  // The string variables live here (not in the engine). The controller
+  // serialises these into the state JSON so they survive a restart.
+  const std::map<int, std::string> &stringVars() const { return m_strVars; }
+  void setStringVar(int index, const std::string &value) {
+    if (index >= 1 && index <= 9)
+      m_strVars[index] = value;
+  }
+  void clearStringVars() { m_strVars.clear(); }
+
 private:
   // Execute the statement at m_pc. Advances m_pc itself (normal statements
   // ++; control statements jump), so step() never increments. Returns

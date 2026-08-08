@@ -2760,6 +2760,29 @@ int main(int argc, char *argv[]) {
     pc.deleteProgram("P");
   }
 
+  section("TI-BASIC — P4c Str-var disk-persistence");
+  {
+    // Set Str1 in one controller, save, then load in a fresh one and read it
+    // back (the test harness redirects state to a temp dir; both instances
+    // share that file).
+    {
+      UIController a;
+      a.saveProgram("SET", "\"PERSIST\"->Str1");
+      a.runProgram("SET");
+      a.saveState();
+    }
+    {
+      UIController b;
+      b.loadState();
+      b.saveProgram("GET", "Disp Str1");
+      b.runProgram("GET");
+      checkTrue("Str1 survives save → load",
+                b.programOutput().last() == "PERSIST");
+      b.deleteProgram("GET");
+      b.deleteProgram("SET");
+    }
+  }
+
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed
             << "  Failed: " << gFailed << '\n';

@@ -397,8 +397,9 @@ _pragmatic subset first_. Phases (each independently shippable):
   **String functions ✅ (2026-08-08):** `length(`/`sub(`/`inString(`/`expr(`,
   resolved interpreter-level (innermost-first substitution via
   `resolveStrFuncs`; numeric eval routes through `mEval`); compose + nest;
-  `sub(` out of range → `ERR:DOMAIN`. 13 tests. 📅 still: `Output(`, `Menu(`,
-  disk-persistence of Str vars.
+  `sub(` out of range → `ERR:DOMAIN`. 13 tests. **Str-var disk-persistence ✅
+  (2026-08-08):** `Str1`–`Str9` serialise into state JSON (`"strings"`) so they
+  survive a restart. 1 test. 📅 still: `Output(`, `Menu(`.
 - **P5a — Program control (sub-calls) ✅ (2026-08-06)** — `prgmNAME`
   sub-program calls (call stack, depth cap → `ERR:MEMORY`), `Return`,
   `DelVar`; a missing sub-program → `ERR:UNDEFINED`. Plus a COPY-output
