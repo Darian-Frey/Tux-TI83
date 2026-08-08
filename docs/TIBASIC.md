@@ -271,7 +271,13 @@ resumable model and hits the milestone with numeric input + string-literal
   they survive a restart. Interpreter exposes `stringVars()` /
   `setStringVar()` / `clearStringVars()`; the controller reads/writes them in
   `buildStateJson` / `applyStateJson`. +1 test (save→load round-trip).
-- 📅 Remaining P4 pieces: `Output(row,col,value)`, `Menu(`.
+- ✅ **`Output(row,col,value)`** (2026-08-08): positioned text on the
+  home-screen grid (rows 1–8, cols 1–16; `ERR:DOMAIN` out of range).
+  Implemented purely at the interpreter level (`placeOutput` writes into the
+  line buffer with space-padding for the column) — no UI change, since the
+  run view already renders lines in a monospace font. Coexists with `Disp`
+  and `ClrHome`. +10 tests.
+- 📅 Remaining P4 piece: `Menu(`.
 
 ### P5a — Program control (sub-calls) ✅ (2026-08-06)
 - `prgmNAME` **sub-program calls** — a call stack saves/restores each

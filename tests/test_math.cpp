@@ -2783,6 +2783,40 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  section("TI-BASIC — P4d Output( positioned text");
+  {
+    UIController pc;
+    auto runP = [&](const QString &src) -> QStringList {
+      pc.saveProgram("P", src);
+      pc.runProgram("P");
+      return pc.programOutput();
+    };
+
+    checkTrue("Output at (1,1)", runP("Output(1,1,\"HI\")").value(0) == "HI");
+    checkTrue("Output pads to the column",
+              runP("Output(1,5,\"X\")").value(0) == "    X");
+    checkTrue("two Outputs share a row",
+              runP("Output(1,1,\"AB\"):Output(1,4,\"CD\")").value(0) == "AB CD");
+    {
+      QStringList o = runP("Output(3,1,\"Z\")");
+      checkTrue("Output at row 3 pads blank rows above",
+                o.size() >= 3 && o.value(2) == "Z" && o.value(0) == "");
+    }
+    checkTrue("Output of a number", runP("Output(1,1,5+2)").value(0) == "7");
+    checkTrue("Output of a Str var",
+              runP("\"HI\"->Str1:Output(1,1,Str1)").value(0) == "HI");
+    checkTrue("Output overwrites in place",
+              runP("Output(1,1,\"HELLO\"):Output(1,1,\"HI\")").value(0) == "HILLO");
+    checkTrue("row > 8 → ERR:DOMAIN",
+              runP("Output(9,1,\"X\")").last().startsWith("ERR:DOMAIN"));
+    checkTrue("col > 16 → ERR:DOMAIN",
+              runP("Output(1,17,\"X\")").last().startsWith("ERR:DOMAIN"));
+    checkTrue("Output clips at col 16",
+              runP("Output(1,15,\"ABC\")").value(0).length() == 16);
+
+    pc.deleteProgram("P");
+  }
+
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed
             << "  Failed: " << gFailed << '\n';

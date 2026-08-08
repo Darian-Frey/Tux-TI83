@@ -170,6 +170,10 @@ private:
   bool evalCond(const std::string &expr, bool &ok);
   // Report a runtime error at the current statement and return Error.
   RunStatus fail(const std::string &label);
+  // Write `text` into the output buffer at (row, col) — 1-based — padding
+  // with spaces so a monospace render lands it in the right column
+  // (Output(, P4). Rows above `row` are created blank as needed.
+  void placeOutput(int row, int col, const std::string &text);
 
   // ── Strings (P4b, interpreter-level; the engine stays numeric) ──
   // Try to evaluate a source expression as a string: a '+'-joined chain of

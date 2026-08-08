@@ -399,7 +399,11 @@ _pragmatic subset first_. Phases (each independently shippable):
   `resolveStrFuncs`; numeric eval routes through `mEval`); compose + nest;
   `sub(` out of range → `ERR:DOMAIN`. 13 tests. **Str-var disk-persistence ✅
   (2026-08-08):** `Str1`–`Str9` serialise into state JSON (`"strings"`) so they
-  survive a restart. 1 test. 📅 still: `Output(`, `Menu(`.
+  survive a restart. 1 test. **`Output(row,col,value)` ✅ (2026-08-08):**
+  positioned text on the home-screen grid (rows 1–8, cols 1–16; `ERR:DOMAIN`
+  out of range), interpreter-level (`placeOutput` space-pads into the line
+  buffer — no UI change; the run view is already monospace). 10 tests. 📅
+  still: `Menu(`.
 - **P5a — Program control (sub-calls) ✅ (2026-08-06)** — `prgmNAME`
   sub-program calls (call stack, depth cap → `ERR:MEMORY`), `Return`,
   `DelVar`; a missing sub-program → `ERR:UNDEFINED`. Plus a COPY-output

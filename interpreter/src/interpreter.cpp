@@ -465,6 +465,27 @@ RunStatus Interpreter::fail(const std::string &label) {
   return RunStatus::Error;
 }
 
+void Interpreter::placeOutput(int row, int col, const std::string &text) {
+  // Grow the buffer so row (1-based) exists; earlier rows stay blank.
+  while (static_cast<int>(m_output.size()) < row)
+    m_output.push_back("");
+  // Clip so the text can't run past the 16-column screen edge.
+  std::string clipped = text;
+  const int maxLen = 16 - (col - 1);
+  if (maxLen >= 0 && static_cast<int>(clipped.size()) > maxLen)
+    clipped.resize(static_cast<std::size_t>(maxLen));
+  std::string &line = m_output[static_cast<std::size_t>(row - 1)];
+  if (static_cast<int>(line.size()) < col - 1)
+    line.resize(static_cast<std::size_t>(col - 1), ' ');  // pad to the column
+  for (std::size_t i = 0; i < clipped.size(); ++i) {
+    const std::size_t pos = static_cast<std::size_t>(col - 1) + i;
+    if (pos < line.size())
+      line[pos] = clipped[i];
+    else
+      line.push_back(clipped[i]);
+  }
+}
+
 RunStatus Interpreter::execStatement(const std::string &stmt) {
   // Without an evaluator, no-op (P0 behaviour) but still advance so a
   // program without one runs to Done.
@@ -753,6 +774,44 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
         return fail(r.error);
       m_output.push_back(r.display);
     }
+    ++m_pc;
+    return RunStatus::Running;
+  }
+
+  if (matchKeyword(stmt, "Output")) {
+    // Output(row, col, value) — positioned text on the home-screen grid
+    // (1-based, rows 1..8, cols 1..16).
+    const auto lp = stmt.find('(');
+    const auto rp = stmt.rfind(')');
+    if (lp == std::string::npos || rp == std::string::npos || rp <= lp)
+      return fail("ERR:SYNTAX");
+    const auto args = splitArgs(stmt.substr(lp + 1, rp - lp - 1));
+    if (args.size() != 3)
+      return fail("ERR:ARGUMENT");
+    const EvalResult rr = mEval(trim(args[0]));
+    if (!rr.ok)
+      return fail(rr.error);
+    const EvalResult cc = mEval(trim(args[1]));
+    if (!cc.ok)
+      return fail(cc.error);
+    const long row = std::lround(rr.value);
+    const long col = std::lround(cc.value);
+    if (row < 1 || row > 8 || col < 1 || col > 16)
+      return fail("ERR:DOMAIN");
+    // The value prints as a string (literal / StrN / sub) or a number.
+    std::string text, sout;
+    const StrEval se = evalStringExpr(trim(args[2]), sout);
+    if (se == StrEval::Ok) {
+      text = sout;
+    } else if (se == StrEval::TypeError) {
+      return fail(m_strFuncError.empty() ? "ERR:DATA TYPE" : m_strFuncError);
+    } else {
+      const EvalResult v = mEval(trim(args[2]));
+      if (!v.ok)
+        return fail(v.error);
+      text = v.display;
+    }
+    placeOutput(static_cast<int>(row), static_cast<int>(col), text);
     ++m_pc;
     return RunStatus::Running;
   }
