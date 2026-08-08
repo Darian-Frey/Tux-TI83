@@ -43,6 +43,9 @@ private:
     Q_PROPERTY(QString programInputPrompt READ programInputPrompt NOTIFY programRunStateChanged)
     Q_PROPERTY(bool programWaitingKey READ programWaitingKey NOTIFY programRunStateChanged)
     Q_PROPERTY(bool programRunning READ programRunning NOTIFY programRunStateChanged)
+    Q_PROPERTY(bool programMenuActive READ programMenuActive NOTIFY programRunStateChanged)
+    Q_PROPERTY(QString programMenuTitle READ programMenuTitle NOTIFY programRunStateChanged)
+    Q_PROPERTY(QStringList programMenuOptions READ programMenuOptions NOTIFY programRunStateChanged)
     Q_PROPERTY(int programErrorLine READ programErrorLine NOTIFY programRunStateChanged)
     Q_PROPERTY(QString programErrorProgram READ programErrorProgram NOTIFY programRunStateChanged)
     Q_PROPERTY(int activeFunctionIndex READ activeFunctionIndex NOTIFY activeFunctionIndexChanged)
@@ -165,6 +168,9 @@ public:
     QString programInputPrompt() const { return m_progInputPrompt; }
     bool programWaitingKey() const { return m_progWaitingKey; }
     bool programRunning() const { return m_progRunning; }
+    bool programMenuActive() const { return m_progMenuActive; }
+    QString programMenuTitle() const { return m_progMenuTitle; }
+    QStringList programMenuOptions() const { return m_progMenuOptions; }
     // 0-based editor source line of the last runtime error (-1 if none), and
     // the program it occurred in — used by the run view's jump-to-line (P5b).
     int programErrorLine() const { return m_progErrorLine; }
@@ -365,6 +371,8 @@ public:
     Q_INVOKABLE void provideProgramInput(const QString& value);
     // Continue a program paused on Pause.
     Q_INVOKABLE void resumeProgram();
+    // Pick option `index` (0-based) from a Menu( — jumps to its Lbl (P4).
+    Q_INVOKABLE void provideProgramMenuChoice(int index);
     // Request that a running program stop now (the STOP key / ON-break).
     // Sets a flag the slice loop checks; the run ends with ERR:BREAK (P5b).
     Q_INVOKABLE void stopProgram();
@@ -556,6 +564,9 @@ private:
     int m_progKey = 0;                 // pending getKey code (0 = none)
     int m_progErrorLine = -1;          // 0-based source line of last error
     QString m_progErrorProgram;        // program that raised the last error
+    bool m_progMenuActive = false;     // paused on Menu(
+    QString m_progMenuTitle;
+    QStringList m_progMenuOptions;
     // Step the interpreter until it pauses / finishes, then publish state.
     void stepProgramToPause();
     void publishProgramState();

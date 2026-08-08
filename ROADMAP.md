@@ -402,8 +402,10 @@ _pragmatic subset first_. Phases (each independently shippable):
   survive a restart. 1 test. **`Output(row,col,value)` ✅ (2026-08-08):**
   positioned text on the home-screen grid (rows 1–8, cols 1–16; `ERR:DOMAIN`
   out of range), interpreter-level (`placeOutput` space-pads into the line
-  buffer — no UI change; the run view is already monospace). 10 tests. 📅
-  still: `Menu(`.
+  buffer — no UI change; the run view is already monospace). 10 tests.
+  **`Menu(` ✅ (2026-08-08):** pause-and-branch menu (`NeedMenu` state; run
+  view shows title + numbered option buttons; picking one jumps to its
+  `Lbl`). 7 tests. **P4 complete.**
 - **P5a — Program control (sub-calls) ✅ (2026-08-06)** — `prgmNAME`
   sub-program calls (call stack, depth cap → `ERR:MEMORY`), `Return`,
   `DelVar`; a missing sub-program → `ERR:UNDEFINED`. Plus a COPY-output

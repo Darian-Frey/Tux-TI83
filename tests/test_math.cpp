@@ -2817,6 +2817,44 @@ int main(int argc, char *argv[]) {
     pc.deleteProgram("P");
   }
 
+  section("TI-BASIC — P4e Menu( interactive branch");
+  {
+    UIController pc;
+
+    pc.saveProgram(
+        "M", "Menu(\"PICK\",\"ONE\",A,\"TWO\",B):Lbl A:Disp 1:Stop:Lbl B:Disp 2");
+    pc.runProgram("M");
+    checkTrue("Menu pauses for a choice", pc.programMenuActive());
+    checkTrue("Menu title", pc.programMenuTitle() == "PICK");
+    checkTrue("Menu options",
+              pc.programMenuOptions().size() == 2 &&
+                  pc.programMenuOptions()[0] == "ONE" &&
+                  pc.programMenuOptions()[1] == "TWO");
+    pc.provideProgramMenuChoice(0);
+    checkTrue("choice 1 → Lbl A (Disp 1)",
+              !pc.programMenuActive() && pc.programOutput().last() == "1");
+
+    pc.runProgram("M");
+    pc.provideProgramMenuChoice(1);
+    checkTrue("choice 2 → Lbl B (Disp 2)", pc.programOutput().last() == "2");
+
+    // Missing target label → ERR:LABEL when that option is chosen.
+    pc.saveProgram("MBAD", "Menu(\"X\",\"GO\",Z)");
+    pc.runProgram("MBAD");
+    pc.provideProgramMenuChoice(0);
+    checkTrue("missing label → ERR:LABEL",
+              pc.programOutput().last().startsWith("ERR:LABEL"));
+
+    // A missing (option,label) pair → ERR:ARGUMENT.
+    pc.saveProgram("MARG", "Menu(\"X\",\"ONE\")");
+    pc.runProgram("MARG");
+    checkTrue("Menu missing a label arg → ERR:ARGUMENT",
+              pc.programOutput().last().startsWith("ERR:ARGUMENT"));
+
+    for (const char *n : {"M", "MBAD", "MARG"})
+      pc.deleteProgram(n);
+  }
+
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed
             << "  Failed: " << gFailed << '\n';

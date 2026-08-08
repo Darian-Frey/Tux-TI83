@@ -277,7 +277,11 @@ resumable model and hits the milestone with numeric input + string-literal
   line buffer with space-padding for the column) — no UI change, since the
   run view already renders lines in a monospace font. Coexists with `Disp`
   and `ClrHome`. +10 tests.
-- 📅 Remaining P4 piece: `Menu(`.
+- ✅ **`Menu("title","opt",Lbl,…)`** (2026-08-08): pause-and-branch menu.
+  New `NeedMenu` pause state; the run view shows the title + numbered option
+  buttons, and picking one jumps to that option's `Lbl` (a `Goto`, via the
+  existing label table). Bad arg count → `ERR:ARGUMENT`; missing target label
+  → `ERR:LABEL` on selection. +7 tests. **P4 complete.**
 
 ### P5a — Program control (sub-calls) ✅ (2026-08-06)
 - `prgmNAME` **sub-program calls** — a call stack saves/restores each

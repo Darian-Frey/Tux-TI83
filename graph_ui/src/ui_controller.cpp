@@ -1011,6 +1011,17 @@ void UIController::publishProgramState() {
                           : QString();
   m_progWaitingKey = (st == RunStatus::NeedKey);
 
+  m_progMenuActive = (st == RunStatus::NeedMenu);
+  if (m_progMenuActive) {
+    m_progMenuTitle = QString::fromStdString(m_interp.menuTitle());
+    m_progMenuOptions.clear();
+    for (const auto &o : m_interp.menuOptions())
+      m_progMenuOptions << QString::fromStdString(o);
+  } else {
+    m_progMenuTitle.clear();
+    m_progMenuOptions.clear();
+  }
+
   emit programOutputChanged();
   emit programRunStateChanged();
   emit programRunUpdated();
@@ -1089,6 +1100,11 @@ void UIController::provideProgramInput(const QString &value) {
 
 void UIController::resumeProgram() {
   m_interp.resumeFromPause();
+  stepProgramToPause();
+}
+
+void UIController::provideProgramMenuChoice(int index) {
+  m_interp.provideMenuChoice(index);
   stepProgramToPause();
 }
 

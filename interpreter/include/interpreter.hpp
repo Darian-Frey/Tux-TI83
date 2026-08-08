@@ -46,7 +46,8 @@ enum class RunStatus {
   Running,    // more to do — call step() again
   Output,     // text was appended to the output buffer; render it
   NeedInput,  // Input / Prompt — waiting for a value or string
-  NeedKey,    // Pause / getKey / Menu — waiting for a keypress / choice
+  NeedKey,    // Pause — waiting for a keypress
+  NeedMenu,   // Menu( — waiting for the user to pick an option
   Done,       // program finished normally
   Error       // a runtime error occurred (see errorLine())
 };
@@ -118,6 +119,12 @@ public:
   const std::string &inputPrompt() const { return m_inputPrompt; }
   void provideInput(const std::string &valueSource);
   void resumeFromPause();
+  // When status() is NeedMenu, the run paused on Menu(; menuTitle() and
+  // menuOptions() describe it. Call provideMenuChoice() with the 0-based
+  // option index to jump to that option's Lbl and continue.
+  const std::string &menuTitle() const { return m_menuTitle; }
+  const std::vector<std::string> &menuOptions() const { return m_menuOptions; }
+  void provideMenuChoice(int index);
   std::size_t statementCount() const { return m_statements.size(); }
   std::size_t programCounter() const { return m_pc; }
   const std::vector<std::string> &statements() const { return m_statements; }
@@ -239,6 +246,11 @@ private:
   bool m_inputIsString = false;              // pending Input targets a StrN
   std::map<int, std::string> m_strVars;      // Str1..Str9 (persist across runs)
   std::string m_strFuncError;                // last string-function error label
+  // Pending Menu( state (valid while NeedMenu): title, option display text,
+  // and each option's target Lbl name (parallel to m_menuOptions).
+  std::string m_menuTitle;
+  std::vector<std::string> m_menuOptions;
+  std::vector<std::string> m_menuLabels;
 
   // Control-flow tables (indices into m_statements; -1 = none).
   std::vector<int> m_openerToEnd;   // Then/For/While/Repeat → matching End

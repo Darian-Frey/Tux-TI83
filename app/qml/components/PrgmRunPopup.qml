@@ -177,6 +177,31 @@ Popup {
             onPressed: uiController.resumeProgram()
         }
 
+        // ── Menu( — pick an option (jumps to its Lbl) ──
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: uiController.programMenuActive
+            spacing: 6
+
+            Text {
+                Layout.fillWidth: true
+                text: uiController.programMenuTitle
+                color: Style.textResult
+                font.family: Style.monoFamily
+                font.pixelSize: Style.keyLabelPixelSize
+                horizontalAlignment: Text.AlignHCenter
+            }
+            Repeater {
+                model: uiController.programMenuOptions
+                CalcKey {
+                    Layout.fillWidth: true
+                    label: (index + 1) + ": " + modelData
+                    keyType: "function"
+                    onPressed: uiController.provideProgramMenuChoice(index)
+                }
+            }
+        }
+
         // ── Stop (interrupt a running program) ──
         CalcKey {
             Layout.fillWidth: true

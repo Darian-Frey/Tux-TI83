@@ -816,6 +816,49 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
     return RunStatus::Running;
   }
 
+  if (matchKeyword(stmt, "Menu")) {
+    // Menu("title","opt1",Lbl1,"opt2",Lbl2,…) — show a menu, pause for a
+    // choice, then jump to the chosen option's Lbl (a Goto, not a call).
+    const auto lp = stmt.find('(');
+    const auto rp = stmt.rfind(')');
+    if (lp == std::string::npos || rp == std::string::npos || rp <= lp)
+      return fail("ERR:SYNTAX");
+    const auto args = splitArgs(stmt.substr(lp + 1, rp - lp - 1));
+    // Title + N (option, label) pairs → an odd count of at least 3.
+    if (args.size() < 3 || args.size() % 2 == 0)
+      return fail("ERR:ARGUMENT");
+    // Resolve a display arg as a string (literal / StrN / sub) or a number.
+    auto asText = [&](const std::string &a, std::string &out) -> bool {
+      std::string s;
+      const StrEval se = evalStringExpr(trim(a), s);
+      if (se == StrEval::Ok) {
+        out = s;
+        return true;
+      }
+      if (se == StrEval::TypeError)
+        return false;
+      const EvalResult v = mEval(trim(a));
+      if (!v.ok)
+        return false;
+      out = v.display;
+      return true;
+    };
+    std::string title;
+    if (!asText(args[0], title))
+      return fail(m_strFuncError.empty() ? "ERR:DATA TYPE" : m_strFuncError);
+    m_menuTitle = title;
+    m_menuOptions.clear();
+    m_menuLabels.clear();
+    for (std::size_t i = 1; i + 1 < args.size(); i += 2) {
+      std::string opt;
+      if (!asText(args[i], opt))
+        return fail(m_strFuncError.empty() ? "ERR:DATA TYPE" : m_strFuncError);
+      m_menuOptions.push_back(opt);
+      m_menuLabels.push_back(trim(args[i + 1]));  // Lbl name, as written
+    }
+    return RunStatus::NeedMenu;  // pc stays; provideMenuChoice() jumps
+  }
+
   // ── String store: <str expr>→StrN ──
   {
     std::string lhs;
@@ -874,7 +917,8 @@ RunStatus Interpreter::step() {
     m_status = RunStatus::Error;
     return m_status;
   }
-  if (st == RunStatus::NeedInput || st == RunStatus::NeedKey) {
+  if (st == RunStatus::NeedInput || st == RunStatus::NeedKey ||
+      st == RunStatus::NeedMenu) {
     m_status = st;  // pause for interaction (pc unchanged)
     return m_status;
   }
@@ -902,6 +946,22 @@ void Interpreter::resumeFromPause() {
   if (m_status != RunStatus::NeedKey)
     return;
   ++m_pc;
+  m_status = RunStatus::Running;
+}
+
+void Interpreter::provideMenuChoice(int index) {
+  if (m_status != RunStatus::NeedMenu)
+    return;
+  if (index < 0 || index >= static_cast<int>(m_menuLabels.size()))
+    return;  // out-of-range pick — stay in the menu
+  const auto it = m_labels.find(m_menuLabels[static_cast<std::size_t>(index)]);
+  if (it == m_labels.end()) {
+    m_errorLine = static_cast<int>(m_pc);
+    m_errorMessage = "ERR:LABEL";
+    m_status = RunStatus::Error;
+    return;
+  }
+  m_pc = static_cast<std::size_t>(it->second);  // jump to the option's Lbl
   m_status = RunStatus::Running;
 }
 
