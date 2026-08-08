@@ -393,8 +393,11 @@ _pragmatic subset first_. Phases (each independently shippable):
   CONTINUE button, and a ◀ PRGM back button. Works across loops. 12 tests.
   **String type ✅ (2026-08-01):** `Str1`–`Str9` vars, `"…"` literals, concat
   (`+`), string store, `Disp`/text `Input` of strings — interpreter-level
-  (engine untouched); quote-aware statement/arg splitting; 10 tests. 📅 still:
-  string functions (`sub(`/`length(`/`inString(`/`expr(`), `Output(`, `Menu(`,
+  (engine untouched); quote-aware statement/arg splitting; 10 tests.
+  **String functions ✅ (2026-08-08):** `length(`/`sub(`/`inString(`/`expr(`,
+  resolved interpreter-level (innermost-first substitution via
+  `resolveStrFuncs`; numeric eval routes through `mEval`); compose + nest;
+  `sub(` out of range → `ERR:DOMAIN`. 13 tests. 📅 still: `Output(`, `Menu(`,
   disk-persistence of Str vars.
 - **P5a — Program control (sub-calls) ✅ (2026-08-06)** — `prgmNAME`
   sub-program calls (call stack, depth cap → `ERR:MEMORY`), `Return`,

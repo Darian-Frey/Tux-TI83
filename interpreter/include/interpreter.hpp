@@ -165,8 +165,19 @@ private:
   // Try to evaluate a source expression as a string: a '+'-joined chain of
   // "…" literals and Str1..Str9 references. NotString → it's numeric (use
   // the engine); Ok → `out` holds the result; TypeError → mixed str/number.
+  // First resolves string functions (sub( becomes a literal); see
+  // resolveStrFuncs. On error m_strFuncError holds the "ERR:…" label.
   enum class StrEval { NotString, Ok, TypeError };
-  StrEval evalStringExpr(const std::string &src, std::string &out) const;
+  StrEval evalStringExpr(const std::string &src, std::string &out);
+  // The bare '+'-chain of "…" literals and Str1..Str9 (no function handling).
+  StrEval evalStringChain(const std::string &src, std::string &out) const;
+  // Resolve the string functions length( / inString( / sub( / expr( in `expr`
+  // (P4): number-returning ones become numbers, sub( becomes a "…" literal,
+  // expr( splices its string as a sub-expression. Innermost-first. On error
+  // sets m_strFuncError and returns the partially-resolved text.
+  std::string resolveStrFuncs(std::string expr);
+  // Numeric eval wrapper: resolveStrFuncs then the injected engine evaluator.
+  EvalResult mEval(const std::string &expr);
   // Split on top-level '+' (respecting quotes and brackets).
   static std::vector<std::string> splitPlus(const std::string &s);
   // If a statement is `<expr>→StrN` / `<expr>->StrN`, return N (1..9) and
@@ -213,6 +224,7 @@ private:
   std::string m_inputPrompt;
   bool m_inputIsString = false;              // pending Input targets a StrN
   std::map<int, std::string> m_strVars;      // Str1..Str9 (persist across runs)
+  std::string m_strFuncError;                // last string-function error label
 
   // Control-flow tables (indices into m_statements; -1 = none).
   std::vector<int> m_openerToEnd;   // Then/For/While/Repeat → matching End

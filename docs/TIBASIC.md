@@ -255,9 +255,19 @@ resumable model and hits the milestone with numeric input + string-literal
   `"…"` string is no longer a separator.
 - ✅ 10 tests (store/Disp, concat, literal+var, mixed args, quote-aware
   split, type errors, cross-run persistence, string Input).
-- 📅 Remaining P4 pieces: string functions `sub(` / `length(` / `inString(`
-  / `expr(`, `Output(row,col,value)`, `Menu(`, and disk-persistence of Str
-  vars.
+
+**P4c — String functions ✅ (2026-08-08)**
+- ✅ `length(` / `sub(` / `inString(` / `expr(`, resolved at the interpreter
+  level (innermost-first text substitution via `resolveStrFuncs`, like
+  `getKey` but with argument parsing): number-returning funcs become numbers,
+  `sub(` becomes a `"…"` literal (so it stays a string), `expr(` splices its
+  string as a sub-expression. All numeric evaluation now routes through
+  `mEval` (= `resolveStrFuncs` + engine); `evalStringExpr` = resolve +
+  `evalStringChain`. Compose + nest (`sub(Str1,1,length(Str1))`,
+  `If length(Str1)>3`, `"X"+sub(…)`, `expr(Str1)→A`); `sub(` out of range →
+  `ERR:DOMAIN`, type mismatch → `ERR:DATA TYPE`. +13 tests.
+- 📅 Remaining P4 pieces: `Output(row,col,value)`, `Menu(`, and
+  disk-persistence of Str vars.
 
 ### P5a — Program control (sub-calls) ✅ (2026-08-06)
 - `prgmNAME` **sub-program calls** — a call stack saves/restores each

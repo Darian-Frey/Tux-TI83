@@ -3,10 +3,68 @@
 #include "interpreter.hpp"
 
 #include <algorithm>
+#include <cmath>
 
 namespace tux_ti83 {
 
 namespace {
+
+bool isIdentChar(char c) {
+  return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+         (c >= '0' && c <= '9');
+}
+
+// Find the string-function call (length/inString/sub/expr) with the greatest
+// start index — guaranteed innermost, so its arguments contain no further such
+// call. Returns false if none. Sets name / nameStart / closeParen.
+bool findInnermostStrCall(const std::string &s, std::string &name,
+                          std::size_t &nameStart, std::size_t &closeParen) {
+  static const char *const kNames[] = {"length", "inString", "sub", "expr"};
+  bool found = false;
+  bool inStr = false;
+  for (std::size_t i = 0; i < s.size(); ++i) {
+    if (s[i] == '"') {
+      inStr = !inStr;
+      continue;
+    }
+    if (inStr)
+      continue;
+    if (i > 0 && isIdentChar(s[i - 1]))
+      continue;  // not the start of a word
+    for (const char *nm : kNames) {
+      const std::size_t len = std::string(nm).size();
+      if (i + len < s.size() && s.compare(i, len, nm) == 0 &&
+          s[i + len] == '(') {
+        // Match the closing paren (respecting nested () and strings).
+        int depth = 0;
+        bool q = false;
+        std::size_t close = std::string::npos;
+        for (std::size_t j = i + len; j < s.size(); ++j) {
+          const char d = s[j];
+          if (d == '"') {
+            q = !q;
+            continue;
+          }
+          if (q)
+            continue;
+          if (d == '(')
+            ++depth;
+          else if (d == ')' && --depth == 0) {
+            close = j;
+            break;
+          }
+        }
+        if (close != std::string::npos && (!found || i > nameStart)) {
+          found = true;
+          name = nm;
+          nameStart = i;
+          closeParen = close;
+        }
+      }
+    }
+  }
+  return found;
+}
 
 // Trim ASCII whitespace from both ends. Multi-byte UTF-8 characters (→, π,
 // …) never contain a 0x20/0x09/etc. byte, so byte-level trimming is safe.
@@ -247,7 +305,17 @@ int Interpreter::stringStoreTarget(const std::string &stmt, std::string &lhs) {
 }
 
 Interpreter::StrEval Interpreter::evalStringExpr(const std::string &src,
-                                                 std::string &out) const {
+                                                 std::string &out) {
+  // Resolve string functions first (sub( → a "…" literal), then evaluate the
+  // resulting '+'-chain. A function error surfaces via m_strFuncError.
+  const std::string resolved = resolveStrFuncs(src);
+  if (!m_strFuncError.empty())
+    return StrEval::TypeError;
+  return evalStringChain(resolved, out);
+}
+
+Interpreter::StrEval Interpreter::evalStringChain(const std::string &src,
+                                                  std::string &out) const {
   const auto terms = splitPlus(src);
   const std::string first = terms.empty() ? "" : trim(terms.front());
   const bool firstIsStr =
@@ -275,6 +343,100 @@ Interpreter::StrEval Interpreter::evalStringExpr(const std::string &src,
   return StrEval::Ok;
 }
 
+std::string Interpreter::resolveStrFuncs(std::string expr) {
+  m_strFuncError.clear();
+  // Repeatedly resolve the innermost string-function call. Innermost-first
+  // means each call's arguments are already free of these functions.
+  for (int guard = 0; guard < 1000; ++guard) {
+    std::string name;
+    std::size_t st = 0, cl = 0;
+    if (!findInnermostStrCall(expr, name, st, cl))
+      break;
+    const std::size_t argStart = st + name.size() + 1;  // past "name("
+    const auto args = splitArgs(expr.substr(argStart, cl - argStart));
+
+    // Evaluate a string argument (literals / StrN only, no funcs left here).
+    auto strArg = [&](const std::string &a, std::string &s) -> bool {
+      return evalStringChain(trim(a), s) == StrEval::Ok;
+    };
+    std::string repl;
+    if (name == "length") {
+      std::string s;
+      if (args.size() != 1 || !strArg(args[0], s)) {
+        m_strFuncError = "ERR:DATA TYPE";
+        break;
+      }
+      repl = std::to_string(s.size());
+    } else if (name == "sub") {
+      std::string s;
+      if (args.size() != 3 || !strArg(args[0], s)) {
+        m_strFuncError = "ERR:DATA TYPE";
+        break;
+      }
+      const EvalResult b = m_eval(trim(args[1]));
+      const EvalResult c = m_eval(trim(args[2]));
+      if (!b.ok || !c.ok) {
+        m_strFuncError = "ERR:DATA TYPE";
+        break;
+      }
+      const long begin = std::lround(b.value);
+      const long count = std::lround(c.value);
+      if (begin < 1 || count < 0 ||
+          begin - 1 + count > static_cast<long>(s.size())) {
+        m_strFuncError = "ERR:DOMAIN";
+        break;
+      }
+      repl = "\"" + s.substr(static_cast<std::size_t>(begin - 1),
+                             static_cast<std::size_t>(count)) +
+             "\"";  // string result → a literal, so it stays a string
+    } else if (name == "inString") {
+      std::string hay, needle;
+      if (args.size() < 2 || args.size() > 3 || !strArg(args[0], hay) ||
+          !strArg(args[1], needle)) {
+        m_strFuncError = "ERR:DATA TYPE";
+        break;
+      }
+      long start = 1;
+      if (args.size() == 3) {
+        const EvalResult s3 = m_eval(trim(args[2]));
+        if (!s3.ok) {
+          m_strFuncError = "ERR:DATA TYPE";
+          break;
+        }
+        start = std::lround(s3.value);
+      }
+      if (start < 1)
+        start = 1;
+      long pos = 0;
+      if (static_cast<std::size_t>(start - 1) <= hay.size()) {
+        const auto f = hay.find(needle, static_cast<std::size_t>(start - 1));
+        pos = (f == std::string::npos) ? 0 : static_cast<long>(f) + 1;
+      }
+      repl = std::to_string(pos);
+    } else {  // expr — splice the string's content as a sub-expression
+      std::string s;
+      if (args.size() != 1 || !strArg(args[0], s)) {
+        m_strFuncError = "ERR:DATA TYPE";
+        break;
+      }
+      repl = "(" + s + ")";
+    }
+    expr = expr.substr(0, st) + repl + expr.substr(cl + 1);
+  }
+  return expr;
+}
+
+EvalResult Interpreter::mEval(const std::string &expr) {
+  const std::string resolved = resolveStrFuncs(expr);
+  if (!m_strFuncError.empty()) {
+    EvalResult r;
+    r.ok = false;
+    r.error = m_strFuncError;
+    return r;
+  }
+  return m_eval(resolved);
+}
+
 void Interpreter::reset() {
   m_pc = 0;
   m_output.clear();
@@ -287,7 +449,7 @@ void Interpreter::reset() {
 }
 
 bool Interpreter::evalCond(const std::string &expr, bool &ok) {
-  const EvalResult r = m_eval(expr);
+  const EvalResult r = mEval(expr);
   ok = r.ok;
   if (!ok) {
     m_errorLine = static_cast<int>(m_pc);
@@ -396,15 +558,15 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
     const std::string endSrc = trim(args[2]);
     const std::string stepSrc = (args.size() >= 4) ? trim(args[3]) : "1";
     // Initialise the loop variable; capture end/step once (TI-style).
-    if (!m_eval("(" + startSrc + ")->" + var).ok)
+    if (!mEval("(" + startSrc + ")->" + var).ok)
       return fail("ERR:SYNTAX");
-    const EvalResult er = m_eval(endSrc);
+    const EvalResult er = mEval(endSrc);
     if (!er.ok)
       return fail(er.error);
-    const EvalResult sr = m_eval(stepSrc);
+    const EvalResult sr = mEval(stepSrc);
     if (!sr.ok)
       return fail(sr.error);
-    const double cur = m_eval(var).value;
+    const double cur = mEval(var).value;
     const bool inRange = (sr.value >= 0) ? (cur <= er.value + 1e-9)
                                          : (cur >= er.value - 1e-9);
     const int endIdx = m_openerToEnd[here];
@@ -430,9 +592,9 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
         return RunStatus::Running;
       }
       ForFrame &f = m_forStack.back();
-      if (!m_eval(f.var + "+(" + f.stepSrc + ")->" + f.var).ok)
+      if (!mEval(f.var + "+(" + f.stepSrc + ")->" + f.var).ok)
         return fail("ERR:SYNTAX");
-      const double cur = m_eval(f.var).value;
+      const double cur = mEval(f.var).value;
       const bool inRange = (f.stepVal >= 0) ? (cur <= f.endVal + 1e-9)
                                             : (cur >= f.endVal - 1e-9);
       if (inRange) {
@@ -503,7 +665,7 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
     if (const int n = strVarIndex(v))
       m_strVars.erase(n);  // clear a string variable
     else
-      m_eval("0->" + v);  // scalar: reset to 0 (our "deleted" state)
+      mEval("0->" + v);  // scalar: reset to 0 (our "deleted" state)
     ++m_pc;
     return RunStatus::Running;
   }
@@ -555,7 +717,7 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
           inner.pop_back();
         m_output.push_back(inner);
       } else {
-        const EvalResult r = m_eval(rest);
+        const EvalResult r = mEval(rest);
         if (!r.ok)
           return fail(r.error);
         m_output.push_back(r.display);
@@ -585,8 +747,8 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
         continue;
       }
       if (se == StrEval::TypeError)
-        return fail("ERR:DATA TYPE");
-      const EvalResult r = m_eval(arg);
+        return fail(m_strFuncError.empty() ? "ERR:DATA TYPE" : m_strFuncError);
+      const EvalResult r = mEval(arg);
       if (!r.ok)
         return fail(r.error);
       m_output.push_back(r.display);
@@ -601,8 +763,8 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
     if (const int n = stringStoreTarget(stmt, lhs)) {
       std::string sout;
       const StrEval se = evalStringExpr(lhs, sout);
-      if (se != StrEval::Ok)
-        return fail("ERR:DATA TYPE");  // can't store a non-string into StrN
+      if (se != StrEval::Ok)  // can't store a non-string into StrN
+        return fail(m_strFuncError.empty() ? "ERR:DATA TYPE" : m_strFuncError);
       m_strVars[n] = sout;
       // A store runs silently (TI-style) — no echo.
       ++m_pc;
@@ -620,14 +782,14 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
       return RunStatus::Running;
     }
     if (se == StrEval::TypeError)
-      return fail("ERR:DATA TYPE");
+      return fail(m_strFuncError.empty() ? "ERR:DATA TYPE" : m_strFuncError);
   }
 
   // ── Bare numeric expression / Sto ──
   // Evaluate for its value + side effects. A bare expression echoes its
   // result (like the home screen); an assignment (`…→var`) is silent, as on
   // the TI-83 — otherwise a `getKey→K` poll loop floods the screen.
-  const EvalResult r = m_eval(stmt);
+  const EvalResult r = mEval(stmt);
   if (!r.ok)
     return fail(r.error);
   if (!isAssignment(stmt))
@@ -669,7 +831,7 @@ void Interpreter::provideInput(const std::string &valueSource) {
     // Input into a StrN stores the raw typed text (no evaluation).
     m_strVars[strVarIndex(m_inputVar)] = valueSource;
   } else {
-    const EvalResult r = m_eval("(" + valueSource + ")->" + m_inputVar);
+    const EvalResult r = mEval("(" + valueSource + ")->" + m_inputVar);
     if (!r.ok)
       return;  // invalid value — stay NeedInput so the caller re-prompts
   }

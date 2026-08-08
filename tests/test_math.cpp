@@ -2708,6 +2708,58 @@ int main(int argc, char *argv[]) {
       pc.deleteProgram(n);
   }
 
+  section("TI-BASIC — P4c string functions (length/sub/inString/expr)");
+  {
+    UIController pc;
+    auto runP = [&](const QString &src) -> QStringList {
+      pc.saveProgram("P", src);
+      pc.runProgram("P");
+      return pc.programOutput();
+    };
+    auto last = [](const QStringList &o) {
+      return o.isEmpty() ? QString() : o.last();
+    };
+
+    // length(
+    checkTrue("length of a Str var",
+              last(runP("\"HELLO\"->Str1:Disp length(Str1)")) == "5");
+    checkTrue("length of a literal", last(runP("Disp length(\"ABC\")")) == "3");
+
+    // sub( — 1-based (begin, count).
+    checkTrue("sub extracts a substring",
+              last(runP("\"HELLO\"->Str1:Disp sub(Str1,2,3)")) == "ELL");
+    checkTrue("sub result stores into a Str var",
+              last(runP("\"HELLO\"->Str1:sub(Str1,1,2)->Str2:Disp Str2")) == "HE");
+    checkTrue("sub concatenates as a string",
+              last(runP("\"AB\"->Str1:Disp \"X\"+sub(Str1,1,1)")) == "XA");
+    checkTrue("sub out of range → ERR:DOMAIN",
+              last(runP("\"HI\"->Str1:Disp sub(Str1,1,5)")).startsWith("ERR:DOMAIN"));
+
+    // inString( — position (1-based), 0 if not found, optional start.
+    checkTrue("inString finds a substring",
+              last(runP("\"HELLO\"->Str1:Disp inString(Str1,\"LL\")")) == "3");
+    checkTrue("inString not found → 0",
+              last(runP("\"HELLO\"->Str1:Disp inString(Str1,\"Z\")")) == "0");
+    checkTrue("inString honours a start index",
+              last(runP("\"HELLO\"->Str1:Disp inString(Str1,\"L\",4)")) == "4");
+
+    // expr( — evaluate a string as an expression.
+    checkTrue("expr evaluates a string literal",
+              last(runP("Disp expr(\"6*7\")")) == "42");
+    checkTrue("expr of a Str var into a scalar",
+              last(runP("\"3+4\"->Str1:expr(Str1)->A:Disp A")) == "7");
+
+    // Nested: sub with a length( count → whole string.
+    checkTrue("nested length inside sub",
+              last(runP("\"HELLO\"->Str1:Disp sub(Str1,1,length(Str1))")) == "HELLO");
+
+    // Numeric context: a string function in a condition.
+    checkTrue("length in an If condition",
+              last(runP("\"HELLO\"->Str1:If length(Str1)>3:Disp 1")) == "1");
+
+    pc.deleteProgram("P");
+  }
+
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed
             << "  Failed: " << gFailed << '\n';
