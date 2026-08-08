@@ -980,9 +980,17 @@ void UIController::publishProgramState() {
     QString err = QString::fromStdString(m_interp.errorMessage());
     if (err.isEmpty())
       err = QStringLiteral("ERR:SYNTAX");
+    // Report the editor source line (statements are flattened from
+    // ':'-chained lines), and remember it so the run view can jump there.
+    m_progErrorLine = m_interp.errorSourceLine();
+    m_progErrorProgram = QString::fromStdString(m_interp.currentProgram());
+    const int shown =
+        (m_progErrorLine >= 0) ? m_progErrorLine + 1 : m_interp.errorLine() + 1;
     m_programOutput << (err + QStringLiteral("  (line ") +
-                        QString::number(m_interp.errorLine() + 1) +
-                        QStringLiteral(")"));
+                        QString::number(shown) + QStringLiteral(")"));
+  } else {
+    m_progErrorLine = -1;
+    m_progErrorProgram.clear();
   }
   m_progWaitingInput = (st == RunStatus::NeedInput);
   m_progInputPrompt = m_progWaitingInput
@@ -1055,7 +1063,7 @@ void UIController::runProgram(const QString &name) {
           return std::nullopt;
         return *sub;
       });
-  m_interp.load(*lines);
+  m_interp.load(*lines, clean.toStdString());  // name → error jump-to-line
   m_progBreakRequested = false;  // fresh run
   m_progKey = 0;                 // no stale keypress carries into a new run
   stepProgramToPause();

@@ -72,8 +72,9 @@ public:
 
   // Load a program from its source lines. Each line is split on top-level
   // ':' separators into individual statements; blank statements are
-  // dropped. Resets execution state so the program is ready to run.
-  void load(const std::vector<std::string> &lines);
+  // dropped. `name` labels the program for error reporting (jump-to-line).
+  // Resets execution state so the program is ready to run.
+  void load(const std::vector<std::string> &lines, const std::string &name = "");
 
   // Rewind to the first statement and clear output / error state.
   void reset();
@@ -99,6 +100,13 @@ public:
   const std::vector<std::string> &output() const { return m_output; }
   int errorLine() const { return m_errorLine; }
   const std::string &errorMessage() const { return m_errorMessage; }
+  // 0-based source line of the erroring statement in the program that
+  // errored (statements are flattened from ':'-chained lines, so this maps
+  // back to the editor line). -1 if there's no error. See currentProgram().
+  int errorSourceLine() const;
+  // Name of the program currently loaded/executing — the one an error line
+  // refers to (a sub-program during a prgm call). Empty if unnamed.
+  const std::string &currentProgram() const { return m_currentProgram; }
 
   // ── Resumable interaction (P4) ──
   // When status() is NeedInput, the run paused on Input/Prompt; inputPrompt()
@@ -179,6 +187,8 @@ private:
   // TI-BASIC way, so only the per-program execution state is saved here.
   struct CallFrame {
     std::vector<std::string> statements;
+    std::vector<int> srcLine;
+    std::string program;
     std::size_t pc = 0;
     std::vector<int> openerToEnd, thenToElse, elseToEnd, endToOpener;
     std::map<std::string, int> labels;
@@ -190,6 +200,8 @@ private:
       m_progLoader;
   std::vector<CallFrame> m_callStack;     // suspended callers (prgmNAME)
   std::vector<std::string> m_statements;  // flattened program
+  std::vector<int> m_statementSrcLine;    // source line (0-based) per statement
+  std::string m_currentProgram;           // name of the loaded program
   std::vector<std::string> m_output;      // one entry per Disp/Output line
   std::size_t m_pc = 0;                    // program counter (statement idx)
   RunStatus m_status = RunStatus::Done;

@@ -2676,6 +2676,38 @@ int main(int argc, char *argv[]) {
       pc.deleteProgram(n);
   }
 
+  section("TI-BASIC — P5b error jump-to-line (source line mapping)");
+  {
+    UIController pc;
+
+    // The erroring statement's editor line, mapped through a ':'-chain.
+    // Line 0 holds two statements; the 5/0 error is on line 1 → line 2 shown.
+    pc.saveProgram("ERR1", "Disp 1:Disp 2\nDisp 5/0");
+    pc.runProgram("ERR1");
+    checkTrue("error maps to source line 1 (not statement 2)",
+              pc.programErrorLine() == 1);
+    checkTrue("error names the program", pc.programErrorProgram() == "ERR1");
+
+    // A clean run clears the error location.
+    pc.saveProgram("OK", "Disp 1");
+    pc.runProgram("OK");
+    checkTrue("no error → line -1", pc.programErrorLine() == -1);
+    checkTrue("no error → empty program name",
+              pc.programErrorProgram().isEmpty());
+
+    // An error inside a sub-program points at the sub, at its own line.
+    pc.saveProgram("SUBERR", "Disp 9\nDisp 1/0");
+    pc.saveProgram("MAINERR", "prgmSUBERR");
+    pc.runProgram("MAINERR");
+    checkTrue("sub-program error → line within the sub",
+              pc.programErrorLine() == 1);
+    checkTrue("sub-program error → names the sub",
+              pc.programErrorProgram() == "SUBERR");
+
+    for (const char *n : {"ERR1", "OK", "SUBERR", "MAINERR"})
+      pc.deleteProgram(n);
+  }
+
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed
             << "  Failed: " << gFailed << '\n';

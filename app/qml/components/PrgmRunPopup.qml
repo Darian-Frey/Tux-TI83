@@ -14,6 +14,10 @@ Popup {
     // manager (this run view is a sibling of the PRGM popup).
     signal backToPrograms()
 
+    // Emitted by the "EDIT LINE" button after a runtime error — the owner
+    // opens the editor for `program` positioned at `line` (0-based). P5b.
+    signal editAtError(string program, int line)
+
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
@@ -180,6 +184,19 @@ Popup {
             label: "■ STOP"
             keyType: "control"
             onPressed: uiController.stopProgram()
+        }
+
+        // ── Jump to the offending line in the editor (after an error) ──
+        CalcKey {
+            Layout.fillWidth: true
+            visible: uiController.programErrorProgram.length > 0
+                     && !uiController.programRunning
+            label: uiController.programErrorLine >= 0
+                   ? "✎ EDIT LINE " + (uiController.programErrorLine + 1)
+                   : "✎ EDIT " + uiController.programErrorProgram
+            keyType: "function"
+            onPressed: root.editAtError(uiController.programErrorProgram,
+                                        uiController.programErrorLine)
         }
 
         // Navigation is hidden while the program is actively running — only

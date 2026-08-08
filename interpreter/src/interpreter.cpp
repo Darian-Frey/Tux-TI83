@@ -80,16 +80,29 @@ std::vector<std::string> Interpreter::splitStatements(const std::string &line) {
 
 void Interpreter::loadStatements(const std::vector<std::string> &lines) {
   m_statements.clear();
-  for (const auto &line : lines) {
-    auto stmts = splitStatements(line);
-    m_statements.insert(m_statements.end(), stmts.begin(), stmts.end());
+  m_statementSrcLine.clear();
+  for (int lineNo = 0; lineNo < static_cast<int>(lines.size()); ++lineNo) {
+    auto stmts = splitStatements(lines[static_cast<size_t>(lineNo)]);
+    for (auto &s : stmts) {
+      m_statements.push_back(std::move(s));
+      m_statementSrcLine.push_back(lineNo);  // map each statement to its line
+    }
   }
   buildControlTables();
 }
 
-void Interpreter::load(const std::vector<std::string> &lines) {
+void Interpreter::load(const std::vector<std::string> &lines,
+                       const std::string &name) {
+  m_currentProgram = name;
   loadStatements(lines);
   reset();
+}
+
+int Interpreter::errorSourceLine() const {
+  if (m_errorLine < 0 ||
+      m_errorLine >= static_cast<int>(m_statementSrcLine.size()))
+    return -1;
+  return m_statementSrcLine[static_cast<size_t>(m_errorLine)];
 }
 
 bool Interpreter::returnFromCall() {
@@ -98,6 +111,8 @@ bool Interpreter::returnFromCall() {
   CallFrame f = std::move(m_callStack.back());
   m_callStack.pop_back();
   m_statements = std::move(f.statements);
+  m_statementSrcLine = std::move(f.srcLine);
+  m_currentProgram = std::move(f.program);
   m_pc = f.pc;
   m_openerToEnd = std::move(f.openerToEnd);
   m_thenToElse = std::move(f.thenToElse);
@@ -458,9 +473,11 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
     if (!subLines)
       return fail("ERR:UNDEFINED");  // no such program
     // Suspend the caller, to resume at the statement AFTER this call.
-    m_callStack.push_back({m_statements, here + 1, m_openerToEnd, m_thenToElse,
-                           m_elseToEnd, m_endToOpener, m_labels, m_forStack});
+    m_callStack.push_back({m_statements, m_statementSrcLine, m_currentProgram,
+                           here + 1, m_openerToEnd, m_thenToElse, m_elseToEnd,
+                           m_endToOpener, m_labels, m_forStack});
     loadStatements(*subLines);  // sub's statements + fresh control tables
+    m_currentProgram = name;    // errors now refer to the sub-program
     m_forStack.clear();
     m_pc = 0;
     return RunStatus::Running;

@@ -912,6 +912,11 @@ ApplicationWindow {
             prgmRunPopup.close()
             prgmPopup.open()
         }
+        // "✎ EDIT LINE n" — after an error, jump into the editor at the line.
+        onEditAtError: function(program, line) {
+            prgmRunPopup.close()
+            prgmPopup.openAtLine(program, line)
+        }
     }
 
     // Open (or refresh) the run/output view whenever a program's run state

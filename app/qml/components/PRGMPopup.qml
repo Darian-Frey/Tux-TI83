@@ -30,6 +30,10 @@ Popup {
     property string editName: ""
     // Program list, refreshed from the controller.
     property var names: []
+    // Pending "open editor at line" request (applied in onOpened so it
+    // survives the open transition). -1 line = just edit, no positioning.
+    property string pendingEditName: ""
+    property int pendingEditLine: -1
 
     function refresh() { names = uiController.programNames() }
 
@@ -55,8 +59,40 @@ Popup {
             refresh()
         }
     }
+    // Open the editor for `name` with the cursor on `line` (0-based). Defers
+    // to onOpened so it works whether the popup is already open or not.
+    function openAtLine(name, line) {
+        pendingEditName = name
+        pendingEditLine = line
+        if (visible) applyPendingEdit()
+        else open()
+    }
+    function applyPendingEdit() {
+        if (pendingEditName.length === 0)
+            return
+        startEdit(pendingEditName)
+        if (pendingEditLine >= 0) {
+            var lines = bodyArea.text.split("\n")
+            var pos = 0
+            for (var i = 0; i < pendingEditLine && i < lines.length; i++)
+                pos += lines[i].length + 1  // +1 for the newline
+            var endPos = (pendingEditLine < lines.length)
+                         ? pos + lines[pendingEditLine].length : pos
+            bodyArea.cursorPosition = pos
+            bodyArea.select(pos, endPos)  // highlight the offending line
+            bodyArea.forceActiveFocus()
+        }
+        pendingEditName = ""
+        pendingEditLine = -1
+    }
 
-    onOpened: { editing = false; refresh() }
+    onOpened: {
+        refresh()
+        if (pendingEditName.length > 0)
+            applyPendingEdit()
+        else
+            editing = false
+    }
 
     background: Rectangle {
         color: Style.bgSurface

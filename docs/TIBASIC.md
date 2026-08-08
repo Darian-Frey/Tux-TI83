@@ -302,12 +302,21 @@ resumable model and hits the milestone with numeric input + string-literal
   which flooded a getKey loop with `0`s. Stores are now silent (TI-style);
   only a bare expression echoes. +6 tests.
 
+### P5b-3 — Error jump-to-line ✅ (2026-08-08)
+- The interpreter maps each flattened statement back to its **editor source
+  line** (`m_statementSrcLine`) and tracks the **current program name**
+  (`m_currentProgram`, saved/restored across `prgm` calls). `errorSourceLine()`
+  + `currentProgram()` expose where an error occurred — correct even when a
+  line holds a `:`-chain, and pointing at the sub-program when the error is
+  inside one.
+- The run view reports the true source line and shows an **✎ EDIT LINE n**
+  button; pressing it opens the editor for that program with the offending
+  line highlighted (`PRGMPopup.openAtLine`). +6 tests.
+
 ### P5b — Program control (remaining) 📅
-- **Jump-to-line** in the editor on a runtime error (the run view already
-  reports `ERR:… (line N)`; this opens the editor at that line).
 - In-editor **command paste** menu (PRGM ▸ CTL / I/O tabs) so keywords
   don't have to be typed by hand.
-- Milestone: errors point at the line; keywords are insertable.
+- Milestone: keywords are insertable without hand-typing.
 
 ### P6 — Advanced / optional 💭
 - Graphics from programs (reuse the existing DRAW primitives: `Line(`,

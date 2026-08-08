@@ -43,6 +43,8 @@ private:
     Q_PROPERTY(QString programInputPrompt READ programInputPrompt NOTIFY programRunStateChanged)
     Q_PROPERTY(bool programWaitingKey READ programWaitingKey NOTIFY programRunStateChanged)
     Q_PROPERTY(bool programRunning READ programRunning NOTIFY programRunStateChanged)
+    Q_PROPERTY(int programErrorLine READ programErrorLine NOTIFY programRunStateChanged)
+    Q_PROPERTY(QString programErrorProgram READ programErrorProgram NOTIFY programRunStateChanged)
     Q_PROPERTY(int activeFunctionIndex READ activeFunctionIndex NOTIFY activeFunctionIndexChanged)
     Q_PROPERTY(bool isGraphMode MEMBER m_isGraphMode NOTIFY graphModeChanged)
     // TABLE mode — 2ND+GRAPH on real TI-83. Replaces the keypad page
@@ -163,6 +165,10 @@ public:
     QString programInputPrompt() const { return m_progInputPrompt; }
     bool programWaitingKey() const { return m_progWaitingKey; }
     bool programRunning() const { return m_progRunning; }
+    // 0-based editor source line of the last runtime error (-1 if none), and
+    // the program it occurred in — used by the run view's jump-to-line (P5b).
+    int programErrorLine() const { return m_progErrorLine; }
+    QString programErrorProgram() const { return m_progErrorProgram; }
     int activeFunctionIndex() const { return m_activeIdx; }
     DisplayState displayState() const { return m_displayState; }
     QString displayExpression() const { return m_displayExpression; }
@@ -548,6 +554,8 @@ private:
     bool m_progBreakRequested = false; // STOP pressed → break at next slice
     bool m_inProgramRun = false;       // re-entrancy guard (processEvents)
     int m_progKey = 0;                 // pending getKey code (0 = none)
+    int m_progErrorLine = -1;          // 0-based source line of last error
+    QString m_progErrorProgram;        // program that raised the last error
     // Step the interpreter until it pauses / finishes, then publish state.
     void stepProgramToPause();
     void publishProgramState();

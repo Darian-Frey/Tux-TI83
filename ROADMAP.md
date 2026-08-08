@@ -409,8 +409,13 @@ _pragmatic subset first_. Phases (each independently shippable):
   now time-bounded (~8 ms slices) with live Disp refresh, and the runaway
   guard is headless-only so interactive loops aren't cut off. Physical keys →
   TI-83 codes via `sendProgramKey()`. Fixed BUG-025 (stores echoed → flooded
-  getKey loops; now silent, TI-style). 6 tests. 📅 **P5b still:**
-  error-with-line jump-to-editor, in-editor command paste.
+  getKey loops; now silent, TI-style). 6 tests.
+- **P5b-3 — Error jump-to-line ✅ (2026-08-08)** — the interpreter maps each
+  flattened statement to its editor source line and tracks the current
+  program name (across `prgm` calls), so a runtime error reports the true
+  line (even through `:`-chains) and the run view's ✎ EDIT LINE button opens
+  the editor there with the line highlighted. 6 tests. 📅 **P5b still:**
+  in-editor command paste.
 - 💭 **P6 — Optional** — graphics from programs (reuse DRAW), `.8xp` import.
 
 ## Connectivity & data exchange
