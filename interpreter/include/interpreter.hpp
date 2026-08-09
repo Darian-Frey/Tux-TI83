@@ -258,6 +258,7 @@ private:
     std::string program;
     std::size_t pc = 0;
     std::vector<int> openerToEnd, thenToElse, elseToEnd, endToOpener;
+    std::vector<int> enclosingLoop;
     std::map<std::string, int> labels;
     std::vector<ForFrame> forStack;
   };
@@ -293,6 +294,7 @@ private:
   std::vector<int> m_thenToElse;    // Then → its Else (or -1)
   std::vector<int> m_elseToEnd;     // Else → its End (or -1)
   std::vector<int> m_endToOpener;   // End → its opener (or -1)
+  std::vector<int> m_enclosingLoop; // stmt → innermost enclosing loop opener (-1)
   std::map<std::string, int> m_labels;  // Lbl name → Lbl statement index
   std::vector<ForFrame> m_forStack;     // active For loops
 };

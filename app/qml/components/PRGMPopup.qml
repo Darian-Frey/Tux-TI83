@@ -42,8 +42,8 @@ Popup {
     // statement words; a bare "(" left open for the user to fill args).
     readonly property var cmdSet: ({
         "CTL": ["If ", "Then", "Else", "For(", "While ", "Repeat ", "End",
-                "Lbl ", "Goto ", "Pause", "Stop", "Return", "DelVar ",
-                "Menu(", "prgm"],
+                "break", "continue", "Lbl ", "Goto ", "Pause", "Stop",
+                "Return", "DelVar ", "Menu(", "prgm", "# "],
         "I/O": ["Disp ", "Input ", "Prompt ", "Output(", "ClrHome", "getKey"],
         "STR": ["Str1", "Str2", "Str3", "sub(", "length(", "inString(",
                 "expr(", "\"\""],

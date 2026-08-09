@@ -345,6 +345,19 @@ resumable model and hits the milestone with numeric input + string-literal
   cursor between the quotes, and `→` / `√(` are one tap. QML-only.
 - Milestone: keywords are insertable without hand-typing. **P5 complete.**
 
+### Language enhancements (beyond the original TI-83)
+Improvements the TI-83 community always wanted, added on our modern base:
+- **Comments ✅ (2026-08-10):** `#` to end of line is ignored (quote-aware,
+  stripped per line in `loadStatements`).
+- **`break` / `continue` ✅ (2026-08-10):** exit / skip the innermost loop.
+  `buildControlTables` records each statement's enclosing loop
+  (`m_enclosingLoop`); `break` jumps past its `End` (popping a `For` frame),
+  `continue` jumps to the `End` (re-test/increment). Outside a loop →
+  `ERR:SYNTAX`. Both added to the editor's CTL palette. +7 tests.
+- 📅 Planned (community wishlist): list/matrix element access + assignment,
+  `toString(`, pixel graphics, local variables + user functions, error
+  trapping.
+
 ### P6 — Advanced / optional 💭
 **P6-1 — Program-driven graphs ✅ (2026-08-09)**
 - Programs drive the graph engine via an injected **graph sink**

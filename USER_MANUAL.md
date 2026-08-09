@@ -25,17 +25,18 @@ architecture or contributor workflows, see [README.md](README.md) and
 8. [Matrices](#matrices)
 9. [Lists & Statistics](#lists--statistics)
 10. [Graph Mode](#graph-mode)
-11. [The MODE Menu](#the-mode-menu)
-12. [Keyboard Shortcuts](#keyboard-shortcuts)
-13. [CLI Usage](#cli-usage-one-shot)
-14. [REPL Usage](#repl-usage-interactive)
-15. [Ans and Conversions](#ans-and-conversions)
-16. [Complex Numbers](#complex-numbers)
-17. [Error Messages](#error-messages)
-18. [Tips & Tricks](#tips--tricks)
-19. [Troubleshooting](#troubleshooting)
-20. [Glossary](#glossary)
-21. [Appendix: Function Reference](#appendix-function-reference)
+11. [Programming (TI-BASIC)](#programming-ti-basic)
+12. [The MODE Menu](#the-mode-menu)
+13. [Keyboard Shortcuts](#keyboard-shortcuts)
+14. [CLI Usage](#cli-usage-one-shot)
+15. [REPL Usage](#repl-usage-interactive)
+16. [Ans and Conversions](#ans-and-conversions)
+17. [Complex Numbers](#complex-numbers)
+18. [Error Messages](#error-messages)
+19. [Tips & Tricks](#tips--tricks)
+20. [Troubleshooting](#troubleshooting)
+21. [Glossary](#glossary)
+22. [Appendix: Function Reference](#appendix-function-reference)
 
 ---
 
@@ -45,7 +46,10 @@ Tux-TI83 is a Linux desktop calculator that reimagines the Texas
 Instruments TI-83 Plus. If you've used a TI-83 before, most of what
 you know carries over — the same function names, the same error
 labels, the same operator precedence. If you haven't, this manual
-walks you through the essentials.
+walks you through the essentials. It also includes a full **TI-BASIC**
+programming environment — write, run, and save programs on the calculator,
+including ones that graph and draw (see
+[Programming (TI-BASIC)](#programming-ti-basic)).
 
 The project ships four binaries:
 
@@ -387,6 +391,158 @@ where `X` stands in for θ), and **Seq** (sequences `u`/`v`/`w`, with
 
 Press `Y=` to return to the keypad.
 
+## Programming (TI-BASIC)
+
+Tux-TI83 includes a **TI-BASIC** interpreter — you can write, save, and run
+programs on the calculator, just like the real thing. Programs run on the
+"home screen" (a run/output view) and can also drive the graph.
+
+### Opening the program manager
+
+Press **2ND + √(** — the `√(` key's second function is **PRGM** — to open the
+program manager. From there you can **RUN** a program, **EDIT** its source,
+delete it (**✕**), or create one with **NEW** (name: A–Z / 0–9, up to 8
+characters). Programs persist across restarts, saved with the rest of the
+calculator's state.
+
+### The editor
+
+A program is plain source text — **one statement per line**, or several on a
+line separated by a colon `:`. The store arrow `→` is entered with the **STO▸**
+key or by typing `->`.
+
+Rather than type keywords by hand, tap **⌨ COMMANDS** to open a palette with
+four tabs — **CTL** (control flow), **I/O** (input/output), **STR** (strings),
+**FN** (functions and `→`) — and click any keyword to insert it at the cursor.
+Press **SAVE** to store, **CANCEL** to discard.
+
+### Running a program
+
+**RUN** opens the run view — the program's output screen. Depending on what it
+does you may see:
+
+- **output** from `Disp` / `Output(` (scrolling, monospace);
+- an **input box** at `Input` / `Prompt` (type a value, press ENTER);
+- a **▶ CONTINUE** button at `Pause`;
+- a **menu** of options at `Menu(`;
+- a **■ STOP** button while it runs — press it to interrupt a program (e.g. a
+  runaway loop); the program halts with `ERR:BREAK`.
+
+Other buttons: **COPY** copies the output to the clipboard, **◀ PRGM** returns
+to the manager, and after an error **✎ EDIT LINE n** jumps into the editor at
+the offending line.
+
+### Command reference
+
+**Display & output**
+
+| Command | Does |
+|---|---|
+| `Disp value[,value…]` | Print each value on its own line (numbers or strings) |
+| `Output(row,col,value)` | Print `value` at a fixed row (1–8), column (1–16) |
+| `ClrHome` | Clear the output screen |
+
+**Input & interaction**
+
+| Command | Does |
+|---|---|
+| `Input VAR` / `Input "prompt",VAR` | Pause for a value into `VAR` (number, or raw text into a `StrN`) |
+| `Prompt VAR` | Like `Input` with an automatic `VAR=?` prompt |
+| `Pause` | Wait for CONTINUE |
+| `getKey` | Code of the key pressed since the last poll, or `0` (non-blocking). Arrows = 24/25/26/34 (←↑→↓), `ENTER`=105, `CLEAR`=45, `DEL`=23, digits 0–9 |
+| `Menu("title","opt",Lbl,…)` | Show a menu; the chosen option jumps to its `Lbl` |
+
+**Control flow**
+
+| Command | Does |
+|---|---|
+| `If cond` | Run the next statement only if `cond` is true |
+| `If cond` / `Then` … `Else` … `End` | Block form with an optional `Else` |
+| `For(VAR,start,end[,step])` … `End` | Counted loop |
+| `While cond` … `End` | Loop while `cond` holds |
+| `Repeat cond` … `End` | Loop until `cond` becomes true (body always runs once) |
+| `Lbl name` / `Goto name` | Label and jump |
+| `Stop` | End the program |
+
+**Program control**
+
+| Command | Does |
+|---|---|
+| `prgmNAME` | Run another program as a sub-routine, then continue |
+| `Return` | Return from a sub-program (ends the run in the main program) |
+| `DelVar VAR` | Reset a scalar to 0 / clear a `StrN` |
+
+**Strings**
+
+`Str1`–`Str9` hold text; `"…"` are string literals; `+` concatenates.
+
+| Function | Returns |
+|---|---|
+| `length(str)` | Character count |
+| `sub(str,begin,count)` | Substring (1-based) |
+| `inString(str,sub[,start])` | 1-based position, or 0 if not found |
+| `expr(str)` | The string evaluated as an expression |
+
+**Graphing** (see also [Graph Mode](#graph-mode))
+
+| Command | Does |
+|---|---|
+| `"X²"→Y1` (or bare `X²→Y1`) | Store a function into a `Y=` slot |
+| `n→Xmin` / `Xmax` / `Ymin` / `Ymax` / `Xscl` / `Yscl` | Set a window variable |
+| `FnOn [n]` / `FnOff [n]` | Enable / disable a function (all if no number) |
+| `ZStandard` / `ZoomFit` | Reset / fit the window |
+| `DispGraph` | Show the graph |
+| `ClrDraw` | Clear all drawings |
+| `Line(x1,y1,x2,y2)` | Draw a line (graph coordinates) |
+| `Circle(x,y,r)` | Draw a circle |
+| `Horizontal y` / `Vertical x` | Draw a full-width / full-height line |
+| `Pt-On(x,y)` | Draw a point |
+| `Text(x,y,value)` | Draw text at a graph position |
+
+Any graphics command switches to the graph automatically. When drawings are
+present, a **✕ CLR** button appears at the top-right of the graph to clear them
+all in one tap (the DRAW menu, **2ND+TRACE**, can delete individual drawings).
+
+### Examples
+
+A greeting that asks for your name:
+
+```
+Input "NAME?",Str1
+Disp "HELLO "+Str1
+```
+
+Sum the numbers 1 to N:
+
+```
+Prompt N
+0→S
+For(I,1,N)
+S+I→S
+End
+Disp S
+```
+
+Set up and show a parabola with a circle drawn on it:
+
+```
+"X²"→Y1
+-6→Xmin
+6→Xmax
+ClrDraw
+Circle(0,4,3)
+DispGraph
+```
+
+### Notes
+
+- **Interrupting:** press **■ STOP** during a run to stop a program (a
+  runaway loop is stopped this way) — it ends with `ERR:BREAK`.
+- **Errors** report the source line and offer **✎ EDIT LINE n** to jump there.
+- Assignments (`5→A`) are silent, as on the TI-83 — use `Disp` to show a value.
+- The math engine is shared with the home screen, so every function you can
+  type there works in a program too.
+
 ## The MODE Menu
 
 The `MODE` key (CONTROL section) opens the settings popup. Wired rows take
@@ -564,9 +720,13 @@ TI-83-style error labels:
 | `ERR:DOMAIN` | Input outside the function's valid domain — `asin(2)`, `(-5)!`, `acosh(0.5)`, `nCr(5, 6)` |
 | `ERR:INVALID DIM` | Dimension mismatch — adding a 2×2 to a 3×3, unequal-length lists, a backwards `seq` range, etc. |
 | `ERR:DATA TYPE` | Type mismatch — mixing a matrix/list and a scalar where not allowed, or a store-target mismatch (`5→L1`, `{1,2}→A`) |
-| `ERR:UNDEFINED` | Referenced a matrix or list before storing values into it |
+| `ERR:UNDEFINED` | Referenced a matrix or list before storing values into it; or a program called a `prgmNAME` that doesn't exist |
 | `ERR:SINGULAR MAT` | Tried to invert a singular (non-invertible) matrix |
 | `ERR:RECURSION` | A Y-VAR references itself directly or through a cycle |
+| `ERR:BREAK` | A running program was interrupted (**■ STOP**), or a runaway loop hit the step limit |
+| `ERR:LABEL` | A program's `Goto` / `Menu(` target `Lbl` doesn't exist |
+| `ERR:ARGUMENT` | A program command was given the wrong number of arguments |
+| `ERR:MEMORY` | Program sub-calls (`prgmNAME`) nested too deep (runaway recursion) |
 
 ## Tips & Tricks
 

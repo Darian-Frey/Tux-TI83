@@ -112,6 +112,19 @@ bool matchKeyword(const std::string &stmt, const std::string &kw) {
   return next == ' ' || next == '\t' || next == '(' || next == '"';
 }
 
+// Drop a trailing `#…` comment from a source line (everything from the first
+// top-level '#' to end of line), leaving any '#' inside a "…" string alone.
+std::string stripComment(const std::string &line) {
+  bool inStr = false;
+  for (std::size_t i = 0; i < line.size(); ++i) {
+    if (line[i] == '"')
+      inStr = !inStr;
+    else if (line[i] == '#' && !inStr)
+      return line.substr(0, i);
+  }
+  return line;
+}
+
 }  // namespace
 
 std::vector<std::string> Interpreter::splitStatements(const std::string &line) {
@@ -140,7 +153,8 @@ void Interpreter::loadStatements(const std::vector<std::string> &lines) {
   m_statements.clear();
   m_statementSrcLine.clear();
   for (int lineNo = 0; lineNo < static_cast<int>(lines.size()); ++lineNo) {
-    auto stmts = splitStatements(lines[static_cast<size_t>(lineNo)]);
+    // Strip a `#` comment first (per line), then split into statements.
+    auto stmts = splitStatements(stripComment(lines[static_cast<size_t>(lineNo)]));
     for (auto &s : stmts) {
       m_statements.push_back(std::move(s));
       m_statementSrcLine.push_back(lineNo);  // map each statement to its line
@@ -176,6 +190,7 @@ bool Interpreter::returnFromCall() {
   m_thenToElse = std::move(f.thenToElse);
   m_elseToEnd = std::move(f.elseToEnd);
   m_endToOpener = std::move(f.endToOpener);
+  m_enclosingLoop = std::move(f.enclosingLoop);
   m_labels = std::move(f.labels);
   m_forStack = std::move(f.forStack);
   return true;
@@ -187,14 +202,27 @@ void Interpreter::buildControlTables() {
   m_thenToElse.assign(static_cast<size_t>(n), -1);
   m_elseToEnd.assign(static_cast<size_t>(n), -1);
   m_endToOpener.assign(static_cast<size_t>(n), -1);
+  m_enclosingLoop.assign(static_cast<size_t>(n), -1);
   m_labels.clear();
-  std::vector<int> stack;  // open Then/For/While/Repeat indices
+  std::vector<int> stack;      // open Then/For/While/Repeat indices
+  std::vector<int> loopStack;  // open For/While/Repeat indices (for break/continue)
+  auto isLoop = [&](int idx) {
+    const std::string &o = m_statements[static_cast<size_t>(idx)];
+    return matchKeyword(o, "For") || matchKeyword(o, "While") ||
+           matchKeyword(o, "Repeat");
+  };
   for (int i = 0; i < n; ++i) {
+    // Innermost enclosing loop for this statement (before it opens/closes one).
+    m_enclosingLoop[static_cast<size_t>(i)] =
+        loopStack.empty() ? -1 : loopStack.back();
     const std::string &s = m_statements[static_cast<size_t>(i)];
     if (matchKeyword(s, "Lbl")) {
       m_labels[trim(s.substr(3))] = i;
-    } else if (matchKeyword(s, "Then") || matchKeyword(s, "For") ||
-               matchKeyword(s, "While") || matchKeyword(s, "Repeat")) {
+    } else if (matchKeyword(s, "For") || matchKeyword(s, "While") ||
+               matchKeyword(s, "Repeat")) {
+      stack.push_back(i);
+      loopStack.push_back(i);
+    } else if (matchKeyword(s, "Then")) {
       stack.push_back(i);
     } else if (matchKeyword(s, "Else")) {
       if (!stack.empty() &&
@@ -204,6 +232,8 @@ void Interpreter::buildControlTables() {
       if (!stack.empty()) {
         const int opener = stack.back();
         stack.pop_back();
+        if (isLoop(opener) && !loopStack.empty())
+          loopStack.pop_back();
         m_openerToEnd[static_cast<size_t>(opener)] = i;
         m_endToOpener[static_cast<size_t>(i)] = opener;
         // If this block was an If-Then with an Else, map that Else → End.
@@ -575,6 +605,26 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
     return RunStatus::Running;
   }
 
+  // break / continue — jump out of / to the end of the innermost loop.
+  if (matchKeyword(stmt, "break") || matchKeyword(stmt, "continue")) {
+    const int opener =
+        (here < m_enclosingLoop.size()) ? m_enclosingLoop[here] : -1;
+    if (opener < 0)
+      return fail("ERR:SYNTAX");  // not inside a loop
+    const int endIdx = m_openerToEnd[static_cast<std::size_t>(opener)];
+    if (endIdx < 0)
+      return fail("ERR:SYNTAX");
+    if (matchKeyword(stmt, "continue")) {
+      m_pc = static_cast<std::size_t>(endIdx);  // End re-tests / increments
+    } else {  // break — leave the loop
+      if (matchKeyword(m_statements[static_cast<std::size_t>(opener)], "For") &&
+          !m_forStack.empty())
+        m_forStack.pop_back();  // discard this For's frame
+      m_pc = static_cast<std::size_t>(endIdx) + 1;
+    }
+    return RunStatus::Running;
+  }
+
   if (matchKeyword(stmt, "While")) {
     bool ok;
     const bool truthy = evalCond(trim(stmt.substr(5)), ok);
@@ -688,7 +738,7 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
     // Suspend the caller, to resume at the statement AFTER this call.
     m_callStack.push_back({m_statements, m_statementSrcLine, m_currentProgram,
                            here + 1, m_openerToEnd, m_thenToElse, m_elseToEnd,
-                           m_endToOpener, m_labels, m_forStack});
+                           m_endToOpener, m_enclosingLoop, m_labels, m_forStack});
     loadStatements(*subLines);  // sub's statements + fresh control tables
     m_currentProgram = name;    // errors now refer to the sub-program
     m_forStack.clear();

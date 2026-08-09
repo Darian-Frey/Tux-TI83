@@ -439,6 +439,10 @@ _pragmatic subset first_. Phases (each independently shippable):
   `Text(`/`ClrDraw` (graphics commands auto-show the graph). Added a ✕ CLR
   button on `GraphCanvas` (shown when overlays exist) to clear all drawings.
   9 tests. **P6 graphics complete.** 💭 `.8xp` import remains (optional).
+- **Language enhancements (beyond the TI-83):** **comments** (`#` to EOL) and
+  **`break`/`continue`** ✅ (2026-08-10, 7 tests). 📅 planned: list/matrix
+  element access + assignment, `toString(`, pixel graphics, local variables +
+  user functions, error trapping.
 
 ## Connectivity & data exchange
 

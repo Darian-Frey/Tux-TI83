@@ -2951,6 +2951,47 @@ int main(int argc, char *argv[]) {
     pc.deleteProgram("P");
   }
 
+  section("TI-BASIC — comments + break/continue");
+  {
+    UIController pc;
+    auto runP = [&](const QString &src) -> QStringList {
+      pc.saveProgram("P", src);
+      pc.runProgram("P");
+      return pc.programOutput();
+    };
+    auto last = [](const QStringList &o) {
+      return o.isEmpty() ? QString() : o.last();
+    };
+
+    // Comments (#) are stripped to end of line.
+    {
+      QStringList o = runP("Disp 1 # show one");
+      checkTrue("trailing # comment stripped", o.size() == 1 && o.last() == "1");
+    }
+    checkTrue("# inside a string is kept", last(runP("Disp \"a#b\"")) == "a#b");
+    {
+      pc.saveProgram("P", "# header\nDisp 5");
+      pc.runProgram("P");
+      checkTrue("full-line comment produces no output",
+                pc.programOutput().size() == 1 && pc.programOutput().last() == "5");
+    }
+
+    // break exits the innermost loop; continue skips to the next iteration.
+    {
+      QStringList o = runP("For(I,1,5):If I=3:break:Disp I:End");
+      checkTrue("break exits a For loop",
+                o.contains("1") && o.contains("2") && !o.contains("3"));
+    }
+    checkTrue("break in a While loop",
+              last(runP("0->I:While 1:I+1->I:If I=3:break:End:Disp I")) == "3");
+    checkTrue("continue skips an iteration",
+              last(runP("0->S:For(I,1,5):If I=2:continue:S+I->S:End:Disp S")) == "13");
+    checkTrue("break outside a loop → ERR:SYNTAX",
+              last(runP("break")).startsWith("ERR:SYNTAX"));
+
+    pc.deleteProgram("P");
+  }
+
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed
             << "  Failed: " << gFailed << '\n';
