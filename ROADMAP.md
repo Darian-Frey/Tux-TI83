@@ -439,12 +439,20 @@ _pragmatic subset first_. Phases (each independently shippable):
   `Text(`/`ClrDraw` (graphics commands auto-show the graph). Added a ✕ CLR
   button on `GraphCanvas` (shown when overlays exist) to clear all drawings.
   9 tests. **P6 graphics complete.** 💭 `.8xp` import remains (optional).
-- **Language enhancements (beyond the TI-83):** **comments** (`#` to EOL) and
-  **`break`/`continue`** ✅ (2026-08-10, 7 tests); **editor syntax highlighting**
-  ✅ (2026-08-10 — `ProgramHighlighter` QSyntaxHighlighter colours keywords/
-  vars/strings/numbers/comments; fixed BUG-026 light-theme labels). 📅 planned:
-  list/matrix element access + assignment, `toString(`, pixel graphics, local
-  variables + user functions, error trapping.
+- **P7 — Modern language enhancements** (make TI-BASIC genuinely better than
+  the original — see [docs/TIBASIC.md](docs/TIBASIC.md)):
+  - ✅ **Comments** (`#` to EOL) — 2026-08-10
+  - ✅ **`break` / `continue`** (exit / skip the innermost loop) — 2026-08-10
+  - ✅ **Editor syntax highlighting** (`ProgramHighlighter`: keywords / vars /
+    strings / numbers / comments) — 2026-08-10
+  - 📅 **List/matrix element access + assignment** — `L1(3)`, `5→L1(3)`,
+    `[A](r,c)`, `9→[A](r,c)`, plus `SortA(`/`SortD(` (biggest faithful gap)
+  - 📅 **Pixel graphics** — `Pxl-On(`/`Pxl-Off(`/`Pxl-Test(`, `Pt-Off(`,
+    `Pt-Change(`
+  - 📅 **`StorePic`/`RecallPic`, `Shade(`, `Tangent(`, `DrawF`**
+  - 📅 **`toString(`** (number → string)
+  - 📅 **Local variables + user functions** (params/return — the big one)
+  - 📅 **Error trapping** (`try`-style recovery)
 
 ## Connectivity & data exchange
 

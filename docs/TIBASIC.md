@@ -345,24 +345,6 @@ resumable model and hits the milestone with numeric input + string-literal
   cursor between the quotes, and `→` / `√(` are one tap. QML-only.
 - Milestone: keywords are insertable without hand-typing. **P5 complete.**
 
-### Language enhancements (beyond the original TI-83)
-Improvements the TI-83 community always wanted, added on our modern base:
-- **Comments ✅ (2026-08-10):** `#` to end of line is ignored (quote-aware,
-  stripped per line in `loadStatements`).
-- **`break` / `continue` ✅ (2026-08-10):** exit / skip the innermost loop.
-  `buildControlTables` records each statement's enclosing loop
-  (`m_enclosingLoop`); `break` jumps past its `End` (popping a `For` frame),
-  `continue` jumps to the `End` (re-test/increment). Outside a loop →
-  `ERR:SYNTAX`. Both added to the editor's CTL palette. +7 tests.
-- **Editor syntax highlighting ✅ (2026-08-10):** a C++ `QSyntaxHighlighter`
-  (`ProgramHighlighter`, registered as QML `Tux/ProgramHighlighter`, attached
-  to the editor's `textDocument`) colours keywords, variables, strings,
-  numbers, and `#` comments live as you type. Fixed BUG-026 alongside (light-
-  theme labels used `textDisplay`; now `textPrimary`).
-- 📅 Planned (community wishlist): list/matrix element access + assignment,
-  `toString(`, pixel graphics, local variables + user functions, error
-  trapping.
-
 ### P6 — Advanced / optional 💭
 **P6-1 — Program-driven graphs ✅ (2026-08-09)**
 - Programs drive the graph engine via an injected **graph sink**
@@ -388,6 +370,38 @@ Improvements the TI-83 community always wanted, added on our modern base:
   Connectivity roadmap's `.8xp` item). Requires a token-value mapping.
 - 💭 `Repeat`/`While` performance, `rand`-seeded games, live per-frame graph
   animation from a `getKey` loop.
+
+### P7 — Modern language enhancements 🚧
+
+Improvements the TI-83 community always wanted, added on our modern base (a
+fast interpreter, a real editor, disk persistence). Faithful gaps come first,
+then extensions *beyond* strict TI-BASIC. Element access etc. are done at the
+**interpreter level** (like the Y-store / string funcs) so `core_math` stays
+untouched.
+
+Done:
+- ✅ **Comments (2026-08-10):** `#` to end of line is ignored (quote-aware,
+  stripped per line in `loadStatements`).
+- ✅ **`break` / `continue` (2026-08-10):** exit / skip the innermost loop.
+  `buildControlTables` records each statement's enclosing loop
+  (`m_enclosingLoop`); `break` jumps past its `End` (popping a `For` frame),
+  `continue` jumps to the `End`. Outside a loop → `ERR:SYNTAX`. +7 tests.
+- ✅ **Editor syntax highlighting (2026-08-10):** a C++ `QSyntaxHighlighter`
+  (`ProgramHighlighter`, QML `Tux/ProgramHighlighter`, attached to the
+  editor's `textDocument`) colours keywords, variables, strings, numbers, and
+  `#` comments live. (Fixed BUG-026 alongside — light-theme surface labels.)
+
+Planned (community wishlist):
+- 📅 **List/matrix element access + assignment** — `L1(3)`, `5→L1(3)`,
+  `[A](r,c)`, `9→[A](r,c)`, plus `SortA(`/`SortD(`. The biggest faithful gap
+  (`L1(3)` currently parses as `L1×2`; element store errors).
+- 📅 **Pixel graphics** — `Pxl-On(`/`Pxl-Off(`/`Pxl-Test(`, `Pt-Off(`,
+  `Pt-Change(`.
+- 📅 **`StorePic`/`RecallPic`, `Shade(`, `Tangent(`, `DrawF`.**
+- 📅 **`toString(`** — number → string.
+- 📅 **Local variables + user functions** — real `f(x)` with parameters and
+  return (extends beyond TI-BASIC; the transformative one).
+- 📅 **Error trapping** — `try`-style recovery instead of a hard halt.
 
 ---
 
