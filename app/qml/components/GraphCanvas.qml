@@ -531,4 +531,34 @@ Rectangle {
             function onThemeChanged() { canvas.requestPaint() }
         }
     }
+
+    // ✕ CLR — clear all overlays (program- or DRAW-menu-drawn). Shown only
+    // when some exist, so it stays out of the way otherwise (P6-2).
+    Rectangle {
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.margins: 6
+        visible: uiController.drawObjectCount > 0
+        width: clrLabel.width + 14
+        height: 24
+        radius: 4
+        opacity: clrArea.containsMouse ? 1.0 : 0.85
+        color: Style.bgSurface
+        border.color: Style.textError
+        border.width: 1
+        Text {
+            id: clrLabel
+            anchors.centerIn: parent
+            text: "✕ CLR"
+            color: Style.textError
+            font.family: Style.monoFamily
+            font.pixelSize: Style.funcKeyLabelPixelSize
+        }
+        MouseArea {
+            id: clrArea
+            anchors.fill: parent
+            hoverEnabled: true
+            onClicked: uiController.clrDraw()
+        }
+    }
 }

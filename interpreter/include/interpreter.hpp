@@ -48,12 +48,21 @@ struct GraphCmd {
     FnOn,        // enable function(s) (slot, or slot<0 = all)
     FnOff,       // disable function(s)
     Zoom,        // run a zoom (arg = "Standard" / "Fit")
-    DispGraph    // show the graph screen
+    DispGraph,   // show the graph screen
+    // ── Draw overlay (P6-2); graph coordinates in `nums`, text in `arg` ──
+    ClrDraw,       // clear all drawings
+    DrawLine,      // nums = {x1,y1,x2,y2}
+    DrawHorizontal,// nums = {y}
+    DrawVertical,  // nums = {x}
+    DrawPoint,     // nums = {x,y}
+    DrawCircle,    // nums = {x,y,r}
+    DrawText       // nums = {x,y}, arg = text
   };
   Kind kind;
-  int slot = 0;       // 0-based Y= slot (Y1→0 … Y0→9); -1 = all
-  std::string arg;    // expression / window-var name / zoom name
-  double value = 0.0; // window value (SetWindow)
+  int slot = 0;              // 0-based Y= slot (Y1→0 … Y0→9); -1 = all
+  std::string arg;           // expression / window-var / zoom / draw text
+  double value = 0.0;        // window value (SetWindow)
+  std::vector<double> nums;  // draw coordinates
 };
 using GraphSink = std::function<bool(const GraphCmd &)>;
 

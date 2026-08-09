@@ -433,9 +433,12 @@ _pragmatic subset first_. Phases (each independently shippable):
 - **P6-1 — Program-driven graphs ✅ (2026-08-09)** — programs drive the graph
   engine via an injected graph sink: `"X²"→Y1` / `X²→Y1` (function store),
   window vars (`Xmax`/`Ymin`/…), `FnOn`/`FnOff`, `ZStandard`/`ZoomFit`, and
-  `DispGraph` (closes the run view → shows the plot). 10 tests. 📅 **P6-2:**
-  draw overlay (`Line(`/`Circle(`/`Pt-On(`/`Text(`/`ClrDraw` — new draw layer
-  on GraphCanvas). 💭 `.8xp` import.
+  `DispGraph` (closes the run view → shows the plot). 10 tests.
+- **P6-2 — Draw overlay ✅ (2026-08-09)** — programs draw on the graph via the
+  existing DRAW layer: `Line(`/`Circle(`/`Horizontal`/`Vertical`/`Pt-On(`/
+  `Text(`/`ClrDraw` (graphics commands auto-show the graph). Added a ✕ CLR
+  button on `GraphCanvas` (shown when overlays exist) to clear all drawings.
+  9 tests. **P6 graphics complete.** 💭 `.8xp` import remains (optional).
 
 ## Connectivity & data exchange
 

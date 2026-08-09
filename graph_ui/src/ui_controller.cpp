@@ -1116,10 +1116,20 @@ void UIController::runProgram(const QString &name) {
           return std::nullopt;
         return *sub;
       });
-  // Graph commands (Y= stores, window vars, FnOn/Off, zooms, DispGraph) —
-  // carried out against the live graph engine (P6).
+  // Graph commands (Y= stores, window vars, FnOn/Off, zooms, DispGraph, and
+  // the draw overlay) — carried out against the live graph engine (P6).
   m_interp.setGraphSink([this](const tux_ti83::GraphCmd &c) -> bool {
     using K = tux_ti83::GraphCmd::Kind;
+    // Switch the display to the graph and dismiss the run view. Idempotent.
+    auto showGraph = [this]() {
+      m_progGraphShown = true;
+      if (!m_isGraphMode) {
+        m_isGraphMode = true;
+        emit graphModeChanged();
+      }
+      emit showGraphFromProgram();
+    };
+    const auto &n = c.nums;  // draw coordinates
     switch (c.kind) {
       case K::SetFunc:
         return setFunctionFromSource(c.slot, QString::fromStdString(c.arg));
@@ -1153,12 +1163,42 @@ void UIController::runProgram(const QString &name) {
         else return false;
         return true;
       case K::DispGraph:
-        m_progGraphShown = true;
-        if (!m_isGraphMode) {
-          m_isGraphMode = true;
-          emit graphModeChanged();
-        }
-        emit showGraphFromProgram();  // run view closes; graph is behind it
+        showGraph();
+        return true;
+      // ── Draw overlay: append the primitive, then show the graph ──
+      case K::ClrDraw:
+        clrDraw();
+        showGraph();
+        return true;
+      case K::DrawLine:
+        if (n.size() != 4) return false;
+        drawLine(n[0], n[1], n[2], n[3]);
+        showGraph();
+        return true;
+      case K::DrawHorizontal:
+        if (n.size() != 1) return false;
+        drawHorizontal(n[0]);
+        showGraph();
+        return true;
+      case K::DrawVertical:
+        if (n.size() != 1) return false;
+        drawVertical(n[0]);
+        showGraph();
+        return true;
+      case K::DrawPoint:
+        if (n.size() != 2) return false;
+        drawPoint(n[0], n[1]);
+        showGraph();
+        return true;
+      case K::DrawCircle:
+        if (n.size() != 3) return false;
+        drawCircle(n[0], n[1], n[2]);
+        showGraph();
+        return true;
+      case K::DrawText:
+        if (n.size() != 2) return false;
+        drawText(n[0], n[1], QString::fromStdString(c.arg));
+        showGraph();
         return true;
     }
     return false;

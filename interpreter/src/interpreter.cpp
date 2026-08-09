@@ -939,6 +939,98 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
     return RunStatus::Running;
   }
 
+  // ── Draw overlay (P6-2): graphics commands routed to the graph sink ──
+  if (matchKeyword(stmt, "ClrDraw")) {
+    GraphCmd c;
+    c.kind = GraphCmd::Kind::ClrDraw;
+    if (!m_graphSink || !m_graphSink(c))
+      return fail("ERR:UNDEFINED");
+    ++m_pc;
+    return RunStatus::Running;
+  }
+  // Name(args…) with `n` numeric args → a draw command.
+  auto drawCall = [&](GraphCmd::Kind kind, std::size_t n) -> RunStatus {
+    const auto lp = stmt.find('(');
+    const auto rp = stmt.rfind(')');
+    if (lp == std::string::npos || rp == std::string::npos || rp <= lp)
+      return fail("ERR:SYNTAX");
+    const auto args = splitArgs(stmt.substr(lp + 1, rp - lp - 1));
+    if (args.size() != n)
+      return fail("ERR:ARGUMENT");
+    GraphCmd c;
+    c.kind = kind;
+    for (const auto &a : args) {
+      const EvalResult r = mEval(trim(a));
+      if (!r.ok)
+        return fail(r.error);
+      c.nums.push_back(r.value);
+    }
+    if (!m_graphSink || !m_graphSink(c))
+      return fail("ERR:UNDEFINED");
+    ++m_pc;
+    return RunStatus::Running;
+  };
+  if (matchKeyword(stmt, "Line"))
+    return drawCall(GraphCmd::Kind::DrawLine, 4);
+  if (matchKeyword(stmt, "Circle"))
+    return drawCall(GraphCmd::Kind::DrawCircle, 3);
+  if (matchKeyword(stmt, "Pt-On"))
+    return drawCall(GraphCmd::Kind::DrawPoint, 2);
+  if (matchKeyword(stmt, "Horizontal") || matchKeyword(stmt, "Vertical")) {
+    const bool horiz = matchKeyword(stmt, "Horizontal");
+    const std::string rest = trim(stmt.substr(horiz ? 10 : 8));
+    if (rest.empty())
+      return fail("ERR:ARGUMENT");
+    const EvalResult r = mEval(rest);
+    if (!r.ok)
+      return fail(r.error);
+    GraphCmd c;
+    c.kind = horiz ? GraphCmd::Kind::DrawHorizontal : GraphCmd::Kind::DrawVertical;
+    c.nums.push_back(r.value);
+    if (!m_graphSink || !m_graphSink(c))
+      return fail("ERR:UNDEFINED");
+    ++m_pc;
+    return RunStatus::Running;
+  }
+  if (matchKeyword(stmt, "Text")) {
+    // Text(x, y, value…) — position (graph coords) then text (string/number).
+    const auto lp = stmt.find('(');
+    const auto rp = stmt.rfind(')');
+    if (lp == std::string::npos || rp == std::string::npos || rp <= lp)
+      return fail("ERR:SYNTAX");
+    const auto args = splitArgs(stmt.substr(lp + 1, rp - lp - 1));
+    if (args.size() < 3)
+      return fail("ERR:ARGUMENT");
+    GraphCmd c;
+    c.kind = GraphCmd::Kind::DrawText;
+    for (int i = 0; i < 2; ++i) {
+      const EvalResult r = mEval(trim(args[static_cast<std::size_t>(i)]));
+      if (!r.ok)
+        return fail(r.error);
+      c.nums.push_back(r.value);
+    }
+    std::string text;
+    for (std::size_t i = 2; i < args.size(); ++i) {
+      std::string sout;
+      const StrEval se = evalStringExpr(trim(args[i]), sout);
+      if (se == StrEval::Ok)
+        text += sout;
+      else if (se == StrEval::TypeError)
+        return fail(m_strFuncError.empty() ? "ERR:DATA TYPE" : m_strFuncError);
+      else {
+        const EvalResult r = mEval(trim(args[i]));
+        if (!r.ok)
+          return fail(r.error);
+        text += r.display;
+      }
+    }
+    c.arg = text;
+    if (!m_graphSink || !m_graphSink(c))
+      return fail("ERR:UNDEFINED");
+    ++m_pc;
+    return RunStatus::Running;
+  }
+
   // ── Graph stores (P6): <expr>→Yn  and  <value>→<window var> ──
   {
     std::string lhs;

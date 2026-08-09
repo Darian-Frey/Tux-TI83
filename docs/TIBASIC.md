@@ -355,9 +355,17 @@ resumable model and hits the milestone with numeric input + string-literal
   `ZoomFit`, and `DispGraph` (closes the run view, shows the plot). Store
   targets detected via `storeTargetName`; bad function → `ERR:SYNTAX`. +10
   tests.
-- 📅 **P6-2 — Draw overlay** (the remaining graphics piece): `Line(`,
-  `Horizontal`, `Vertical`, `Pt-On(`/`Pt-Off(`, `Circle(`, `Text(`, `ClrDraw`
-  — needs a new persistent draw layer on `GraphCanvas`.
+**P6-2 — Draw overlay ✅ (2026-08-09)**
+- Programs draw on the graph via the graph sink → the **existing** DRAW
+  layer (`drawLine`/`drawCircle`/`drawHorizontal`/`drawVertical`/`drawPoint`/
+  `drawText`/`clrDraw`, rendered on `GraphCanvas`; graph coordinates):
+  `Line(`, `Circle(`, `Horizontal`, `Vertical`, `Pt-On(`, `Text(`, `ClrDraw`.
+  Like the TI-83, any graphics command shows the graph. Wrong arg count →
+  `ERR:ARGUMENT`. +9 tests.
+- Added a **✕ CLR** button in the top-right of `GraphCanvas` (shown only when
+  overlays exist, via a reactive `drawObjectCount` property) → one tap clears
+  all drawings; the DRAW menu (2ND+TRACE) still offers per-item delete.
+  **P6 graphics complete.**
 - 💭 `.8xp` import — parse real TI-83 program files (cross-references the
   Connectivity roadmap's `.8xp` item). Requires a token-value mapping.
 - 💭 `Repeat`/`While` performance, `rand`-seeded games, live per-frame graph

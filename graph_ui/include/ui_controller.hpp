@@ -466,6 +466,9 @@ public:
     // curves. getDrawObjects() feeds the canvas; the draw* methods add
     // one; clrDraw() removes all.
     Q_INVOKABLE QVariantList getDrawObjects() const { return m_drawObjects; }
+    // Reactive count of overlays, so QML can show/hide a clear affordance.
+    Q_PROPERTY(int drawObjectCount READ drawObjectCount NOTIFY drawObjectsChanged)
+    int drawObjectCount() const { return static_cast<int>(m_drawObjects.size()); }
     Q_INVOKABLE void drawLine(double x1, double y1, double x2, double y2);
     Q_INVOKABLE void drawCircle(double x, double y, double r);
     Q_INVOKABLE void drawHorizontal(double y);

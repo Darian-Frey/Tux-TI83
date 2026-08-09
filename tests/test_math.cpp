@@ -2904,6 +2904,53 @@ int main(int argc, char *argv[]) {
       pc.deleteProgram(n);
   }
 
+  section("TI-BASIC — P6-2 draw overlay");
+  {
+    UIController pc;
+    auto runP = [&](const QString &src) {
+      pc.saveProgram("P", src);
+      pc.runProgram("P");
+      return pc.getDrawObjects();
+    };
+    auto type0 = [](const QVariantList &o) {
+      return o.isEmpty() ? QString() : o[0].toMap()["type"].toString();
+    };
+
+    // Each primitive appends one object of the right type (ClrDraw isolates).
+    checkTrue("Line(", [&] { auto o = runP("ClrDraw:Line(0,0,5,5)");
+              return o.size() == 1 && type0(o) == "line"; }());
+    checkTrue("Circle(", [&] { auto o = runP("ClrDraw:Circle(0,0,3)");
+              return o.size() == 1 && type0(o) == "circle"; }());
+    checkTrue("Horizontal", [&] { auto o = runP("ClrDraw:Horizontal 4");
+              return o.size() == 1 && type0(o) == "hline"; }());
+    checkTrue("Vertical", [&] { auto o = runP("ClrDraw:Vertical 2");
+              return o.size() == 1 && type0(o) == "vline"; }());
+    checkTrue("Pt-On(", [&] { auto o = runP("ClrDraw:Pt-On(1,2)");
+              return o.size() == 1 && type0(o) == "point"; }());
+    {
+      auto o = runP("ClrDraw:Text(0,0,\"HI\")");
+      checkTrue("Text( draws text", o.size() == 1 && type0(o) == "text" &&
+                o[0].toMap()["text"].toString() == "HI");
+    }
+
+    // ClrDraw wipes the overlay.
+    checkTrue("ClrDraw clears",
+              runP("Line(0,0,1,1):Line(1,1,2,2):ClrDraw").isEmpty());
+
+    // A draw command shows the graph.
+    runP("ClrDraw:Line(0,0,1,1)");
+    checkTrue("drawing switches to graph mode",
+              pc.property("isGraphMode").toBool());
+
+    // Wrong arg count → ERR:ARGUMENT.
+    pc.saveProgram("P", "Line(0,0)");
+    pc.runProgram("P");
+    checkTrue("Line with 2 args → ERR:ARGUMENT",
+              pc.programOutput().last().startsWith("ERR:ARGUMENT"));
+
+    pc.deleteProgram("P");
+  }
+
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed
             << "  Failed: " << gFailed << '\n';
