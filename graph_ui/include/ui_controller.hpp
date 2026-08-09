@@ -520,6 +520,7 @@ signals:
     void programOutputChanged();
     void programRunStateChanged();  // waiting-input / waiting-key changed
     void programRunUpdated();       // run state changed — open/refresh the view
+    void showGraphFromProgram();    // a program did DispGraph — show the graph (P6)
     void activeFunctionIndexChanged();
     void functionsChanged();
     void drawObjectsChanged();
@@ -567,6 +568,7 @@ private:
     bool m_progMenuActive = false;     // paused on Menu(
     QString m_progMenuTitle;
     QStringList m_progMenuOptions;
+    bool m_progGraphShown = false;     // program did DispGraph → don't reopen run view
     // Step the interpreter until it pauses / finishes, then publish state.
     void stepProgramToPause();
     void publishProgramState();
@@ -577,6 +579,12 @@ private:
     // format. Injected into the Interpreter as its Evaluator (P2). Side
     // effects (Sto) go through the shared registries, like the home screen.
     tux_ti83::EvalResult evalProgramSource(const std::string &src);
+    // Tokenise a source string into an engine token buffer (Sub→Neg aware);
+    // shared by evalProgramSource and setFunctionFromSource (P6).
+    std::vector<Token> sourceToTokens(const QString &src);
+    // Store a function expression into a Y= slot from a program (P6); returns
+    // false if the slot or expression is invalid.
+    bool setFunctionFromSource(int slot, const QString &expr);
     // Format a CalculationResult to its display string (scalar / matrix /
     // list / complex), matching the home-screen formatting.
     QString formatCalcResult(const CalculationResult &r) const;

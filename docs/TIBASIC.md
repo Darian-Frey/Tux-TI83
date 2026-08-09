@@ -346,12 +346,22 @@ resumable model and hits the milestone with numeric input + string-literal
 - Milestone: keywords are insertable without hand-typing. **P5 complete.**
 
 ### P6 — Advanced / optional 💭
-- Graphics from programs (reuse the existing DRAW primitives: `Line(`,
-  `Horizontal`, `Vertical`, `Pt-On(`, `Text(`; add `Circle(` as needed),
-  `getKey` game loops, `Pause` on a graph.
-- `.8xp` import — parse real TI-83 program files (cross-references the
+**P6-1 — Program-driven graphs ✅ (2026-08-09)**
+- Programs drive the graph engine via an injected **graph sink**
+  (`Interpreter::setGraphSink` → `GraphCmd`; controller carries it out — the
+  engine `core_math` stays untouched): `"X²"→Y1` / `X²→Y1` (function store,
+  quoted or bare, shared `setFunctionFromSource`), window vars (`Xmin`/`Xmax`/
+  `Ymin`/`Ymax`/`Xscl`/`Yscl`), `FnOn`/`FnOff` (one/all), `ZStandard`/
+  `ZoomFit`, and `DispGraph` (closes the run view, shows the plot). Store
+  targets detected via `storeTargetName`; bad function → `ERR:SYNTAX`. +10
+  tests.
+- 📅 **P6-2 — Draw overlay** (the remaining graphics piece): `Line(`,
+  `Horizontal`, `Vertical`, `Pt-On(`/`Pt-Off(`, `Circle(`, `Text(`, `ClrDraw`
+  — needs a new persistent draw layer on `GraphCanvas`.
+- 💭 `.8xp` import — parse real TI-83 program files (cross-references the
   Connectivity roadmap's `.8xp` item). Requires a token-value mapping.
-- `Repeat`/`While` performance, `rand`-seeded games, `menu`-driven apps.
+- 💭 `Repeat`/`While` performance, `rand`-seeded games, live per-frame graph
+  animation from a `getKey` loop.
 
 ---
 

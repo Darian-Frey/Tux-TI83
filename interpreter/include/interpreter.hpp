@@ -38,6 +38,25 @@ struct EvalResult {
 // Evaluate a source expression string → EvalResult. Injected by the caller.
 using Evaluator = std::function<EvalResult(const std::string &)>;
 
+// A graph-subsystem action requested by a program (P6). The interpreter is
+// pure C++ and can't touch the graph engine, so the controller injects a
+// sink (setGraphSink) that carries these out and returns false on failure.
+struct GraphCmd {
+  enum class Kind {
+    SetFunc,     // store an expression into a Y= slot (slot, arg=expression)
+    SetWindow,   // set a window variable (arg=name e.g. "Xmax", value)
+    FnOn,        // enable function(s) (slot, or slot<0 = all)
+    FnOff,       // disable function(s)
+    Zoom,        // run a zoom (arg = "Standard" / "Fit")
+    DispGraph    // show the graph screen
+  };
+  Kind kind;
+  int slot = 0;       // 0-based Y= slot (Y1→0 … Y0→9); -1 = all
+  std::string arg;    // expression / window-var name / zoom name
+  double value = 0.0; // window value (SetWindow)
+};
+using GraphSink = std::function<bool(const GraphCmd &)>;
+
 // Status returned after each execution step. The GUI can't block on input,
 // so the interpreter yields one of these at every pause point; the caller
 // (UIController, or the CLI) reacts and resumes. In P0 only Running / Done
@@ -62,6 +81,10 @@ public:
   // interpreter runs every statement as a no-op (the P0 behaviour) — it
   // can't compute anything on its own.
   void setEvaluator(Evaluator e) { m_eval = std::move(e); }
+
+  // Inject the graph sink (see GraphCmd above). Without one, graph commands
+  // (Y= stores, window vars, DispGraph, …) fail with ERR:UNDEFINED (P6).
+  void setGraphSink(GraphSink s) { m_graphSink = std::move(s); }
 
   // Inject a loader that returns a named program's source lines, or
   // std::nullopt if no such program exists (→ ERR:UNDEFINED at the call
@@ -204,6 +227,9 @@ private:
   // If a statement is `<expr>→StrN` / `<expr>->StrN`, return N (1..9) and
   // set `lhs`; else 0.
   static int stringStoreTarget(const std::string &stmt, std::string &lhs);
+  // Name of the store target at the last top-level arrow (`<lhs>→<name>`),
+  // e.g. "Y1", "Xmax", "A", "Str1"; sets `lhs`. Empty if there's no arrow.
+  static std::string storeTargetName(const std::string &stmt, std::string &lhs);
 
   // Per-For loop state (endVal/step captured at loop entry, TI-style).
   struct ForFrame {
@@ -228,6 +254,7 @@ private:
   };
 
   Evaluator m_eval;
+  GraphSink m_graphSink;
   std::function<std::optional<std::vector<std::string>>(const std::string &)>
       m_progLoader;
   std::vector<CallFrame> m_callStack;     // suspended callers (prgmNAME)

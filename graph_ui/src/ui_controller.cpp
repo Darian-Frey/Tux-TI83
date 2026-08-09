@@ -912,30 +912,11 @@ QString UIController::formatCalcResult(const CalculationResult &r) const {
   return formatScalar(r.value);
 }
 
-tux_ti83::EvalResult UIController::evalProgramSource(const std::string &src) {
-  tux_ti83::EvalResult out;
-  QString q = QString::fromStdString(src);
-  // getKey (P5b): a non-blocking key poll. Substitute the live key code (0
-  // when no key is pending) before tokenising, then consume it — the TI-83
-  // returns a given keypress only once. The code is set by the run view's
-  // key handler via sendProgramKey(). Safe as a plain text replace: no other
-  // token contains "getKey" and the engine never sees the word itself.
-  if (q.contains(QStringLiteral("getKey"))) {
-    q.replace(QStringLiteral("getKey"), QString::number(m_progKey));
-    m_progKey = 0;
-  }
-  const QStringList toks = tokenize(q);
-  if (toks.isEmpty()) {
-    // tokenize() returns empty for both a blank line and an unparseable one.
-    if (q.trimmed().isEmpty()) {
-      out.ok = true;  // blank statement — no-op success
-    } else {
-      out.ok = false;
-      out.error = QStringLiteral("ERR:SYNTAX").toStdString();
-    }
-    return out;
-  }
+std::vector<Token> UIController::sourceToTokens(const QString &src) {
+  // Tokenise a program/function source string into an engine token buffer,
+  // applying the same Sub→Neg unary-minus promotion insertToken uses.
   std::vector<Token> buf;
+  const QStringList toks = tokenize(src);
   buf.reserve(static_cast<size_t>(toks.size()));
   const auto &fwd = inputToSpec();
   for (const QString &t : toks) {
@@ -943,9 +924,6 @@ tux_ti83::EvalResult UIController::evalProgramSource(const std::string &src) {
     if (it == fwd.end())
       continue;  // control verbs (▶Frac …) aren't program statements
     Token tok = it->second->token;
-    // Sub → Neg in unary contexts, mirroring insertToken's disambiguation
-    // (the engine expects Neg for unary minus). Programs build left to
-    // right, so "previous token" is the back of the buffer.
     if (tok == Token::Sub) {
       bool unary = buf.empty();
       if (!unary) {
@@ -960,6 +938,55 @@ tux_ti83::EvalResult UIController::evalProgramSource(const std::string &src) {
         tok = Token::Neg;
     }
     buf.push_back(tok);
+  }
+  return buf;
+}
+
+bool UIController::setFunctionFromSource(int slot, const QString &expr) {
+  // Store a function expression into a Y= slot (Y1→0 … Y0→9) from a program
+  // (P6). Tokenise, keep the display string, and enable the slot.
+  if (slot < 0 || slot >= kFunctionCount)
+    return false;
+  const auto tokens = sourceToTokens(expr);
+  if (tokens.empty())
+    return false;  // unparseable / empty
+  QString disp;
+  const auto &rev = tokenToSpec();
+  for (auto t : tokens) {
+    auto it = rev.find(static_cast<int>(t));
+    if (it != rev.end())
+      disp += QString::fromUtf8(it->second->displayStr);
+  }
+  m_functionBuffers[static_cast<size_t>(slot)] = tokens;
+  m_displayStrings[static_cast<size_t>(slot)] = disp;
+  if (slot < static_cast<int>(m_functionEnabled.size()))
+    m_functionEnabled[static_cast<size_t>(slot)] = true;
+  emit functionsChanged();
+  return true;
+}
+
+tux_ti83::EvalResult UIController::evalProgramSource(const std::string &src) {
+  tux_ti83::EvalResult out;
+  QString q = QString::fromStdString(src);
+  // getKey (P5b): a non-blocking key poll. Substitute the live key code (0
+  // when no key is pending) before tokenising, then consume it — the TI-83
+  // returns a given keypress only once. The code is set by the run view's
+  // key handler via sendProgramKey(). Safe as a plain text replace: no other
+  // token contains "getKey" and the engine never sees the word itself.
+  if (q.contains(QStringLiteral("getKey"))) {
+    q.replace(QStringLiteral("getKey"), QString::number(m_progKey));
+    m_progKey = 0;
+  }
+  const std::vector<Token> buf = sourceToTokens(q);
+  if (buf.empty()) {
+    // Empty for both a blank line and an unparseable one — distinguish.
+    if (q.trimmed().isEmpty())
+      out.ok = true;  // blank statement — no-op success
+    else {
+      out.ok = false;
+      out.error = QStringLiteral("ERR:SYNTAX").toStdString();
+    }
+    return out;
   }
   MathStateMachine msm;
   bindEngine(msm);
@@ -1024,7 +1051,9 @@ void UIController::publishProgramState() {
 
   emit programOutputChanged();
   emit programRunStateChanged();
-  emit programRunUpdated();
+  // Don't force the run view back open over a graph the program just showed.
+  if (!m_progGraphShown)
+    emit programRunUpdated();
 }
 
 void UIController::stepProgramToPause() {
@@ -1087,9 +1116,57 @@ void UIController::runProgram(const QString &name) {
           return std::nullopt;
         return *sub;
       });
+  // Graph commands (Y= stores, window vars, FnOn/Off, zooms, DispGraph) —
+  // carried out against the live graph engine (P6).
+  m_interp.setGraphSink([this](const tux_ti83::GraphCmd &c) -> bool {
+    using K = tux_ti83::GraphCmd::Kind;
+    switch (c.kind) {
+      case K::SetFunc:
+        return setFunctionFromSource(c.slot, QString::fromStdString(c.arg));
+      case K::SetWindow: {
+        const QString v = QString::fromStdString(c.arg);
+        if (v == "Xmin") m_xMin = c.value;
+        else if (v == "Xmax") m_xMax = c.value;
+        else if (v == "Ymin") m_yMin = c.value;
+        else if (v == "Ymax") m_yMax = c.value;
+        else if (v == "Xscl") m_xScl = c.value;
+        else if (v == "Yscl") m_yScl = c.value;
+        else return false;
+        emit viewportChanged();
+        return true;
+      }
+      case K::FnOn:
+      case K::FnOff: {
+        const bool on = (c.kind == K::FnOn);
+        if (c.slot < 0)
+          std::fill(m_functionEnabled.begin(), m_functionEnabled.end(), on);
+        else if (c.slot < static_cast<int>(m_functionEnabled.size()))
+          m_functionEnabled[static_cast<size_t>(c.slot)] = on;
+        else
+          return false;
+        emit functionsChanged();
+        return true;
+      }
+      case K::Zoom:
+        if (c.arg == "Standard") resetViewport();
+        else if (c.arg == "Fit") zoomFit();
+        else return false;
+        return true;
+      case K::DispGraph:
+        m_progGraphShown = true;
+        if (!m_isGraphMode) {
+          m_isGraphMode = true;
+          emit graphModeChanged();
+        }
+        emit showGraphFromProgram();  // run view closes; graph is behind it
+        return true;
+    }
+    return false;
+  });
   m_interp.load(*lines, clean.toStdString());  // name → error jump-to-line
   m_progBreakRequested = false;  // fresh run
   m_progKey = 0;                 // no stale keypress carries into a new run
+  m_progGraphShown = false;      // DispGraph flag resets each run
   stepProgramToPause();
 }
 

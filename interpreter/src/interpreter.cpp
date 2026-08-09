@@ -304,6 +304,36 @@ int Interpreter::stringStoreTarget(const std::string &stmt, std::string &lhs) {
   return n;
 }
 
+std::string Interpreter::storeTargetName(const std::string &stmt,
+                                         std::string &lhs) {
+  // Last top-level store arrow ("->"/"→", not inside a string) → target name.
+  std::size_t arrowPos = std::string::npos;
+  std::size_t arrowLen = 0;
+  bool inStr = false;
+  for (std::size_t i = 0; i < stmt.size(); ++i) {
+    const char c = stmt[i];
+    if (c == '"') {
+      inStr = !inStr;
+      continue;
+    }
+    if (inStr)
+      continue;
+    if (c == '-' && i + 1 < stmt.size() && stmt[i + 1] == '>') {
+      arrowPos = i;
+      arrowLen = 2;
+    } else if (static_cast<unsigned char>(c) == 0xE2 && i + 2 < stmt.size() &&
+               static_cast<unsigned char>(stmt[i + 1]) == 0x86 &&
+               static_cast<unsigned char>(stmt[i + 2]) == 0x92) {  // → UTF-8
+      arrowPos = i;
+      arrowLen = 3;
+    }
+  }
+  if (arrowPos == std::string::npos)
+    return {};
+  lhs = trim(stmt.substr(0, arrowPos));
+  return trim(stmt.substr(arrowPos + arrowLen));
+}
+
 Interpreter::StrEval Interpreter::evalStringExpr(const std::string &src,
                                                  std::string &out) {
   // Resolve string functions first (sub( → a "…" literal), then evaluate the
@@ -857,6 +887,96 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
       m_menuLabels.push_back(trim(args[i + 1]));  // Lbl name, as written
     }
     return RunStatus::NeedMenu;  // pc stays; provideMenuChoice() jumps
+  }
+
+  // ── Graph statements (P6): dispatched to the injected graph sink ──
+  if (matchKeyword(stmt, "DispGraph")) {
+    GraphCmd c;
+    c.kind = GraphCmd::Kind::DispGraph;
+    if (!m_graphSink || !m_graphSink(c))
+      return fail("ERR:UNDEFINED");
+    ++m_pc;
+    return RunStatus::Running;
+  }
+  if (matchKeyword(stmt, "ZStandard") || matchKeyword(stmt, "ZoomFit")) {
+    GraphCmd c;
+    c.kind = GraphCmd::Kind::Zoom;
+    c.arg = matchKeyword(stmt, "ZStandard") ? "Standard" : "Fit";
+    if (!m_graphSink || !m_graphSink(c))
+      return fail("ERR:UNDEFINED");
+    ++m_pc;
+    return RunStatus::Running;
+  }
+  if (matchKeyword(stmt, "FnOn") || matchKeyword(stmt, "FnOff")) {
+    const bool on = matchKeyword(stmt, "FnOn");
+    const std::string rest =
+        trim(stmt.substr(on ? 4 : 5));  // args after FnOn / FnOff
+    if (!m_graphSink)
+      return fail("ERR:UNDEFINED");
+    if (rest.empty()) {  // no args → all functions
+      GraphCmd c;
+      c.kind = on ? GraphCmd::Kind::FnOn : GraphCmd::Kind::FnOff;
+      c.slot = -1;
+      if (!m_graphSink(c))
+        return fail("ERR:UNDEFINED");
+    } else {
+      for (const std::string &a : splitArgs(rest)) {  // FnOn 1,2,3
+        const EvalResult r = mEval(trim(a));
+        if (!r.ok)
+          return fail(r.error);
+        const int num = static_cast<int>(std::lround(r.value));
+        const int slot = (num == 0) ? 9 : (num - 1);  // Y1..Y9→0..8, Y0→9
+        if (slot < 0 || slot > 9)
+          return fail("ERR:DOMAIN");
+        GraphCmd c;
+        c.kind = on ? GraphCmd::Kind::FnOn : GraphCmd::Kind::FnOff;
+        c.slot = slot;
+        if (!m_graphSink(c))
+          return fail("ERR:UNDEFINED");
+      }
+    }
+    ++m_pc;
+    return RunStatus::Running;
+  }
+
+  // ── Graph stores (P6): <expr>→Yn  and  <value>→<window var> ──
+  {
+    std::string lhs;
+    const std::string tgt = storeTargetName(stmt, lhs);
+    if (tgt.size() == 2 && tgt[0] == 'Y' &&
+        ((tgt[1] >= '1' && tgt[1] <= '9') || tgt[1] == '0')) {
+      const int slot = (tgt[1] == '0') ? 9 : (tgt[1] - '1');
+      // Accept both `"X²"→Y1` (TI-style, quoted) and `X²→Y1` (bare): strip a
+      // surrounding pair of quotes so the controller sees the expression.
+      std::string fexpr = lhs;
+      if (fexpr.size() >= 2 && fexpr.front() == '"' && fexpr.back() == '"')
+        fexpr = fexpr.substr(1, fexpr.size() - 2);
+      GraphCmd c;
+      c.kind = GraphCmd::Kind::SetFunc;
+      c.slot = slot;
+      c.arg = fexpr;  // the controller tokenises + stores it
+      if (!m_graphSink || !m_graphSink(c))
+        return fail(m_graphSink ? "ERR:SYNTAX" : "ERR:UNDEFINED");
+      ++m_pc;
+      return RunStatus::Running;
+    }
+    static const char *const kWindowVars[] = {"Xmin", "Xmax", "Ymin",
+                                              "Ymax", "Xscl", "Yscl"};
+    for (const char *w : kWindowVars) {
+      if (tgt == w) {
+        const EvalResult v = mEval(lhs);
+        if (!v.ok)
+          return fail(v.error);
+        GraphCmd c;
+        c.kind = GraphCmd::Kind::SetWindow;
+        c.arg = tgt;
+        c.value = v.value;
+        if (!m_graphSink || !m_graphSink(c))
+          return fail("ERR:UNDEFINED");
+        ++m_pc;
+        return RunStatus::Running;
+      }
+    }
   }
 
   // ── String store: <str expr>→StrN ──

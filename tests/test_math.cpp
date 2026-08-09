@@ -2855,6 +2855,55 @@ int main(int argc, char *argv[]) {
       pc.deleteProgram(n);
   }
 
+  section("TI-BASIC — P6 program-driven graphs");
+  {
+    UIController pc;
+
+    // Store a function into Y1 (bare and quoted both work).
+    pc.saveProgram("GY", "\"X^2\"->Y1");
+    pc.runProgram("GY");
+    checkTrue("program sets Y1 (quoted)", pc.functionBufferText(0) == "X^2");
+    checkTrue("stored function is enabled", pc.functionEnabled(0));
+    pc.saveProgram("GY2", "2X->Y2");
+    pc.runProgram("GY2");
+    checkTrue("program sets Y2 (bare)", pc.functionBufferText(1) == "2X");
+
+    // Window variables.
+    pc.saveProgram("GW", "15->Xmax:-3->Ymin:2->Xscl");
+    pc.runProgram("GW");
+    checkTrue("Xmax set", pc.property("xMax").toDouble() == 15.0);
+    checkTrue("Ymin set", pc.property("yMin").toDouble() == -3.0);
+
+    // ZStandard resets the window.
+    pc.saveProgram("GZ", "99->Xmax:ZStandard");
+    pc.runProgram("GZ");
+    checkTrue("ZStandard resets Xmax to 10",
+              pc.property("xMax").toDouble() == 10.0);
+
+    // FnOff / FnOn toggles a slot.
+    pc.saveProgram("GF", "\"X\"->Y1:FnOff 1");
+    pc.runProgram("GF");
+    checkTrue("FnOff 1 disables Y1", !pc.functionEnabled(0));
+    pc.saveProgram("GF2", "FnOn 1");
+    pc.runProgram("GF2");
+    checkTrue("FnOn 1 re-enables Y1", pc.functionEnabled(0));
+
+    // DispGraph switches into graph mode.
+    pc.saveProgram("GD", "\"X\"->Y1:DispGraph");
+    pc.runProgram("GD");
+    checkTrue("DispGraph switches to graph mode",
+              pc.property("isGraphMode").toBool());
+
+    // A bad function expression → ERR:SYNTAX.
+    pc.saveProgram("GBAD", "\"@@@\"->Y1");
+    pc.runProgram("GBAD");
+    checkTrue("garbage function → ERR:SYNTAX",
+              pc.programOutput().last().startsWith("ERR:SYNTAX"));
+
+    for (const char *n : {"GY", "GY2", "GW", "GZ", "GF", "GF2", "GD", "GBAD"})
+      pc.deleteProgram(n);
+  }
+
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed
             << "  Failed: " << gFailed << '\n';

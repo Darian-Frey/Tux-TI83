@@ -430,7 +430,12 @@ _pragmatic subset first_. Phases (each independently shippable):
   the cursor (`→`, `√(`, `Disp`, `For(`, `Menu(`, `""` with cursor inside, …)
   so they don't have to be hand-typed. QML-only. **P5 complete — the TI-BASIC
   subset is feature-complete.**
-- 💭 **P6 — Optional** — graphics from programs (reuse DRAW), `.8xp` import.
+- **P6-1 — Program-driven graphs ✅ (2026-08-09)** — programs drive the graph
+  engine via an injected graph sink: `"X²"→Y1` / `X²→Y1` (function store),
+  window vars (`Xmax`/`Ymin`/…), `FnOn`/`FnOff`, `ZStandard`/`ZoomFit`, and
+  `DispGraph` (closes the run view → shows the plot). 10 tests. 📅 **P6-2:**
+  draw overlay (`Line(`/`Circle(`/`Pt-On(`/`Text(`/`ClrDraw` — new draw layer
+  on GraphCanvas). 💭 `.8xp` import.
 
 ## Connectivity & data exchange
 

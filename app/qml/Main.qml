@@ -924,6 +924,8 @@ ApplicationWindow {
     Connections {
         target: uiController
         function onProgramRunUpdated() { prgmRunPopup.open() }
+        // A program ran DispGraph — dismiss the run view so the graph shows.
+        function onShowGraphFromProgram() { prgmRunPopup.close() }
     }
 
     DRAWPopup {
