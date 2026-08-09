@@ -440,9 +440,11 @@ _pragmatic subset first_. Phases (each independently shippable):
   button on `GraphCanvas` (shown when overlays exist) to clear all drawings.
   9 tests. **P6 graphics complete.** 💭 `.8xp` import remains (optional).
 - **Language enhancements (beyond the TI-83):** **comments** (`#` to EOL) and
-  **`break`/`continue`** ✅ (2026-08-10, 7 tests). 📅 planned: list/matrix
-  element access + assignment, `toString(`, pixel graphics, local variables +
-  user functions, error trapping.
+  **`break`/`continue`** ✅ (2026-08-10, 7 tests); **editor syntax highlighting**
+  ✅ (2026-08-10 — `ProgramHighlighter` QSyntaxHighlighter colours keywords/
+  vars/strings/numbers/comments; fixed BUG-026 light-theme labels). 📅 planned:
+  list/matrix element access + assignment, `toString(`, pixel graphics, local
+  variables + user functions, error trapping.
 
 ## Connectivity & data exchange
 

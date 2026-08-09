@@ -5,8 +5,10 @@
 #include <QFileInfo>
 #include <QLockFile>
 #include <QTimer>
+#include <QtQml>
 #include "ui_controller.hpp"
 #include "crash_logger.hpp"
+#include "program_highlighter.hpp"
 
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
@@ -55,6 +57,10 @@ int main(int argc, char *argv[]) {
 
     // EXPLICIT LINK: Register the controller BEFORE loading the file
     engine.rootContext()->setContextProperty("uiController", &uiController);
+
+    // Syntax highlighter for the PRGM editor — usable from QML as
+    // `import Tux 1.0; ProgramHighlighter { textDocument: area.textDocument }`.
+    qmlRegisterType<tux_ti83::ProgramHighlighter>("Tux", 1, 0, "ProgramHighlighter");
 
     const QUrl url("qrc:/App/Main.qml");
 

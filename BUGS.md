@@ -57,6 +57,15 @@ Each entry uses this template:
 
 ## Fixed
 
+### BUG-026: PRGM program names (and other labels) unreadable in the light theme
+
+- **Status:** fixed (2026-08-10, syntax-highlighting session)
+- **Location:** [app/qml/components/PRGMPopup.qml](app/qml/components/PRGMPopup.qml) (program-list name, command-palette buttons), [app/qml/components/DRAWPopup.qml](app/qml/components/DRAWPopup.qml) (drawings list)
+- **Severity:** low (readability; light theme only)
+- **Description:** Several labels that sit on the popup **surface** used `Style.textDisplay` — the LCD-readout colour, deliberately kept **light** in every theme because the LCD is always dark. On the light-theme popup surface that's light-on-light, so PRGM program names, command-palette buttons, and the DRAW drawings list were nearly invisible.
+- **Fix:** Use `Style.textPrimary` (which flips dark/light with the theme) for those surface labels. Input fields (name field, DRAW arg fields) keep `textDisplay` — they sit on a dark `bgDisplay` background, so they were already correct.
+- **Notes:** Reported by the user via a light-theme screenshot. The recurring gotcha is `textDisplay` (LCD-fixed) vs `textPrimary` (theme-flipping); anything drawn on the LCD/`bgDisplay` uses the former, anything on a body/surface uses the latter.
+
 ### BUG-023: On-screen keypad can't enter Y-function tokens — "Y1" becomes variable-Y × 1
 
 - **Status:** fixed (2026-08-01, same session as IMP-045)

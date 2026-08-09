@@ -222,7 +222,7 @@ Popup {
                 Text {
                     Layout.fillWidth: true
                     text: root.describe(modelData)
-                    color: Style.textDisplay
+                    color: Style.textPrimary
                     font.family: Style.monoFamily
                     font.pixelSize: Style.funcKeyLabelPixelSize
                     elide: Text.ElideRight

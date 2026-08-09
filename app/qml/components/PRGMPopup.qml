@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Tux 1.0
 import ".."
 
 // PRGM — TI-BASIC program manager + editor (P1). Two modes:
@@ -175,7 +176,7 @@ Popup {
                     Text {
                         Layout.fillWidth: true
                         text: "prgm" + modelData
-                        color: Style.textDisplay
+                        color: Style.textPrimary
                         font.family: Style.monoFamily
                         font.pixelSize: Style.keyLabelPixelSize
                         elide: Text.ElideRight
@@ -277,6 +278,10 @@ Popup {
                     font.family: Style.monoFamily
                     font.pixelSize: Style.keyLabelPixelSize
                     padding: 8
+
+                    // Syntax highlighting (keywords / variables / strings /
+                    // numbers / # comments), attached to the text document.
+                    ProgramHighlighter { textDocument: bodyArea.textDocument }
                 }
             }
 
@@ -343,7 +348,7 @@ Popup {
                                     id: cmdText
                                     anchors.centerIn: parent
                                     text: modelData.trim().length ? modelData.trim() : modelData
-                                    color: Style.textDisplay
+                                    color: Style.textPrimary
                                     font.family: Style.monoFamily
                                     font.pixelSize: Style.keyLabelPixelSize
                                 }

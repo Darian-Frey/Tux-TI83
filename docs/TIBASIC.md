@@ -354,6 +354,11 @@ Improvements the TI-83 community always wanted, added on our modern base:
   (`m_enclosingLoop`); `break` jumps past its `End` (popping a `For` frame),
   `continue` jumps to the `End` (re-test/increment). Outside a loop →
   `ERR:SYNTAX`. Both added to the editor's CTL palette. +7 tests.
+- **Editor syntax highlighting ✅ (2026-08-10):** a C++ `QSyntaxHighlighter`
+  (`ProgramHighlighter`, registered as QML `Tux/ProgramHighlighter`, attached
+  to the editor's `textDocument`) colours keywords, variables, strings,
+  numbers, and `#` comments live as you type. Fixed BUG-026 alongside (light-
+  theme labels used `textDisplay`; now `textPrimary`).
 - 📅 Planned (community wishlist): list/matrix element access + assignment,
   `toString(`, pixel graphics, local variables + user functions, error
   trapping.
