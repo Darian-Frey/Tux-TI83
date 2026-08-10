@@ -44,7 +44,7 @@ Popup {
     readonly property var cmdSet: ({
         "CTL": ["If ", "Then", "Else", "For(", "While ", "Repeat ", "End",
                 "break", "continue", "Lbl ", "Goto ", "Pause", "Stop",
-                "Return", "DelVar ", "Menu(", "prgm", "# "],
+                "Return", "Local ", "DelVar ", "Menu(", "prgm", "# "],
         "I/O": ["Disp ", "Input ", "Prompt ", "Output(", "ClrHome", "getKey"],
         "STR": ["Str1", "Str2", "Str3", "sub(", "length(", "inString(",
                 "expr(", "\"\""],

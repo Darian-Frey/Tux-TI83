@@ -450,6 +450,10 @@ _pragmatic subset first_. Phases (each independently shippable):
     at `dim+1`. Controller-level (`resolveElementReads`/`tryElementStore`),
     core_math untouched. 10 tests.
   - 📅 **`SortA(` / `SortD(`** — sort a list in place (remaining bit of A1)
+  - ✅ **Local variables** (2026-08-10) — `Local A,B,…` save/zero/restore per
+    frame, so a sub-program can't clobber the caller's globals. 4 tests.
+  - 📅 **User functions** — `Define f(x,y) … Return expr … End`, called as
+    `f(3,4)` in expressions (multi-statement; the transformative one)
   - 📅 **Pixel graphics** — `Pxl-On(`/`Pxl-Off(`/`Pxl-Test(`, `Pt-Off(`,
     `Pt-Change(`
   - 📅 **`StorePic`/`RecallPic`, `Shade(`, `Tangent(`, `DrawF`**

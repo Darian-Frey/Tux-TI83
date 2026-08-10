@@ -18,6 +18,7 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace tux_ti83 {
@@ -209,6 +210,9 @@ private:
   bool evalCond(const std::string &expr, bool &ok);
   // Report a runtime error at the current statement and return Error.
   RunStatus fail(const std::string &label);
+  // Write the current frame's `Local` variables back to their saved values
+  // (called when the frame exits) and clear the list (P7-B3).
+  void restoreLocals();
   // Write `text` into the output buffer at (row, col) — 1-based — padding
   // with spaces so a monospace render lands it in the right column
   // (Output(, P4). Rows above `row` are created blank as needed.
@@ -261,6 +265,7 @@ private:
     std::vector<int> enclosingLoop;
     std::map<std::string, int> labels;
     std::vector<ForFrame> forStack;
+    std::vector<std::pair<std::string, double>> locals;
   };
 
   Evaluator m_eval;
@@ -297,6 +302,9 @@ private:
   std::vector<int> m_enclosingLoop; // stmt → innermost enclosing loop opener (-1)
   std::map<std::string, int> m_labels;  // Lbl name → Lbl statement index
   std::vector<ForFrame> m_forStack;     // active For loops
+  // Local variables of the current frame: {name, saved global value} — the
+  // value is written back when the frame (program / sub-program) exits (P7-B3).
+  std::vector<std::pair<std::string, double>> m_locals;
 };
 
 // Named program storage: program name → source lines. Persistence (state

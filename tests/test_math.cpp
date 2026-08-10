@@ -3034,6 +3034,44 @@ int main(int argc, char *argv[]) {
     pc.deleteProgram("P");
   }
 
+  section("TI-BASIC — P7 local variables");
+  {
+    UIController pc;
+    auto runP = [&](const QString &src) -> QStringList {
+      pc.saveProgram("P", src);
+      pc.runProgram("P");
+      return pc.programOutput();
+    };
+    auto last = [](const QStringList &o) {
+      return o.isEmpty() ? QString() : o.last();
+    };
+
+    // A Local starts fresh at 0.
+    checkTrue("Local starts at 0", last(runP("9->B:Local B:Disp B")) == "0");
+
+    // A sub-program's Local doesn't clobber the caller's variable.
+    pc.saveProgram("LSUB", "Local A:99->A");
+    checkTrue("Local protects the caller's A",
+              runP("5->A:prgmLSUB:Disp A").last() == "5");
+
+    // The sub sees its own local; the caller's value is restored on return.
+    pc.saveProgram("LR", "Local A:100->A:Disp A");
+    {
+      QStringList o = runP("7->A:prgmLR:Disp A");
+      checkTrue("sub sees its local, caller restored",
+                o.contains("100") && o.last() == "7");
+    }
+
+    // A Local loop counter in a sub doesn't break the caller's loop.
+    pc.saveProgram("LADD", "Local I:For(I,1,10):End");
+    checkTrue("Local counter doesn't disturb the caller's loop",
+              last(runP("0->S:For(I,1,3):prgmLADD:S+I->S:End:Disp S")) == "6");
+
+    for (const char *n : {"LSUB", "LR", "LADD"})
+      pc.deleteProgram(n);
+    pc.deleteProgram("P");
+  }
+
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed
             << "  Failed: " << gFailed << '\n';

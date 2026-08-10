@@ -399,7 +399,16 @@ Done:
   `ERR:UNDEFINED`. Program-only (home screen keeps implicit-multiply; core_math
   untouched). +10 tests.
 
+- ✅ **Local variables (2026-08-10):** `Local A,B,…` saves each scalar's
+  value, resets it to 0, and restores it when the program / sub-program frame
+  exits — so a sub-program can't clobber the caller's globals (fixes the
+  everything-is-global complaint). Per-frame `m_locals` (saved/restored in the
+  `CallFrame`, written back in `returnFromCall` and at program end via
+  `restoreLocals`). +4 tests. Foundation for user functions (params = locals).
+
 Planned (community wishlist):
+- 📅 **User functions** — `Define f(x,y) … Return expr … End`, callable as
+  `f(3,4)` in expressions (multi-statement; the big one).
 - 📅 **`SortA(` / `SortD(`** — sort a list in place (the remaining bit of A1).
 - 📅 **Pixel graphics** — `Pxl-On(`/`Pxl-Off(`/`Pxl-Test(`, `Pt-Off(`,
   `Pt-Change(`.

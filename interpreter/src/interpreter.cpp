@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 
 namespace tux_ti83 {
 
@@ -112,6 +113,14 @@ bool matchKeyword(const std::string &stmt, const std::string &kw) {
   return next == ' ' || next == '\t' || next == '(' || next == '"';
 }
 
+// Format a double as a source literal that round-trips exactly (for restoring
+// a saved Local value through the string-based evaluator).
+std::string numLiteral(double v) {
+  char buf[32];
+  std::snprintf(buf, sizeof(buf), "%.17g", v);
+  return buf;
+}
+
 // Drop a trailing `#…` comment from a source line (everything from the first
 // top-level '#' to end of line), leaving any '#' inside a "…" string alone.
 std::string stripComment(const std::string &line) {
@@ -177,11 +186,22 @@ int Interpreter::errorSourceLine() const {
   return m_statementSrcLine[static_cast<size_t>(m_errorLine)];
 }
 
+void Interpreter::restoreLocals() {
+  // Write each Local back to its saved value (reverse order handles a var
+  // declared Local more than once), then clear.
+  for (auto it = m_locals.rbegin(); it != m_locals.rend(); ++it)
+    if (m_eval)
+      m_eval("(" + numLiteral(it->second) + ")->" + it->first);
+  m_locals.clear();
+}
+
 bool Interpreter::returnFromCall() {
   if (m_callStack.empty())
     return false;
+  restoreLocals();  // this sub-program's locals go back to their saved values
   CallFrame f = std::move(m_callStack.back());
   m_callStack.pop_back();
+  m_locals = std::move(f.locals);  // caller's locals
   m_statements = std::move(f.statements);
   m_statementSrcLine = std::move(f.srcLine);
   m_currentProgram = std::move(f.program);
@@ -505,6 +525,7 @@ void Interpreter::reset() {
   m_stopRequested = false;
   m_forStack.clear();
   m_callStack.clear();
+  m_locals.clear();
   m_status = RunStatus::Running;
 }
 
@@ -738,10 +759,12 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
     // Suspend the caller, to resume at the statement AFTER this call.
     m_callStack.push_back({m_statements, m_statementSrcLine, m_currentProgram,
                            here + 1, m_openerToEnd, m_thenToElse, m_elseToEnd,
-                           m_endToOpener, m_enclosingLoop, m_labels, m_forStack});
+                           m_endToOpener, m_enclosingLoop, m_labels, m_forStack,
+                           m_locals});
     loadStatements(*subLines);  // sub's statements + fresh control tables
     m_currentProgram = name;    // errors now refer to the sub-program
     m_forStack.clear();
+    m_locals.clear();           // the sub starts with its own locals
     m_pc = 0;
     return RunStatus::Running;
   }
@@ -767,6 +790,22 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
       m_strVars.erase(n);  // clear a string variable
     else
       mEval("0->" + v);  // scalar: reset to 0 (our "deleted" state)
+    ++m_pc;
+    return RunStatus::Running;
+  }
+  if (matchKeyword(stmt, "Local")) {
+    // Local A,B,… — save each scalar's value (restored when the frame exits)
+    // and start it fresh at 0, so a sub-program can't clobber the caller (P7).
+    const std::string rest = trim(stmt.substr(5));
+    if (rest.empty())
+      return fail("ERR:SYNTAX");
+    for (const std::string &raw : splitArgs(rest)) {
+      const std::string v = trim(raw);
+      if (v.empty() || strVarIndex(v) != 0)
+        return fail("ERR:SYNTAX");  // scalar variables only
+      m_locals.push_back({v, mEval(v).value});
+      mEval("0->" + v);
+    }
     ++m_pc;
     return RunStatus::Running;
   }
@@ -1169,6 +1208,7 @@ RunStatus Interpreter::step() {
   // is one (loop, in case the caller was also at its end), else finish.
   while (m_pc >= m_statements.size()) {
     if (!returnFromCall()) {
+      restoreLocals();  // main program's Local variables
       m_status = RunStatus::Done;
       return m_status;
     }
@@ -1184,8 +1224,10 @@ RunStatus Interpreter::step() {
     m_status = st;  // pause for interaction (pc unchanged)
     return m_status;
   }
-  if (m_stopRequested)  // Stop, or Return in the main program: end everything
+  if (m_stopRequested) {  // Stop, or Return in the main program: end everything
+    restoreLocals();
     m_status = RunStatus::Done;
+  }
   return m_status;  // next step() handles a natural end-of-program
 }
 
