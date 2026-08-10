@@ -2757,6 +2757,17 @@ int main(int argc, char *argv[]) {
     checkTrue("length in an If condition",
               last(runP("\"HELLO\"->Str1:If length(Str1)>3:Disp 1")) == "1");
 
+    // toString( — number → string (P7).
+    checkTrue("toString of a number", last(runP("Disp toString(5)")) == "5");
+    checkTrue("toString of an expression",
+              last(runP("Disp toString(3+4)")) == "7");
+    checkTrue("toString concatenates with a literal",
+              last(runP("Disp \"X=\"+toString(42)")) == "X=42");
+    checkTrue("toString stores into a Str var",
+              last(runP("toString(99)->Str1:Disp Str1")) == "99");
+    checkTrue("toString composes with length",
+              last(runP("Disp length(toString(123))")) == "3");
+
     pc.deleteProgram("P");
   }
 

@@ -20,7 +20,8 @@ bool isIdentChar(char c) {
 // call. Returns false if none. Sets name / nameStart / closeParen.
 bool findInnermostStrCall(const std::string &s, std::string &name,
                           std::size_t &nameStart, std::size_t &closeParen) {
-  static const char *const kNames[] = {"length", "inString", "sub", "expr"};
+  static const char *const kNames[] = {"length", "inString", "sub", "expr",
+                                       "toString"};
   bool found = false;
   bool inStr = false;
   for (std::size_t i = 0; i < s.size(); ++i) {
@@ -493,6 +494,18 @@ std::string Interpreter::resolveStrFuncs(std::string expr) {
         pos = (f == std::string::npos) ? 0 : static_cast<long>(f) + 1;
       }
       repl = std::to_string(pos);
+    } else if (name == "toString") {
+      // toString(number) → its display text as a "…" literal (P7).
+      if (args.size() != 1) {
+        m_strFuncError = "ERR:ARGUMENT";
+        break;
+      }
+      const EvalResult r = m_eval(trim(args[0]));
+      if (!r.ok) {
+        m_strFuncError = r.error.empty() ? "ERR:DATA TYPE" : r.error;
+        break;
+      }
+      repl = "\"" + r.display + "\"";
     } else {  // expr — splice the string's content as a sub-expression
       std::string s;
       if (args.size() != 1 || !strArg(args[0], s)) {

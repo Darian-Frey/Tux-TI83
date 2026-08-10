@@ -459,11 +459,11 @@ _pragmatic subset first_. Phases (each independently shippable):
     recursion). Body registered via a define-sink into `m_userFuncs`;
     `resolveUserFunctions` substitutes calls; `callUserFunction` binds params
     and runs the body in a nested interpreter. 6 tests.
+  - ✅ **`toString(`** (2026-08-10) — number → string, in the string-function
+    pass; concatenates + composes (`"A="+toString(A)`). 5 tests.
   - 📅 **Pixel graphics** — `Pxl-On(`/`Pxl-Off(`/`Pxl-Test(`, `Pt-Off(`,
     `Pt-Change(`
   - 📅 **`StorePic`/`RecallPic`, `Shade(`, `Tangent(`, `DrawF`**
-  - 📅 **`toString(`** (number → string)
-  - 📅 **Local variables + user functions** (params/return — the big one)
   - 📅 **Error trapping** (`try`-style recovery)
 
 ## Connectivity & data exchange

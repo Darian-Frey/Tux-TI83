@@ -420,14 +420,15 @@ Done:
   descending); `SortA(L1,L2,…)` reorders parallel lists by the first's
   permutation (mismatched lengths → `ERR:INVALID DIM`). Silent command routed
   to the controller (`sortLists`). +4 tests. **A1 complete.**
+- ✅ **`toString(`** **(2026-08-10):** number → string, resolved in the
+  string-function pass (like `sub(`): `toString(number)` → its display text as
+  a `"…"` literal, so it concatenates (`"A="+toString(A)`) and composes
+  (`length(toString(123))`). +5 tests.
 
 Planned (community wishlist):
 - 📅 **Pixel graphics** — `Pxl-On(`/`Pxl-Off(`/`Pxl-Test(`, `Pt-Off(`,
   `Pt-Change(`.
 - 📅 **`StorePic`/`RecallPic`, `Shade(`, `Tangent(`, `DrawF`.**
-- 📅 **`toString(`** — number → string.
-- 📅 **Local variables + user functions** — real `f(x)` with parameters and
-  return (extends beyond TI-BASIC; the transformative one).
 - 📅 **Error trapping** — `try`-style recovery instead of a hard halt.
 
 ---

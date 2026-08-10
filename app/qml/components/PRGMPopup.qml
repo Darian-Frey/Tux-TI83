@@ -48,7 +48,7 @@ Popup {
                 "# "],
         "I/O": ["Disp ", "Input ", "Prompt ", "Output(", "ClrHome", "getKey"],
         "STR": ["Str1", "Str2", "Str3", "sub(", "length(", "inString(",
-                "expr(", "\"\""],
+                "expr(", "toString(", "\"\""],
         "FN":  ["→", ":", "sin(", "cos(", "tan(", "√(", "ln(", "log(", "abs(",
                 "round(", "int(", "nCr(", "nPr(", "SortA(", "SortD("]
     })
