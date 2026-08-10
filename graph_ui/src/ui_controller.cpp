@@ -13,6 +13,7 @@
 #include <QStandardPaths>
 #include <QFileInfo>
 #include <algorithm>
+#include <numeric>
 #include <cmath>
 #include <limits>
 #include <map>
@@ -1325,6 +1326,72 @@ bool UIController::resolveUserFunctions(QString &q, std::string &err) {
   return true;
 }
 
+void UIController::sortLists(const QString &stmt, tux_ti83::EvalResult &out) {
+  const bool asc = stmt.startsWith("SortA(");
+  const int lp = stmt.indexOf('('), rp = stmt.lastIndexOf(')');
+  if (rp <= lp) {
+    out.ok = false;
+    out.error = "ERR:SYNTAX";
+    return;
+  }
+  const auto args =
+      tux_ti83::Interpreter::splitArgs(stmt.mid(lp + 1, rp - lp - 1).toStdString());
+  QVector<Token> toks;
+  for (const auto &a : args) {
+    const QString nm = QString::fromStdString(a).trimmed();
+    if (nm.size() == 2 && nm[0] == 'L' && nm[1] >= '1' && nm[1] <= '6')
+      toks.push_back(static_cast<Token>(static_cast<int>(Token::L1) +
+                                        nm[1].digitValue() - 1));
+    else {
+      out.ok = false;
+      out.error = "ERR:DATA TYPE";  // arguments must be lists L1..L6
+      return;
+    }
+  }
+  if (toks.isEmpty()) {
+    out.ok = false;
+    out.error = "ERR:SYNTAX";
+    return;
+  }
+  // All lists must exist and share the key list's length.
+  auto keyIt = MathStateMachine::listRegistry.find(toks[0]);
+  if (keyIt == MathStateMachine::listRegistry.end()) {
+    out.ok = false;
+    out.error = "ERR:UNDEFINED";
+    return;
+  }
+  const std::size_t n = keyIt->second.size();
+  for (Token tk : toks) {
+    auto it = MathStateMachine::listRegistry.find(tk);
+    if (it == MathStateMachine::listRegistry.end()) {
+      out.ok = false;
+      out.error = "ERR:UNDEFINED";
+      return;
+    }
+    if (it->second.size() != n) {
+      out.ok = false;
+      out.error = "ERR:INVALID DIM";
+      return;
+    }
+  }
+  // Order indices by the key list (stable), then apply to every list.
+  const std::vector<double> key = MathStateMachine::listRegistry[toks[0]];
+  std::vector<std::size_t> perm(n);
+  std::iota(perm.begin(), perm.end(), 0);
+  std::stable_sort(perm.begin(), perm.end(), [&](std::size_t a, std::size_t b) {
+    return asc ? key[a] < key[b] : key[a] > key[b];
+  });
+  for (Token tk : toks) {
+    auto &vec = MathStateMachine::listRegistry[tk];
+    std::vector<double> sorted(n);
+    for (std::size_t k = 0; k < n; ++k)
+      sorted[k] = vec[perm[k]];
+    vec = std::move(sorted);
+  }
+  out.ok = true;
+  out.value = 0.0;
+}
+
 tux_ti83::EvalResult UIController::evalProgramSource(const std::string &src) {
   tux_ti83::EvalResult out;
   QString q = QString::fromStdString(src);
@@ -1336,6 +1403,16 @@ tux_ti83::EvalResult UIController::evalProgramSource(const std::string &src) {
   if (q.contains(QStringLiteral("getKey"))) {
     q.replace(QStringLiteral("getKey"), QString::number(m_progKey));
     m_progKey = 0;
+  }
+
+  // SortA(/SortD( — sort list(s) in place (P7-A1).
+  {
+    const QString t = q.trimmed();
+    if (t.startsWith(QStringLiteral("SortA(")) ||
+        t.startsWith(QStringLiteral("SortD("))) {
+      sortLists(t, out);
+      return out;
+    }
   }
 
   // Element assignment (`5→L1(3)` / `9→[A](r,c)`) — handled before tokenising,

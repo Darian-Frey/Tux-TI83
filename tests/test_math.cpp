@@ -3108,6 +3108,32 @@ int main(int argc, char *argv[]) {
     pc.deleteProgram("P");
   }
 
+  section("TI-BASIC — P7 SortA( / SortD(");
+  {
+    UIController pc;
+    auto runP = [&](const QString &src) -> QStringList {
+      pc.saveProgram("P", src);
+      pc.runProgram("P");
+      return pc.programOutput();
+    };
+    auto last = [](const QStringList &o) {
+      return o.isEmpty() ? QString() : o.last();
+    };
+
+    checkTrue("SortA sorts ascending",
+              last(runP("{3,1,2}->L1:SortA(L1):Disp L1")) == "{1,2,3}");
+    checkTrue("SortD sorts descending",
+              last(runP("{1,3,2}->L1:SortD(L1):Disp L1")) == "{3,2,1}");
+    checkTrue("parallel sort reorders the second list",
+              last(runP("{3,1,2}->L1:{30,10,20}->L2:SortA(L1,L2):Disp L2")) ==
+                  "{10,20,30}");
+    checkTrue("parallel dim mismatch → ERR:INVALID DIM",
+              last(runP("{1,2}->L1:{1,2,3}->L2:SortA(L1,L2)"))
+                  .startsWith("ERR:INVALID DIM"));
+
+    pc.deleteProgram("P");
+  }
+
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed
             << "  Failed: " << gFailed << '\n';

@@ -849,6 +849,15 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
     ++m_pc;
     return RunStatus::Running;
   }
+  if (matchKeyword(stmt, "SortA") || matchKeyword(stmt, "SortD")) {
+    // Sort a list in place (the controller mutates the registry) — a command,
+    // so no echo (P7-A1).
+    const EvalResult r = mEval(stmt);
+    if (!r.ok)
+      return fail(r.error);
+    ++m_pc;
+    return RunStatus::Running;
+  }
   if (matchKeyword(stmt, "Input")) {
     // Input VAR  |  Input "prompt",VAR  — pause for a value into VAR.
     const std::string rest = trim(stmt.substr(5));

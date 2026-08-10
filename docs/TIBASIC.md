@@ -416,8 +416,12 @@ Done:
   set by `Return expr`. Params must be `A`–`Z`; names lowercase. Wrong arg
   count → `ERR:ARGUMENT`, runaway recursion (depth 64) → `ERR:MEMORY`. +6 tests.
 
+- ✅ **`SortA(` / `SortD(` (2026-08-10):** sort a list in place (ascending /
+  descending); `SortA(L1,L2,…)` reorders parallel lists by the first's
+  permutation (mismatched lengths → `ERR:INVALID DIM`). Silent command routed
+  to the controller (`sortLists`). +4 tests. **A1 complete.**
+
 Planned (community wishlist):
-- 📅 **`SortA(` / `SortD(`** — sort a list in place (the remaining bit of A1).
 - 📅 **Pixel graphics** — `Pxl-On(`/`Pxl-Off(`/`Pxl-Test(`, `Pt-Off(`,
   `Pt-Change(`.
 - 📅 **`StorePic`/`RecallPic`, `Shade(`, `Tangent(`, `DrawF`.**

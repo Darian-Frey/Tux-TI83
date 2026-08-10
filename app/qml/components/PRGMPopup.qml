@@ -50,7 +50,7 @@ Popup {
         "STR": ["Str1", "Str2", "Str3", "sub(", "length(", "inString(",
                 "expr(", "\"\""],
         "FN":  ["→", ":", "sin(", "cos(", "tan(", "√(", "ln(", "log(", "abs(",
-                "round(", "int(", "nCr(", "nPr("]
+                "round(", "int(", "nCr(", "nPr(", "SortA(", "SortD("]
     })
 
     // Insert `text` at the editor's cursor and keep focus there. For the

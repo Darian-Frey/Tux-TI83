@@ -449,7 +449,9 @@ _pragmatic subset first_. Phases (each independently shippable):
     `[A](r,c)` reads, `5→L1(3)` / `9→[A](r,c)` writes; computed indices, append
     at `dim+1`. Controller-level (`resolveElementReads`/`tryElementStore`),
     core_math untouched. 10 tests.
-  - 📅 **`SortA(` / `SortD(`** — sort a list in place (remaining bit of A1)
+  - ✅ **`SortA(` / `SortD(`** (2026-08-10) — sort a list in place (asc/desc);
+    parallel sort reorders paired lists by the first's permutation. 4 tests.
+    **A1 complete.**
   - ✅ **Local variables** (2026-08-10) — `Local A,B,…` save/zero/restore per
     frame, so a sub-program can't clobber the caller's globals. 4 tests.
   - ✅ **User functions** (2026-08-10) — multi-statement `Define f(A,B) …
