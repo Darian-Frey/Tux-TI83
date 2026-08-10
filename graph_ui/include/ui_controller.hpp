@@ -1,8 +1,10 @@
 #pragma once
 #include <QObject>
+#include <QMap>
 #include <QStringList>
 #include <QVariantList>
 #include <QVariantMap>
+#include <QVector>
 #include <QJsonObject>
 #include <deque>
 #include <vector>
@@ -595,6 +597,23 @@ private:
     // If `src` is an element assignment (`<rhs>→Ln(idx)` / `→[X](r,c)`), carry
     // it out and set `out`; returns true if it was one (handled).
     bool tryElementStore(const QString &src, tux_ti83::EvalResult &out);
+    // ── User functions (P7-B3) ──
+    struct UserFunc {
+      QStringList params;
+      std::vector<std::string> body;  // statements
+    };
+    QMap<QString, UserFunc> m_userFuncs;  // name → definition (per run)
+    int m_funcDepth = 0;                  // call-recursion guard
+    // Substitute innermost `name(args)` calls to user functions with their
+    // return values; returns false + `err` on failure.
+    bool resolveUserFunctions(QString &expr, std::string &err);
+    // Run a user function with `args` (params bound as locals) and return its
+    // value; `err` set on failure.
+    double callUserFunction(const QString &name, const QVector<double> &args,
+                            std::string &err);
+    // Wire an interpreter's evaluator / program-loader / graph-sink /
+    // define-sink to this controller (shared by runProgram and function calls).
+    void configureInterpreter(tux_ti83::Interpreter &it);
     // Store a function expression into a Y= slot from a program (P6); returns
     // false if the slot or expression is invalid.
     bool setFunctionFromSource(int slot, const QString &expr);

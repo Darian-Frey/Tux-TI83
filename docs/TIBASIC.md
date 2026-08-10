@@ -406,9 +406,17 @@ Done:
   `CallFrame`, written back in `returnFromCall` and at program end via
   `restoreLocals`). +4 tests. Foundation for user functions (params = locals).
 
+- ✅ **User functions (2026-08-10):** multi-statement `Define name(params) …
+  Return expr … End`, callable as `f(3,4)` in any expression (incl. nesting
+  and recursion). `Define` is an interpreter opener skipped at runtime; its
+  body is registered via a define-sink into the controller's `m_userFuncs`.
+  `resolveUserFunctions` substitutes `f(args)` before tokenising (like element
+  access); `callUserFunction` binds params (as saved/restored globals), runs
+  the body in a nested interpreter (shared registries), and reads the value
+  set by `Return expr`. Params must be `A`–`Z`; names lowercase. Wrong arg
+  count → `ERR:ARGUMENT`, runaway recursion (depth 64) → `ERR:MEMORY`. +6 tests.
+
 Planned (community wishlist):
-- 📅 **User functions** — `Define f(x,y) … Return expr … End`, callable as
-  `f(3,4)` in expressions (multi-statement; the big one).
 - 📅 **`SortA(` / `SortD(`** — sort a list in place (the remaining bit of A1).
 - 📅 **Pixel graphics** — `Pxl-On(`/`Pxl-Off(`/`Pxl-Test(`, `Pt-Off(`,
   `Pt-Change(`.

@@ -452,8 +452,11 @@ _pragmatic subset first_. Phases (each independently shippable):
   - 📅 **`SortA(` / `SortD(`** — sort a list in place (remaining bit of A1)
   - ✅ **Local variables** (2026-08-10) — `Local A,B,…` save/zero/restore per
     frame, so a sub-program can't clobber the caller's globals. 4 tests.
-  - 📅 **User functions** — `Define f(x,y) … Return expr … End`, called as
-    `f(3,4)` in expressions (multi-statement; the transformative one)
+  - ✅ **User functions** (2026-08-10) — multi-statement `Define f(A,B) …
+    Return expr … End`, called as `f(3,4)` in any expression (nesting +
+    recursion). Body registered via a define-sink into `m_userFuncs`;
+    `resolveUserFunctions` substitutes calls; `callUserFunction` binds params
+    and runs the body in a nested interpreter. 6 tests.
   - 📅 **Pixel graphics** — `Pxl-On(`/`Pxl-Off(`/`Pxl-Test(`, `Pt-Off(`,
     `Pt-Change(`
   - 📅 **`StorePic`/`RecallPic`, `Shade(`, `Tangent(`, `DrawF`**

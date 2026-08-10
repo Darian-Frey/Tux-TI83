@@ -970,6 +970,8 @@ bool UIController::evalScalarValue(const QString &expr, double &val,
   QString e = expr;
   if (!resolveElementReads(e, err))
     return false;
+  if (!resolveUserFunctions(e, err))
+    return false;
   const std::vector<Token> buf = sourceToTokens(e);
   if (buf.empty()) {
     err = "ERR:SYNTAX";
@@ -1198,6 +1200,131 @@ bool UIController::tryElementStore(const QString &q, tux_ti83::EvalResult &out) 
   return true;  // handled (a store is silent in a program)
 }
 
+double UIController::callUserFunction(const QString &name,
+                                     const QVector<double> &args,
+                                     std::string &err) {
+  if (m_funcDepth >= 64) {
+    err = "ERR:MEMORY";  // runaway recursion
+    return 0.0;
+  }
+  const UserFunc fn = m_userFuncs.value(name);
+  if (fn.params.size() != args.size()) {
+    err = "ERR:ARGUMENT";
+    return 0.0;
+  }
+  // Save the parameter globals, then bind them to the arguments (params are
+  // locals of the call — restored afterwards, so recursion nests correctly).
+  QVector<double> saved;
+  for (const QString &p : fn.params) {
+    double v = 0.0;
+    std::string e;
+    evalScalarValue(p, v, e);
+    saved.push_back(v);
+  }
+  auto bind = [&](const QString &p, double v) {
+    double dummy;
+    std::string e;
+    evalScalarValue("(" + QString::number(v, 'g', 17) + ")->" + p, dummy, e);
+  };
+  for (int i = 0; i < fn.params.size(); ++i)
+    bind(fn.params[i], args[i]);
+
+  // Run the body in a nested interpreter (shares this evaluator + registries).
+  ++m_funcDepth;
+  tux_ti83::Interpreter fnInterp;
+  configureInterpreter(fnInterp);
+  fnInterp.load(fn.body);
+  fnInterp.run();
+  --m_funcDepth;
+  const bool bad = (fnInterp.status() != tux_ti83::RunStatus::Done);
+  const std::string fnErr = fnInterp.errorMessage();
+  const double ret = fnInterp.returnValue();
+
+  for (int i = 0; i < fn.params.size(); ++i)  // restore the parameter globals
+    bind(fn.params[i], saved[i]);
+
+  if (bad) {
+    err = fnErr.empty() ? "ERR:SYNTAX" : fnErr;
+    return 0.0;
+  }
+  return ret;
+}
+
+bool UIController::resolveUserFunctions(QString &q, std::string &err) {
+  if (m_userFuncs.isEmpty())
+    return true;  // no user functions — nothing to resolve
+  for (int guard = 0; guard < 1000; ++guard) {
+    // Find the innermost `name(` where name is a registered function.
+    int bestStart = -1, parenOpen = -1;
+    QString bestName;
+    bool inStr = false;
+    for (int i = 0; i < q.size(); ++i) {
+      const QChar c = q[i];
+      if (c == '"') {
+        inStr = !inStr;
+        continue;
+      }
+      if (inStr)
+        continue;
+      if (c.isLetter() && (i == 0 || !q[i - 1].isLetterOrNumber())) {
+        int j = i;
+        while (j < q.size() && q[j].isLetterOrNumber())
+          ++j;
+        if (j < q.size() && q[j] == '(') {
+          const QString nm = q.mid(i, j - i);
+          if (m_userFuncs.contains(nm) && i > bestStart) {
+            bestStart = i;
+            parenOpen = j;
+            bestName = nm;
+          }
+        }
+      }
+    }
+    if (bestStart < 0)
+      break;
+    int depth = 0, close = -1;
+    bool q2 = false;
+    for (int j = parenOpen; j < q.size(); ++j) {
+      const QChar d = q[j];
+      if (d == '"') {
+        q2 = !q2;
+        continue;
+      }
+      if (q2)
+        continue;
+      if (d == '(' || d == '[' || d == '{')
+        ++depth;
+      else if (d == ')' || d == ']' || d == '}') {
+        if (--depth == 0) {
+          close = j;
+          break;
+        }
+      }
+    }
+    if (close < 0) {
+      err = "ERR:SYNTAX";
+      return false;
+    }
+    const QString inner = q.mid(parenOpen + 1, close - parenOpen - 1);
+    QVector<double> args;
+    if (!inner.trimmed().isEmpty()) {
+      for (const auto &a :
+           tux_ti83::Interpreter::splitArgs(inner.toStdString())) {
+        double v;
+        if (!evalScalarValue(QString::fromStdString(a), v, err))
+          return false;
+        args.push_back(v);
+      }
+    }
+    const double ret = callUserFunction(bestName, args, err);
+    if (!err.empty())
+      return false;
+    q.replace(bestStart, close + 1 - bestStart,
+              "(" + QString::number(ret, 'g', 17) + ")");
+  }
+  return true;
+}
+
 tux_ti83::EvalResult UIController::evalProgramSource(const std::string &src) {
   tux_ti83::EvalResult out;
   QString q = QString::fromStdString(src);
@@ -1218,6 +1345,11 @@ tux_ti83::EvalResult UIController::evalProgramSource(const std::string &src) {
   // Element reads (`L1(3)` / `[A](r,c)`) — substitute their values in place;
   // the engine would otherwise read `L1(3)` as `L1×3`.
   if (!resolveElementReads(q, out.error)) {
+    out.ok = false;
+    return out;
+  }
+  // User-function calls (`f(3,4)`) — substitute their return values (P7-B3).
+  if (!resolveUserFunctions(q, out.error)) {
     out.ok = false;
     return out;
   }
@@ -1343,16 +1475,12 @@ void UIController::stepProgramToPause() {
   publishProgramState();
 }
 
-void UIController::runProgram(const QString &name) {
-  const QString clean = normalizeProgramName(name);
-  const auto *lines = m_programs.get(clean.toStdString());
-  if (!lines)
-    return;
-  m_interp.setEvaluator(
+void UIController::configureInterpreter(tux_ti83::Interpreter &it) {
+  it.setEvaluator(
       [this](const std::string &s) { return this->evalProgramSource(s); });
   // prgmNAME sub-calls load another stored program's source by name;
   // nullopt for an unknown name → ERR:UNDEFINED at the call site.
-  m_interp.setProgramLoader(
+  it.setProgramLoader(
       [this](const std::string &n)
           -> std::optional<std::vector<std::string>> {
         const auto *sub = m_programs.get(
@@ -1363,7 +1491,7 @@ void UIController::runProgram(const QString &name) {
       });
   // Graph commands (Y= stores, window vars, FnOn/Off, zooms, DispGraph, and
   // the draw overlay) — carried out against the live graph engine (P6).
-  m_interp.setGraphSink([this](const tux_ti83::GraphCmd &c) -> bool {
+  it.setGraphSink([this](const tux_ti83::GraphCmd &c) -> bool {
     using K = tux_ti83::GraphCmd::Kind;
     // Switch the display to the graph and dismiss the run view. Idempotent.
     auto showGraph = [this]() {
@@ -1448,6 +1576,26 @@ void UIController::runProgram(const QString &name) {
     }
     return false;
   });
+  // Register user functions defined via `Define name(params) … End` (P7-B3).
+  it.setDefineSink([this](const std::string &name,
+                          const std::vector<std::string> &params,
+                          const std::vector<std::string> &body) {
+    UserFunc fn;
+    for (const auto &p : params)
+      fn.params << QString::fromStdString(p);
+    fn.body = body;
+    m_userFuncs.insert(QString::fromStdString(name), fn);
+  });
+}
+
+void UIController::runProgram(const QString &name) {
+  const QString clean = normalizeProgramName(name);
+  const auto *lines = m_programs.get(clean.toStdString());
+  if (!lines)
+    return;
+  m_userFuncs.clear();  // functions are defined fresh each run
+  m_funcDepth = 0;
+  configureInterpreter(m_interp);
   m_interp.load(*lines, clean.toStdString());  // name → error jump-to-line
   m_progBreakRequested = false;  // fresh run
   m_progKey = 0;                 // no stale keypress carries into a new run

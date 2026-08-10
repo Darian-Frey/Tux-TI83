@@ -104,6 +104,18 @@ public:
     m_progLoader = std::move(l);
   }
 
+  // Inject a sink that registers a user function definition — called when a
+  // `Define name(params) … End` block is reached (name, params, body
+  // statements). The controller stores it for calls in expressions (P7-B3).
+  void setDefineSink(
+      std::function<void(const std::string &, const std::vector<std::string> &,
+                         const std::vector<std::string> &)> s) {
+    m_defineSink = std::move(s);
+  }
+  // Value set by `Return expr` (0 if the program returned nothing). Read by
+  // the controller when a function body finishes.
+  double returnValue() const { return m_returnValue; }
+
   // Load a program from its source lines. Each line is split on top-level
   // ':' separators into individual statements; blank statements are
   // dropped. `name` labels the program for error reporting (jump-to-line).
@@ -288,6 +300,12 @@ private:
   bool m_inputIsString = false;              // pending Input targets a StrN
   std::map<int, std::string> m_strVars;      // Str1..Str9 (persist across runs)
   std::string m_strFuncError;                // last string-function error label
+  // User functions (P7-B3): sink registers a Define block; returnValue holds
+  // the value set by `Return expr`.
+  std::function<void(const std::string &, const std::vector<std::string> &,
+                     const std::vector<std::string> &)>
+      m_defineSink;
+  double m_returnValue = 0.0;
   // Pending Menu( state (valid while NeedMenu): title, option display text,
   // and each option's target Lbl name (parallel to m_menuOptions).
   std::string m_menuTitle;

@@ -242,8 +242,8 @@ void Interpreter::buildControlTables() {
                matchKeyword(s, "Repeat")) {
       stack.push_back(i);
       loopStack.push_back(i);
-    } else if (matchKeyword(s, "Then")) {
-      stack.push_back(i);
+    } else if (matchKeyword(s, "Then") || matchKeyword(s, "Define")) {
+      stack.push_back(i);  // non-loop opener (matched to its End)
     } else if (matchKeyword(s, "Else")) {
       if (!stack.empty() &&
           matchKeyword(m_statements[static_cast<size_t>(stack.back())], "Then"))
@@ -526,6 +526,7 @@ void Interpreter::reset() {
   m_forStack.clear();
   m_callStack.clear();
   m_locals.clear();
+  m_returnValue = 0.0;
   m_status = RunStatus::Running;
 }
 
@@ -770,9 +771,43 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
   }
 
   if (matchKeyword(stmt, "Return")) {
-    // Return to the caller; in the main program it ends the run.
+    // `Return expr` sets the function's return value (P7-B3); bare `Return`
+    // just returns. Either way: to the caller, or ends the run in the main.
+    const std::string rest = trim(stmt.substr(6));
+    if (!rest.empty()) {
+      const EvalResult r = mEval(rest);
+      if (!r.ok)
+        return fail(r.error);
+      m_returnValue = r.value;
+    }
     if (!returnFromCall())
       m_stopRequested = true;
+    return RunStatus::Running;
+  }
+
+  if (matchKeyword(stmt, "Define")) {
+    // Define name(params) … End — register the function body, then skip it
+    // (the body only runs when the function is called). P7-B3.
+    const int endIdx = m_openerToEnd[here];
+    if (endIdx < 0)
+      return fail("ERR:SYNTAX");
+    const std::string rest = trim(stmt.substr(6));
+    const auto lp = rest.find('(');
+    const auto rp = rest.rfind(')');
+    if (lp == std::string::npos || rp == std::string::npos || rp <= lp)
+      return fail("ERR:SYNTAX");
+    const std::string name = trim(rest.substr(0, lp));
+    std::vector<std::string> params;
+    const std::string paramStr = trim(rest.substr(lp + 1, rp - lp - 1));
+    if (!paramStr.empty())
+      for (const std::string &p : splitArgs(paramStr))
+        params.push_back(trim(p));
+    std::vector<std::string> body(
+        m_statements.begin() + static_cast<long>(here) + 1,
+        m_statements.begin() + endIdx);
+    if (m_defineSink)
+      m_defineSink(name, params, body);
+    m_pc = static_cast<std::size_t>(endIdx) + 1;  // skip the body
     return RunStatus::Running;
   }
 

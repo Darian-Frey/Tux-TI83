@@ -3072,6 +3072,42 @@ int main(int argc, char *argv[]) {
     pc.deleteProgram("P");
   }
 
+  section("TI-BASIC — P7 user functions (Define / Return)");
+  {
+    UIController pc;
+    auto runP = [&](const QString &src) -> QStringList {
+      pc.saveProgram("P", src);
+      pc.runProgram("P");
+      return pc.programOutput();
+    };
+    auto last = [](const QStringList &o) {
+      return o.isEmpty() ? QString() : o.last();
+    };
+
+    checkTrue("function returns a value",
+              last(runP("Define f(A)\nReturn A*A+1\nEnd\nDisp f(3)")) == "10");
+    checkTrue("function used inside an expression",
+              last(runP("Define f(A)\nReturn A*A+1\nEnd\nDisp f(3)+f(4)")) ==
+                  "27");
+    checkTrue("multi-statement function with Local + loop",
+              last(runP("Define g(N)\nLocal S,I\n0->S\nFor(I,1,N)\nS+I->S\nEnd\n"
+                        "Return S\nEnd\nDisp g(5)")) == "15");
+    {
+      QStringList o =
+          runP("Define f(A)\nReturn A*10\nEnd\n7->A\nDisp f(2)\nDisp A");
+      checkTrue("parameter doesn't leak (caller's A restored)",
+                o.contains("20") && o.last() == "7");
+    }
+    checkTrue("recursion — factorial(5) = 120",
+              last(runP("Define f(N)\nIf N<=1\nReturn 1\nReturn N*f(N-1)\nEnd\n"
+                        "Disp f(5)")) == "120");
+    checkTrue("wrong argument count → ERR:ARGUMENT",
+              last(runP("Define f(A,B)\nReturn A+B\nEnd\nDisp f(3)"))
+                  .startsWith("ERR:ARGUMENT"));
+
+    pc.deleteProgram("P");
+  }
+
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed
             << "  Failed: " << gFailed << '\n';
