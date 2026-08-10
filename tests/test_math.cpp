@@ -2992,6 +2992,48 @@ int main(int argc, char *argv[]) {
     pc.deleteProgram("P");
   }
 
+  section("TI-BASIC — P7 element access (lists + matrices)");
+  {
+    UIController pc;
+    auto runP = [&](const QString &src) -> QStringList {
+      pc.saveProgram("P", src);
+      pc.runProgram("P");
+      return pc.programOutput();
+    };
+    auto last = [](const QStringList &o) {
+      return o.isEmpty() ? QString() : o.last();
+    };
+
+    // List element read.
+    checkTrue("list element read",
+              last(runP("{10,20,30}->L1:Disp L1(2)")) == "20");
+    checkTrue("list elements in an expression",
+              last(runP("{10,20,30}->L1:Disp L1(1)+L1(3)")) == "40");
+    checkTrue("computed index",
+              last(runP("{10,20,30}->L1:2->K:Disp L1(K+1)")) == "30");
+    // List element write.
+    checkTrue("list element write in a loop",
+              last(runP("{0,0,0,0,0}->L1:For(I,1,5):I^2->L1(I):End:Disp L1(4)"))
+                  == "16");
+    checkTrue("store at dim+1 appends",
+              last(runP("{5}->L1:99->L1(2):Disp L1(2)")) == "99");
+    checkTrue("list element in a condition",
+              last(runP("{1,2,3}->L1:If L1(2)=2:Disp 7")) == "7");
+    checkTrue("list index out of range → ERR:INVALID DIM",
+              last(runP("{1,2,3}->L1:Disp L1(5)")).startsWith("ERR:INVALID DIM"));
+
+    // Matrix element read + write.
+    checkTrue("matrix element read",
+              last(runP("[[1,2][3,4]]->[A]:Disp [A](2,1)")) == "3");
+    checkTrue("matrix element write",
+              last(runP("[[1,2][3,4]]->[A]:9->[A](1,1):Disp [A](1,1)")) == "9");
+    checkTrue("matrix index out of range → ERR:INVALID DIM",
+              last(runP("[[1,2][3,4]]->[A]:Disp [A](3,1)"))
+                  .startsWith("ERR:INVALID DIM"));
+
+    pc.deleteProgram("P");
+  }
+
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed
             << "  Failed: " << gFailed << '\n';

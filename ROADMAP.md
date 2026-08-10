@@ -445,8 +445,11 @@ _pragmatic subset first_. Phases (each independently shippable):
   - ✅ **`break` / `continue`** (exit / skip the innermost loop) — 2026-08-10
   - ✅ **Editor syntax highlighting** (`ProgramHighlighter`: keywords / vars /
     strings / numbers / comments) — 2026-08-10
-  - 📅 **List/matrix element access + assignment** — `L1(3)`, `5→L1(3)`,
-    `[A](r,c)`, `9→[A](r,c)`, plus `SortA(`/`SortD(` (biggest faithful gap)
+  - ✅ **List/matrix element access + assignment** (2026-08-10) — `L1(3)` /
+    `[A](r,c)` reads, `5→L1(3)` / `9→[A](r,c)` writes; computed indices, append
+    at `dim+1`. Controller-level (`resolveElementReads`/`tryElementStore`),
+    core_math untouched. 10 tests.
+  - 📅 **`SortA(` / `SortD(`** — sort a list in place (remaining bit of A1)
   - 📅 **Pixel graphics** — `Pxl-On(`/`Pxl-Off(`/`Pxl-Test(`, `Pt-Off(`,
     `Pt-Change(`
   - 📅 **`StorePic`/`RecallPic`, `Shade(`, `Tangent(`, `DrawF`**

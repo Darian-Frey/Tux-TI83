@@ -585,6 +585,16 @@ private:
     // Tokenise a source string into an engine token buffer (Sub→Neg aware);
     // shared by evalProgramSource and setFunctionFromSource (P6).
     std::vector<Token> sourceToTokens(const QString &src);
+    // ── List/matrix element access in programs (P7-A1) ──
+    // Substitute innermost `Ln(idx)` / `[X](r,c)` element reads in `expr` with
+    // their values (the engine would otherwise read them as implicit multiply).
+    // Returns false + `err` on a bad index / undefined list-matrix.
+    bool resolveElementReads(QString &expr, std::string &err);
+    // Evaluate `expr` to a scalar (element reads resolved first).
+    bool evalScalarValue(const QString &expr, double &val, std::string &err);
+    // If `src` is an element assignment (`<rhs>→Ln(idx)` / `→[X](r,c)`), carry
+    // it out and set `out`; returns true if it was one (handled).
+    bool tryElementStore(const QString &src, tux_ti83::EvalResult &out);
     // Store a function expression into a Y= slot from a program (P6); returns
     // false if the slot or expression is invalid.
     bool setFunctionFromSource(int slot, const QString &expr);

@@ -390,11 +390,17 @@ Done:
   (`ProgramHighlighter`, QML `Tux/ProgramHighlighter`, attached to the
   editor's `textDocument`) colours keywords, variables, strings, numbers, and
   `#` comments live. (Fixed BUG-026 alongside — light-theme surface labels.)
+- ✅ **List/matrix element access + assignment (2026-08-10):** `L1(3)` /
+  `[A](r,c)` reads and `5→L1(3)` / `9→[A](r,c)` writes, done in the controller
+  (`resolveElementReads` substitutes innermost accesses before tokenising, so
+  the engine no longer reads `L1(3)` as `L1×3`; `tryElementStore` intercepts an
+  element store; `evalScalarValue` evaluates indices/RHS). Computed indices
+  (`L1(K+1)`), append at `dim+1`, out-of-range → `ERR:INVALID DIM`, undefined →
+  `ERR:UNDEFINED`. Program-only (home screen keeps implicit-multiply; core_math
+  untouched). +10 tests.
 
 Planned (community wishlist):
-- 📅 **List/matrix element access + assignment** — `L1(3)`, `5→L1(3)`,
-  `[A](r,c)`, `9→[A](r,c)`, plus `SortA(`/`SortD(`. The biggest faithful gap
-  (`L1(3)` currently parses as `L1×2`; element store errors).
+- 📅 **`SortA(` / `SortD(`** — sort a list in place (the remaining bit of A1).
 - 📅 **Pixel graphics** — `Pxl-On(`/`Pxl-Off(`/`Pxl-Test(`, `Pt-Off(`,
   `Pt-Change(`.
 - 📅 **`StorePic`/`RecallPic`, `Shade(`, `Tangent(`, `DrawF`.**

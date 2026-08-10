@@ -965,6 +965,239 @@ bool UIController::setFunctionFromSource(int slot, const QString &expr) {
   return true;
 }
 
+bool UIController::evalScalarValue(const QString &expr, double &val,
+                                  std::string &err) {
+  QString e = expr;
+  if (!resolveElementReads(e, err))
+    return false;
+  const std::vector<Token> buf = sourceToTokens(e);
+  if (buf.empty()) {
+    err = "ERR:SYNTAX";
+    return false;
+  }
+  MathStateMachine msm;
+  bindEngine(msm);
+  const double xVal = MathStateMachine::varRegistry[static_cast<size_t>(
+      static_cast<int>(Token::VarX) - static_cast<int>(Token::VarA))];
+  const CalculationResult r = msm.evaluate(buf, xVal);
+  if (!r.success) {
+    err = mapEngineError(r.error_message).toStdString();
+    return false;
+  }
+  val = r.value;
+  return true;
+}
+
+bool UIController::resolveElementReads(QString &q, std::string &err) {
+  for (int guard = 0; guard < 1000; ++guard) {
+    // Find the innermost (largest start index) `Ln(` / `[X](` element access.
+    int start = -1, parenOpen = -1, listNum = 0, matIdx = 0;
+    bool isList = false, inStr = false;
+    for (int i = 0; i < q.size(); ++i) {
+      const QChar c = q[i];
+      if (c == '"') {
+        inStr = !inStr;
+        continue;
+      }
+      if (inStr)
+        continue;
+      if (c == 'L' && i + 2 < q.size() && q[i + 1] >= '1' && q[i + 1] <= '6' &&
+          q[i + 2] == '(' && i > start) {
+        start = i;
+        parenOpen = i + 2;
+        isList = true;
+        listNum = q[i + 1].digitValue();
+      } else if (c == '[' && i + 3 < q.size() && q[i + 1] >= 'A' &&
+                 q[i + 1] <= 'E' && q[i + 2] == ']' && q[i + 3] == '(' &&
+                 i > start) {
+        start = i;
+        parenOpen = i + 3;
+        isList = false;
+        matIdx = q[i + 1].unicode() - 'A';
+      }
+    }
+    if (start < 0)
+      break;  // no element access left
+    // Match the closing paren.
+    int depth = 0, close = -1;
+    bool q2 = false;
+    for (int j = parenOpen; j < q.size(); ++j) {
+      const QChar d = q[j];
+      if (d == '"') {
+        q2 = !q2;
+        continue;
+      }
+      if (q2)
+        continue;
+      if (d == '(' || d == '[' || d == '{')
+        ++depth;
+      else if (d == ')' || d == ']' || d == '}') {
+        if (--depth == 0) {
+          close = j;
+          break;
+        }
+      }
+    }
+    if (close < 0) {
+      err = "ERR:SYNTAX";
+      return false;
+    }
+    const QString inner = q.mid(parenOpen + 1, close - parenOpen - 1);
+    const auto args = tux_ti83::Interpreter::splitArgs(inner.toStdString());
+    double value = 0.0;
+    if (isList) {
+      double idxv;
+      if (args.size() != 1) {
+        err = "ERR:SYNTAX";
+        return false;
+      }
+      if (!evalScalarValue(QString::fromStdString(args[0]), idxv, err))
+        return false;
+      const Token tok =
+          static_cast<Token>(static_cast<int>(Token::L1) + listNum - 1);
+      auto it = MathStateMachine::listRegistry.find(tok);
+      if (it == MathStateMachine::listRegistry.end() || it->second.empty()) {
+        err = "ERR:UNDEFINED";
+        return false;
+      }
+      const long idx = std::lround(idxv);
+      if (idx < 1 || idx > static_cast<long>(it->second.size())) {
+        err = "ERR:INVALID DIM";
+        return false;
+      }
+      value = it->second[static_cast<size_t>(idx - 1)];
+    } else {
+      double rv, cv;
+      if (args.size() != 2) {
+        err = "ERR:SYNTAX";
+        return false;
+      }
+      if (!evalScalarValue(QString::fromStdString(args[0]), rv, err) ||
+          !evalScalarValue(QString::fromStdString(args[1]), cv, err))
+        return false;
+      const Token tok =
+          static_cast<Token>(static_cast<int>(Token::MatA) + matIdx);
+      auto it = MathStateMachine::matrixRegistry.find(tok);
+      if (it == MathStateMachine::matrixRegistry.end()) {
+        err = "ERR:UNDEFINED";
+        return false;
+      }
+      const Matrix &m = it->second;
+      const long rr = std::lround(rv), cc = std::lround(cv);
+      if (rr < 1 || rr > m.rows || cc < 1 || cc > m.cols) {
+        err = "ERR:INVALID DIM";
+        return false;
+      }
+      value = m.at(static_cast<int>(rr - 1), static_cast<int>(cc - 1));
+    }
+    // Wrap in parens so a negative value can't create a `--` etc.
+    q.replace(start, close + 1 - start,
+              "(" + QString::number(value, 'g', 15) + ")");
+  }
+  return true;
+}
+
+bool UIController::tryElementStore(const QString &q, tux_ti83::EvalResult &out) {
+  // Last top-level store arrow.
+  int arrowPos = -1, arrowLen = 0;
+  bool inStr = false;
+  for (int i = 0; i < q.size(); ++i) {
+    const QChar c = q[i];
+    if (c == '"') {
+      inStr = !inStr;
+      continue;
+    }
+    if (inStr)
+      continue;
+    if (c == '-' && i + 1 < q.size() && q[i + 1] == '>') {
+      arrowPos = i;
+      arrowLen = 2;
+    } else if (c.unicode() == 0x2192) {  // →
+      arrowPos = i;
+      arrowLen = 1;
+    }
+  }
+  if (arrowPos < 0)
+    return false;
+  const QString target = q.mid(arrowPos + arrowLen).trimmed();
+  // Is the target a full element access `Ln(…)` / `[X](…)`?
+  bool isList = false;
+  int listNum = 0, matIdx = 0, parenOpen = -1;
+  if (target.size() >= 4 && target[0] == 'L' && target[1] >= '1' &&
+      target[1] <= '6' && target[2] == '(' && target.endsWith(')')) {
+    isList = true;
+    listNum = target[1].digitValue();
+    parenOpen = 2;
+  } else if (target.size() >= 5 && target[0] == '[' && target[1] >= 'A' &&
+             target[1] <= 'E' && target[2] == ']' && target[3] == '(' &&
+             target.endsWith(')')) {
+    matIdx = target[1].unicode() - 'A';
+    parenOpen = 3;
+  } else {
+    return false;  // an ordinary store — let the normal path handle it
+  }
+  const QString inner =
+      target.mid(parenOpen + 1, target.size() - parenOpen - 2);
+  std::string err;
+  double val;
+  if (!evalScalarValue(q.left(arrowPos), val, err)) {  // right-hand side
+    out.ok = false;
+    out.error = err;
+    return true;
+  }
+  const auto args = tux_ti83::Interpreter::splitArgs(inner.toStdString());
+  if (isList) {
+    double idxv;
+    if (args.size() != 1 ||
+        !evalScalarValue(QString::fromStdString(args[0]), idxv, err)) {
+      out.ok = false;
+      out.error = args.size() != 1 ? "ERR:SYNTAX" : err;
+      return true;
+    }
+    const long idx = std::lround(idxv);
+    const Token tok =
+        static_cast<Token>(static_cast<int>(Token::L1) + listNum - 1);
+    auto &vec = MathStateMachine::listRegistry[tok];
+    if (idx < 1 || idx > static_cast<long>(vec.size()) + 1) {
+      out.ok = false;
+      out.error = "ERR:INVALID DIM";
+      return true;
+    }
+    if (idx == static_cast<long>(vec.size()) + 1)
+      vec.push_back(val);  // store at dim+1 appends (TI-style)
+    else
+      vec[static_cast<size_t>(idx - 1)] = val;
+  } else {
+    double rv, cv;
+    if (args.size() != 2 ||
+        !evalScalarValue(QString::fromStdString(args[0]), rv, err) ||
+        !evalScalarValue(QString::fromStdString(args[1]), cv, err)) {
+      out.ok = false;
+      out.error = args.size() != 2 ? "ERR:SYNTAX" : err;
+      return true;
+    }
+    const Token tok = static_cast<Token>(static_cast<int>(Token::MatA) + matIdx);
+    auto it = MathStateMachine::matrixRegistry.find(tok);
+    if (it == MathStateMachine::matrixRegistry.end()) {
+      out.ok = false;
+      out.error = "ERR:UNDEFINED";
+      return true;
+    }
+    Matrix &m = it->second;
+    const long rr = std::lround(rv), cc = std::lround(cv);
+    if (rr < 1 || rr > m.rows || cc < 1 || cc > m.cols) {
+      out.ok = false;
+      out.error = "ERR:INVALID DIM";
+      return true;
+    }
+    m.set(static_cast<int>(rr - 1), static_cast<int>(cc - 1), val);
+  }
+  out.ok = true;
+  out.value = val;
+  out.display = QString::number(val, 'g', 15).toStdString();
+  return true;  // handled (a store is silent in a program)
+}
+
 tux_ti83::EvalResult UIController::evalProgramSource(const std::string &src) {
   tux_ti83::EvalResult out;
   QString q = QString::fromStdString(src);
@@ -977,6 +1210,18 @@ tux_ti83::EvalResult UIController::evalProgramSource(const std::string &src) {
     q.replace(QStringLiteral("getKey"), QString::number(m_progKey));
     m_progKey = 0;
   }
+
+  // Element assignment (`5→L1(3)` / `9→[A](r,c)`) — handled before tokenising,
+  // which can't store into an element (P7-A1).
+  if (tryElementStore(q, out))
+    return out;
+  // Element reads (`L1(3)` / `[A](r,c)`) — substitute their values in place;
+  // the engine would otherwise read `L1(3)` as `L1×3`.
+  if (!resolveElementReads(q, out.error)) {
+    out.ok = false;
+    return out;
+  }
+
   const std::vector<Token> buf = sourceToTokens(q);
   if (buf.empty()) {
     // Empty for both a blank line and an unparseable one — distinguish.
