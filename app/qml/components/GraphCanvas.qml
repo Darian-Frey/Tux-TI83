@@ -361,6 +361,17 @@ Rectangle {
                 }
             }
 
+            // Pixels (P7) — a 63×95 screen grid mapped across the canvas.
+            const px = uiController.getPixels()
+            if (px.length > 0) {
+                ctx.fillStyle = Style.textDisplay
+                const cw = width / 95, ch = height / 63
+                for (let q = 0; q < px.length; q++) {
+                    ctx.fillRect(Math.round(px[q].col * cw), Math.round(px[q].row * ch),
+                                 Math.ceil(cw), Math.ceil(ch))
+                }
+            }
+
             // Trace marker + readout (drawn last so it sits on top).
             if (traceActive) {
                 const tx = uiController.traceX

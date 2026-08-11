@@ -464,8 +464,9 @@ _pragmatic subset first_. Phases (each independently shippable):
   - ✅ **Error trapping** (2026-08-10) — `Try … Else … End` (TI-84 style);
     catch in `step()` unwinds For/local/call-stack depths back to the `Try`.
     5 tests.
-  - 📅 **Pixel graphics** — `Pxl-On(`/`Pxl-Off(`/`Pxl-Test(`, `Pt-Off(`,
-    `Pt-Change(`
+  - ✅ **Pixel graphics** (2026-08-10) — `Pxl-On(`/`Pxl-Off(`/`Pxl-Test(`
+    (63×95 pixel grid on `GraphCanvas`), `Pt-Off(`/`Pt-Change(` (toggle vector
+    points); `ClrDraw` clears pixels; new GFX palette tab. 8 tests.
   - 📅 **`StorePic`/`RecallPic`, `Shade(`, `Tangent(`, `DrawF`**
 
 ## Connectivity & data exchange

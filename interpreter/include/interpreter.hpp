@@ -57,7 +57,12 @@ struct GraphCmd {
     DrawVertical,  // nums = {x}
     DrawPoint,     // nums = {x,y}
     DrawCircle,    // nums = {x,y,r}
-    DrawText       // nums = {x,y}, arg = text
+    DrawText,      // nums = {x,y}, arg = text
+    // ── Pixels / points (P7); Pxl uses screen pixels, Pt uses graph coords ──
+    PxlOn,         // nums = {row,col}
+    PxlOff,        // nums = {row,col}
+    PtOff,         // nums = {x,y}  — erase a point
+    PtChange       // nums = {x,y}  — toggle a point
   };
   Kind kind;
   int slot = 0;              // 0-based Y= slot (Y1→0 … Y0→9); -1 = all

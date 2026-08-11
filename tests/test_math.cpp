@@ -3186,6 +3186,43 @@ int main(int argc, char *argv[]) {
     pc.deleteProgram("P");
   }
 
+  section("TI-BASIC — P7 pixel graphics (Pxl-/Pt-)");
+  {
+    UIController pc;
+    auto run = [&](const QString &src) {
+      pc.saveProgram("P", src);
+      pc.runProgram("P");
+    };
+
+    run("Pxl-On(10,20)");
+    checkTrue("Pxl-On sets a pixel", pc.pxlTest(10, 20));
+    run("Pxl-Off(10,20)");
+    checkTrue("Pxl-Off clears a pixel", !pc.pxlTest(10, 20));
+
+    // Pxl-Test( reads the pixel inside an expression.
+    {
+      pc.saveProgram("P", "Pxl-On(5,5):Disp Pxl-Test(5,5):Disp Pxl-Test(6,6)");
+      pc.runProgram("P");
+      const QStringList o = pc.programOutput();
+      checkTrue("Pxl-Test reads on/off", o.contains("1") && o.last() == "0");
+    }
+
+    run("Pxl-On(70,0)");  // row out of range
+    checkTrue("out-of-range Pxl-On ignored", !pc.pxlTest(70, 0));
+    run("Pxl-On(1,1):ClrDraw");
+    checkTrue("ClrDraw clears pixels", !pc.pxlTest(1, 1));
+
+    // Pt-Off erases a vector point; Pt-Change toggles one.
+    run("ClrDraw:Pt-On(1,2):Pt-Off(1,2)");
+    checkTrue("Pt-Off erases the point", pc.getDrawObjects().isEmpty());
+    run("ClrDraw:Pt-Change(1,2)");
+    checkTrue("Pt-Change adds a point", pc.getDrawObjects().size() == 1);
+    run("ClrDraw:Pt-Change(1,2):Pt-Change(1,2)");
+    checkTrue("Pt-Change toggles off", pc.getDrawObjects().isEmpty());
+
+    pc.deleteProgram("P");
+  }
+
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed
             << "  Failed: " << gFailed << '\n';

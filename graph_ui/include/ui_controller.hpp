@@ -1,6 +1,7 @@
 #pragma once
 #include <QObject>
 #include <QMap>
+#include <QSet>
 #include <QStringList>
 #include <QVariantList>
 #include <QVariantMap>
@@ -468,9 +469,20 @@ public:
     // curves. getDrawObjects() feeds the canvas; the draw* methods add
     // one; clrDraw() removes all.
     Q_INVOKABLE QVariantList getDrawObjects() const { return m_drawObjects; }
+    // On pixels (P7): each entry is {row, col} on a 63×95 screen grid.
+    Q_INVOKABLE QVariantList getPixels() const;
     // Reactive count of overlays, so QML can show/hide a clear affordance.
     Q_PROPERTY(int drawObjectCount READ drawObjectCount NOTIFY drawObjectsChanged)
-    int drawObjectCount() const { return static_cast<int>(m_drawObjects.size()); }
+    int drawObjectCount() const {
+      return static_cast<int>(m_drawObjects.size()) + m_pixels.size();
+    }
+    // Pixel ops (P7): screen pixel grid, row 0–62 / col 0–94.
+    void pxlOn(int row, int col);
+    void pxlOff(int row, int col);
+    bool pxlTest(int row, int col) const;
+    // Erase / toggle a point (graph coords) among the vector draw objects.
+    void ptOff(double x, double y);
+    void ptChange(double x, double y);
     Q_INVOKABLE void drawLine(double x1, double y1, double x2, double y2);
     Q_INVOKABLE void drawCircle(double x, double y, double r);
     Q_INVOKABLE void drawHorizontal(double y);
@@ -610,6 +622,8 @@ private:
     // Substitute innermost `name(args)` calls to user functions with their
     // return values; returns false + `err` on failure.
     bool resolveUserFunctions(QString &expr, std::string &err);
+    // Substitute `Pxl-Test(row,col)` with 0/1 (P7 pixel read).
+    bool resolvePxlTest(QString &expr, std::string &err);
     // Run a user function with `args` (params bound as locals) and return its
     // value; `err` set on failure.
     double callUserFunction(const QString &name, const QVector<double> &args,
@@ -653,6 +667,7 @@ private:
     std::vector<int> m_functionStyle;
     // DRAW-menu overlays (each a QVariantMap {type, a, b, c, d, text}).
     QVariantList m_drawObjects;
+    QSet<int> m_pixels;  // on pixels, key = row*95 + col (P7)
     QStringList m_history;
     int m_activeIdx;
     bool m_isGraphMode = false;

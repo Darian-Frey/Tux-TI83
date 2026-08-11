@@ -1156,6 +1156,14 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
     return drawCall(GraphCmd::Kind::DrawCircle, 3);
   if (matchKeyword(stmt, "Pt-On"))
     return drawCall(GraphCmd::Kind::DrawPoint, 2);
+  if (matchKeyword(stmt, "Pt-Off"))
+    return drawCall(GraphCmd::Kind::PtOff, 2);
+  if (matchKeyword(stmt, "Pt-Change"))
+    return drawCall(GraphCmd::Kind::PtChange, 2);
+  if (matchKeyword(stmt, "Pxl-On"))
+    return drawCall(GraphCmd::Kind::PxlOn, 2);
+  if (matchKeyword(stmt, "Pxl-Off"))
+    return drawCall(GraphCmd::Kind::PxlOff, 2);
   if (matchKeyword(stmt, "Horizontal") || matchKeyword(stmt, "Vertical")) {
     const bool horiz = matchKeyword(stmt, "Horizontal");
     const std::string rest = trim(stmt.substr(horiz ? 10 : 8));

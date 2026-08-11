@@ -50,7 +50,11 @@ Popup {
         "STR": ["Str1", "Str2", "Str3", "sub(", "length(", "inString(",
                 "expr(", "toString(", "\"\""],
         "FN":  ["→", ":", "sin(", "cos(", "tan(", "√(", "ln(", "log(", "abs(",
-                "round(", "int(", "nCr(", "nPr(", "SortA(", "SortD("]
+                "round(", "int(", "nCr(", "nPr(", "SortA(", "SortD("],
+        "GFX": ["DispGraph", "ClrDraw", "Line(", "Circle(", "Horizontal ",
+                "Vertical ", "Pt-On(", "Pt-Off(", "Pt-Change(", "Pxl-On(",
+                "Pxl-Off(", "Pxl-Test(", "Text(", "FnOn ", "FnOff ",
+                "ZStandard", "→Y1"]
     })
 
     // Insert `text` at the editor's cursor and keep focus there. For the
@@ -303,7 +307,7 @@ Popup {
                     Layout.fillWidth: true
                     spacing: 4
                     Repeater {
-                        model: ["CTL", "I/O", "STR", "FN"]
+                        model: ["CTL", "I/O", "STR", "FN", "GFX"]
                         Rectangle {
                             width: tabText.width + 16
                             height: 26

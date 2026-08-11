@@ -973,6 +973,8 @@ bool UIController::evalScalarValue(const QString &expr, double &val,
     return false;
   if (!resolveUserFunctions(e, err))
     return false;
+  if (!resolvePxlTest(e, err))
+    return false;
   const std::vector<Token> buf = sourceToTokens(e);
   if (buf.empty()) {
     err = "ERR:SYNTAX";
@@ -1392,6 +1394,65 @@ void UIController::sortLists(const QString &stmt, tux_ti83::EvalResult &out) {
   out.value = 0.0;
 }
 
+bool UIController::resolvePxlTest(QString &q, std::string &err) {
+  const QString tag = QStringLiteral("Pxl-Test(");
+  for (int guard = 0; guard < 1000; ++guard) {
+    // Find the last (innermost) Pxl-Test( outside a string.
+    int start = -1;
+    bool inStr = false;
+    for (int i = 0; i + tag.size() <= q.size(); ++i) {
+      if (q[i] == '"') {
+        inStr = !inStr;
+        continue;
+      }
+      if (!inStr && q.mid(i, tag.size()) == tag)
+        start = i;
+    }
+    if (start < 0)
+      break;
+    const int parenOpen = start + static_cast<int>(tag.size()) - 1;
+    int depth = 0, close = -1;
+    bool q2 = false;
+    for (int j = parenOpen; j < q.size(); ++j) {
+      const QChar d = q[j];
+      if (d == '"') {
+        q2 = !q2;
+        continue;
+      }
+      if (q2)
+        continue;
+      if (d == '(' || d == '[' || d == '{')
+        ++depth;
+      else if (d == ')' || d == ']' || d == '}') {
+        if (--depth == 0) {
+          close = j;
+          break;
+        }
+      }
+    }
+    if (close < 0) {
+      err = "ERR:SYNTAX";
+      return false;
+    }
+    const auto args = tux_ti83::Interpreter::splitArgs(
+        q.mid(parenOpen + 1, close - parenOpen - 1).toStdString());
+    double rv, cv;
+    if (args.size() != 2 ||
+        !evalScalarValue(QString::fromStdString(args[0]), rv, err) ||
+        !evalScalarValue(QString::fromStdString(args[1]), cv, err)) {
+      if (err.empty())
+        err = "ERR:ARGUMENT";
+      return false;
+    }
+    const int val =
+        pxlTest(static_cast<int>(std::lround(rv)), static_cast<int>(std::lround(cv)))
+            ? 1
+            : 0;
+    q.replace(start, close + 1 - start, "(" + QString::number(val) + ")");
+  }
+  return true;
+}
+
 tux_ti83::EvalResult UIController::evalProgramSource(const std::string &src) {
   tux_ti83::EvalResult out;
   QString q = QString::fromStdString(src);
@@ -1427,6 +1488,11 @@ tux_ti83::EvalResult UIController::evalProgramSource(const std::string &src) {
   }
   // User-function calls (`f(3,4)`) — substitute their return values (P7-B3).
   if (!resolveUserFunctions(q, out.error)) {
+    out.ok = false;
+    return out;
+  }
+  // Pxl-Test(row,col) — substitute the pixel's 0/1 value (P7).
+  if (!resolvePxlTest(q, out.error)) {
     out.ok = false;
     return out;
   }
@@ -1648,6 +1714,28 @@ void UIController::configureInterpreter(tux_ti83::Interpreter &it) {
       case K::DrawText:
         if (n.size() != 2) return false;
         drawText(n[0], n[1], QString::fromStdString(c.arg));
+        showGraph();
+        return true;
+      case K::PxlOn:
+        if (n.size() != 2) return false;
+        pxlOn(static_cast<int>(std::lround(n[0])),
+              static_cast<int>(std::lround(n[1])));
+        showGraph();
+        return true;
+      case K::PxlOff:
+        if (n.size() != 2) return false;
+        pxlOff(static_cast<int>(std::lround(n[0])),
+               static_cast<int>(std::lround(n[1])));
+        showGraph();
+        return true;
+      case K::PtOff:
+        if (n.size() != 2) return false;
+        ptOff(n[0], n[1]);
+        showGraph();
+        return true;
+      case K::PtChange:
+        if (n.size() != 2) return false;
+        ptChange(n[0], n[1]);
         showGraph();
         return true;
     }
@@ -3332,7 +3420,67 @@ void UIController::drawText(double x, double y, const QString &text) {
 void UIController::clrDraw() {
   CrashLogger::logEvent(QStringLiteral("clrDraw"));
   m_drawObjects.clear();
+  m_pixels.clear();
   emit drawObjectsChanged();
+}
+
+// ── Pixels / points (P7) ──
+QVariantList UIController::getPixels() const {
+  QVariantList out;
+  for (int key : m_pixels) {
+    QVariantMap p;
+    p["row"] = key / 95;
+    p["col"] = key % 95;
+    out.append(p);
+  }
+  return out;
+}
+
+void UIController::pxlOn(int row, int col) {
+  if (row < 0 || row > 62 || col < 0 || col > 94)
+    return;
+  m_pixels.insert(row * 95 + col);
+  emit drawObjectsChanged();
+}
+
+void UIController::pxlOff(int row, int col) {
+  if (m_pixels.remove(row * 95 + col))
+    emit drawObjectsChanged();
+}
+
+bool UIController::pxlTest(int row, int col) const {
+  return m_pixels.contains(row * 95 + col);
+}
+
+void UIController::ptOff(double x, double y) {
+  // Erase any vector point at (x, y).
+  bool changed = false;
+  for (int i = m_drawObjects.size() - 1; i >= 0; --i) {
+    const QVariantMap o = m_drawObjects[i].toMap();
+    if (o["type"].toString() == "point" &&
+        qFuzzyCompare(o["a"].toDouble() + 1.0, x + 1.0) &&
+        qFuzzyCompare(o["b"].toDouble() + 1.0, y + 1.0)) {
+      m_drawObjects.removeAt(i);
+      changed = true;
+    }
+  }
+  if (changed)
+    emit drawObjectsChanged();
+}
+
+void UIController::ptChange(double x, double y) {
+  // Toggle: remove a point at (x, y) if present, else add one.
+  for (int i = 0; i < m_drawObjects.size(); ++i) {
+    const QVariantMap o = m_drawObjects[i].toMap();
+    if (o["type"].toString() == "point" &&
+        qFuzzyCompare(o["a"].toDouble() + 1.0, x + 1.0) &&
+        qFuzzyCompare(o["b"].toDouble() + 1.0, y + 1.0)) {
+      m_drawObjects.removeAt(i);
+      emit drawObjectsChanged();
+      return;
+    }
+  }
+  drawPoint(x, y);  // not present → add it
 }
 
 void UIController::deleteDrawObject(int index) {

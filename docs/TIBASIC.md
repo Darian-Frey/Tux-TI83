@@ -433,9 +433,14 @@ Done:
   frames, restoring locals) before running the handler. Doesn't catch a user
   STOP / the runaway guard. +5 tests.
 
+- ✅ **Pixel graphics (2026-08-10):** `Pxl-On(`/`Pxl-Off(` set/clear pixels on
+  a 63×95 screen grid (controller `m_pixels` set, rendered on `GraphCanvas`);
+  `Pxl-Test(row,col)` reads 0/1 in expressions (resolved like element access);
+  `Pt-Off(`/`Pt-Change(` erase/toggle the existing vector points. `ClrDraw`
+  clears pixels; ✕ CLR accounts for them. New GFX palette tab collects the
+  graphics keywords. +8 tests.
+
 Planned (community wishlist):
-- 📅 **Pixel graphics** — `Pxl-On(`/`Pxl-Off(`/`Pxl-Test(`, `Pt-Off(`,
-  `Pt-Change(`.
 - 📅 **`StorePic`/`RecallPic`, `Shade(`, `Tangent(`, `DrawF`.**
 
 ---
