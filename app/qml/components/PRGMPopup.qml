@@ -53,7 +53,8 @@ Popup {
                 "round(", "int(", "nCr(", "nPr(", "SortA(", "SortD("],
         "GFX": ["DispGraph", "ClrDraw", "Line(", "Circle(", "Horizontal ",
                 "Vertical ", "Pt-On(", "Pt-Off(", "Pt-Change(", "Pxl-On(",
-                "Pxl-Off(", "Pxl-Test(", "Text(", "FnOn ", "FnOff ",
+                "Pxl-Off(", "Pxl-Test(", "Text(", "DrawF ", "Tangent(",
+                "Shade(", "StorePic ", "RecallPic ", "FnOn ", "FnOff ",
                 "ZStandard", "→Y1"]
     })
 

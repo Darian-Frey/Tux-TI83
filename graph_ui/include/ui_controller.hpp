@@ -483,6 +483,12 @@ public:
     // Erase / toggle a point (graph coords) among the vector draw objects.
     void ptOff(double x, double y);
     void ptChange(double x, double y);
+    // Graph-drawing extras (P7). Each returns false on an unusable expression.
+    void storePic(int slot);   // snapshot current drawing + pixels
+    void recallPic(int slot);  // overlay a saved snapshot
+    bool drawFunc(const QString& expr);                       // DrawF
+    bool drawTangent(const QString& expr, double x);          // Tangent(
+    bool shadeBetween(const QString& lower, const QString& upper);  // Shade(
     Q_INVOKABLE void drawLine(double x1, double y1, double x2, double y2);
     Q_INVOKABLE void drawCircle(double x, double y, double r);
     Q_INVOKABLE void drawHorizontal(double y);
@@ -624,6 +630,9 @@ private:
     bool resolveUserFunctions(QString &expr, std::string &err);
     // Substitute `Pxl-Test(row,col)` with 0/1 (P7 pixel read).
     bool resolvePxlTest(QString &expr, std::string &err);
+    // Sample f(X)=`expr` across the current x-window into {x,y} maps, skipping
+    // non-finite points (discontinuities). False if nothing evaluated.
+    bool sampleCurve(const QString &expr, QVariantList &pts);
     // Run a user function with `args` (params bound as locals) and return its
     // value; `err` set on failure.
     double callUserFunction(const QString &name, const QVector<double> &args,
@@ -668,6 +677,9 @@ private:
     // DRAW-menu overlays (each a QVariantMap {type, a, b, c, d, text}).
     QVariantList m_drawObjects;
     QSet<int> m_pixels;  // on pixels, key = row*95 + col (P7)
+    // Saved graph pictures (P7): pic number → {drawing overlays, on pixels}.
+    struct Pic { QVariantList objects; QSet<int> pixels; };
+    QMap<int, Pic> m_pics;
     QStringList m_history;
     int m_activeIdx;
     bool m_isGraphMode = false;

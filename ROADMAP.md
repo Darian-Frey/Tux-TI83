@@ -439,8 +439,9 @@ _pragmatic subset first_. Phases (each independently shippable):
   `Text(`/`ClrDraw` (graphics commands auto-show the graph). Added a ✕ CLR
   button on `GraphCanvas` (shown when overlays exist) to clear all drawings.
   9 tests. **P6 graphics complete.** 💭 `.8xp` import remains (optional).
-- **P7 — Modern language enhancements** (make TI-BASIC genuinely better than
-  the original — see [docs/TIBASIC.md](docs/TIBASIC.md)):
+- **P7 — Modern language enhancements** ✅ **complete 2026-08-11** (make
+  TI-BASIC genuinely better than the original — see
+  [docs/TIBASIC.md](docs/TIBASIC.md)):
   - ✅ **Comments** (`#` to EOL) — 2026-08-10
   - ✅ **`break` / `continue`** (exit / skip the innermost loop) — 2026-08-10
   - ✅ **Editor syntax highlighting** (`ProgramHighlighter`: keywords / vars /
@@ -467,7 +468,11 @@ _pragmatic subset first_. Phases (each independently shippable):
   - ✅ **Pixel graphics** (2026-08-10) — `Pxl-On(`/`Pxl-Off(`/`Pxl-Test(`
     (63×95 pixel grid on `GraphCanvas`), `Pt-Off(`/`Pt-Change(` (toggle vector
     points); `ClrDraw` clears pixels; new GFX palette tab. 8 tests.
-  - 📅 **`StorePic`/`RecallPic`, `Shade(`, `Tangent(`, `DrawF`**
+  - ✅ **Graph-drawing extras** (2026-08-11) — `StorePic`/`RecallPic`
+    (snapshot/overlay the drawing, survives `ClrDraw`), `DrawF` (plot `f(X)`
+    as a sampled curve), `Tangent(` (tangent line, numeric slope), `Shade(`
+    (fill between two curves). Controller samples expressions over the
+    x-window (`sampleCurve`); core_math untouched. 5 tests. **Closes P7.**
 
 ## Connectivity & data exchange
 

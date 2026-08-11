@@ -3223,6 +3223,50 @@ int main(int argc, char *argv[]) {
     pc.deleteProgram("P");
   }
 
+  section("TI-BASIC — P7 graph extras (Pic/DrawF/Tangent/Shade)");
+  {
+    UIController pc;
+    auto run = [&](const QString &src) {
+      pc.saveProgram("P", src);
+      pc.runProgram("P");
+    };
+
+    // StorePic snapshots the drawing; RecallPic overlays it after a ClrDraw.
+    run("ClrDraw:Pt-On(1,1):StorePic 1:ClrDraw:RecallPic 1");
+    checkTrue("RecallPic restores a saved drawing",
+              pc.getDrawObjects().size() == 1);
+
+    // DrawF adds a sampled f(X) curve.
+    run("ClrDraw:DrawF X");
+    {
+      const QVariantList d = pc.getDrawObjects();
+      checkTrue("DrawF adds a curve",
+                d.size() == 1 && d[0].toMap()["type"].toString() == "curve");
+    }
+
+    // Tangent draws a line whose slope is f'(x) (x² at x=2 → 4).
+    run("ClrDraw:Tangent(X^2,2)");
+    {
+      const QVariantList d = pc.getDrawObjects();
+      const QVariantMap ln = d.isEmpty() ? QVariantMap() : d[0].toMap();
+      const double slope = (ln["d"].toDouble() - ln["b"].toDouble()) /
+                           (ln["c"].toDouble() - ln["a"].toDouble());
+      checkTrue("Tangent draws a line",
+                d.size() == 1 && ln["type"].toString() == "line");
+      checkTrue("Tangent slope is f'(2)=4", std::abs(slope - 4.0) < 1e-3);
+    }
+
+    // Shade adds a filled region between two curves.
+    run("ClrDraw:Shade(0,X^2)");
+    {
+      const QVariantList d = pc.getDrawObjects();
+      checkTrue("Shade adds a shaded region",
+                d.size() == 1 && d[0].toMap()["type"].toString() == "shade");
+    }
+
+    pc.deleteProgram("P");
+  }
+
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed
             << "  Failed: " << gFailed << '\n';

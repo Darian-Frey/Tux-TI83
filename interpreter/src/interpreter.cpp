@@ -1218,6 +1218,72 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
     ++m_pc;
     return RunStatus::Running;
   }
+  // StorePic n / RecallPic n — snapshot / overlay the current drawing (P7).
+  if (matchKeyword(stmt, "StorePic") || matchKeyword(stmt, "RecallPic")) {
+    const bool store = matchKeyword(stmt, "StorePic");
+    const std::string rest = trim(stmt.substr(store ? 8 : 9));
+    const EvalResult r = mEval(rest.empty() ? "1" : rest);
+    if (!r.ok)
+      return fail(r.error);
+    GraphCmd c;
+    c.kind = store ? GraphCmd::Kind::StorePic : GraphCmd::Kind::RecallPic;
+    c.slot = static_cast<int>(std::lround(r.value));
+    if (!m_graphSink || !m_graphSink(c))
+      return fail("ERR:UNDEFINED");
+    ++m_pc;
+    return RunStatus::Running;
+  }
+  // DrawF <expr> — plot f(X) directly on the graph (P7).
+  if (matchKeyword(stmt, "DrawF")) {
+    const std::string expr = trim(stmt.substr(5));
+    if (expr.empty())
+      return fail("ERR:SYNTAX");
+    GraphCmd c;
+    c.kind = GraphCmd::Kind::DrawF;
+    c.arg = expr;  // evaluated per-sample by the graph sink
+    if (!m_graphSink || !m_graphSink(c))
+      return fail("ERR:UNDEFINED");
+    ++m_pc;
+    return RunStatus::Running;
+  }
+  // Tangent(<expr>, <x>) — draw the tangent line to f(X) at x (P7).
+  if (matchKeyword(stmt, "Tangent")) {
+    const auto lp = stmt.find('(');
+    const auto rp = stmt.rfind(')');
+    if (lp == std::string::npos || rp == std::string::npos || rp <= lp)
+      return fail("ERR:SYNTAX");
+    const auto args = splitArgs(stmt.substr(lp + 1, rp - lp - 1));
+    if (args.size() != 2)
+      return fail("ERR:ARGUMENT");
+    const EvalResult xr = mEval(trim(args[1]));
+    if (!xr.ok)
+      return fail(xr.error);
+    GraphCmd c;
+    c.kind = GraphCmd::Kind::Tangent;
+    c.arg = trim(args[0]);  // f(X), sampled by the graph sink
+    c.value = xr.value;
+    if (!m_graphSink || !m_graphSink(c))
+      return fail("ERR:UNDEFINED");
+    ++m_pc;
+    return RunStatus::Running;
+  }
+  // Shade(<lower>, <upper>) — shade the region between two curves (P7).
+  if (matchKeyword(stmt, "Shade")) {
+    const auto lp = stmt.find('(');
+    const auto rp = stmt.rfind(')');
+    if (lp == std::string::npos || rp == std::string::npos || rp <= lp)
+      return fail("ERR:SYNTAX");
+    const std::string inner = trim(stmt.substr(lp + 1, rp - lp - 1));
+    if (splitArgs(inner).size() < 2)
+      return fail("ERR:ARGUMENT");
+    GraphCmd c;
+    c.kind = GraphCmd::Kind::Shade;
+    c.arg = inner;  // "lower,upper" — split + sampled by the graph sink
+    if (!m_graphSink || !m_graphSink(c))
+      return fail("ERR:UNDEFINED");
+    ++m_pc;
+    return RunStatus::Running;
+  }
 
   // ── Graph stores (P6): <expr>→Yn  and  <value>→<window var> ──
   {

@@ -1738,6 +1738,30 @@ void UIController::configureInterpreter(tux_ti83::Interpreter &it) {
         ptChange(n[0], n[1]);
         showGraph();
         return true;
+      case K::StorePic:
+        storePic(c.slot);
+        return true;
+      case K::RecallPic:
+        recallPic(c.slot);
+        showGraph();
+        return true;
+      case K::DrawF:
+        if (!drawFunc(QString::fromStdString(c.arg))) return false;
+        showGraph();
+        return true;
+      case K::Tangent:
+        if (!drawTangent(QString::fromStdString(c.arg), c.value)) return false;
+        showGraph();
+        return true;
+      case K::Shade: {
+        const auto parts = tux_ti83::Interpreter::splitArgs(c.arg);
+        if (parts.size() < 2) return false;
+        if (!shadeBetween(QString::fromStdString(parts[0]),
+                          QString::fromStdString(parts[1])))
+          return false;
+        showGraph();
+        return true;
+      }
     }
     return false;
   });
@@ -3488,6 +3512,90 @@ void UIController::deleteDrawObject(int index) {
     m_drawObjects.removeAt(index);
     emit drawObjectsChanged();
   }
+}
+
+// ── Graph-drawing extras (P7): StorePic/RecallPic, DrawF, Tangent(, Shade( ──
+void UIController::storePic(int slot) {
+  m_pics[slot] = Pic{m_drawObjects, m_pixels};
+}
+
+void UIController::recallPic(int slot) {
+  const auto it = m_pics.constFind(slot);
+  if (it == m_pics.constEnd())
+    return;  // recalling an empty slot is a no-op (matches TI leniency)
+  for (const QVariant &o : it->objects)
+    m_drawObjects.append(o);
+  m_pixels.unite(it->pixels);
+  emit drawObjectsChanged();
+}
+
+bool UIController::sampleCurve(const QString &expr, QVariantList &pts) {
+  const std::size_t xIdx = static_cast<std::size_t>(
+      static_cast<int>(Token::VarX) - static_cast<int>(Token::VarA));
+  const double savedX = MathStateMachine::varRegistry[xIdx];
+  const int N = 190;  // ~2× screen width — smooth enough for plotting
+  const double span = m_xMax - m_xMin;
+  std::string err;
+  for (int i = 0; i <= N; ++i) {
+    const double xv = m_xMin + span * i / N;
+    MathStateMachine::varRegistry[xIdx] = xv;
+    double yv = 0.0;
+    if (evalScalarValue(expr, yv, err) && std::isfinite(yv)) {
+      QVariantMap p;
+      p["x"] = xv;
+      p["y"] = yv;
+      pts.append(p);
+    }
+  }
+  MathStateMachine::varRegistry[xIdx] = savedX;
+  return !pts.isEmpty();
+}
+
+bool UIController::drawFunc(const QString &expr) {
+  QVariantList pts;
+  if (!sampleCurve(expr, pts))
+    return false;
+  QVariantMap o;
+  o["type"] = "curve";
+  o["pts"] = pts;
+  m_drawObjects.append(o);
+  emit drawObjectsChanged();
+  return true;
+}
+
+bool UIController::drawTangent(const QString &expr, double x) {
+  const std::size_t xIdx = static_cast<std::size_t>(
+      static_cast<int>(Token::VarX) - static_cast<int>(Token::VarA));
+  const double savedX = MathStateMachine::varRegistry[xIdx];
+  const double h = (std::fabs(x) > 1.0 ? std::fabs(x) * 1e-4 : 1e-4);
+  std::string err;
+  auto f = [&](double xv, double &out) {
+    MathStateMachine::varRegistry[xIdx] = xv;
+    return evalScalarValue(expr, out, err);
+  };
+  double y0 = 0.0, yl = 0.0, yr = 0.0;
+  const bool ok = f(x, y0) && f(x - h, yl) && f(x + h, yr);
+  MathStateMachine::varRegistry[xIdx] = savedX;
+  if (!ok || !std::isfinite(y0) || !std::isfinite(yl) || !std::isfinite(yr))
+    return false;
+  const double slope = (yr - yl) / (2.0 * h);
+  // y = y0 + slope·(X − x); draw the line clear across the x-window.
+  drawLine(m_xMin, y0 + slope * (m_xMin - x),
+           m_xMax, y0 + slope * (m_xMax - x));
+  return true;
+}
+
+bool UIController::shadeBetween(const QString &lower, const QString &upper) {
+  QVariantList lo, hi;
+  if (!sampleCurve(lower, lo) || !sampleCurve(upper, hi))
+    return false;
+  QVariantMap o;
+  o["type"] = "shade";
+  o["lower"] = lo;
+  o["upper"] = hi;
+  m_drawObjects.append(o);
+  emit drawObjectsChanged();
+  return true;
 }
 
 QVariantList UIController::getTableRows(int count, double xStart) {

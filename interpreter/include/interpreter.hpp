@@ -62,7 +62,13 @@ struct GraphCmd {
     PxlOn,         // nums = {row,col}
     PxlOff,        // nums = {row,col}
     PtOff,         // nums = {x,y}  — erase a point
-    PtChange       // nums = {x,y}  — toggle a point
+    PtChange,      // nums = {x,y}  — toggle a point
+    // ── Graph-drawing extras (P7); expressions in `arg`, pic # in `slot` ──
+    StorePic,      // slot = pic number — save the current drawing
+    RecallPic,     // slot = pic number — overlay a saved drawing
+    DrawF,         // arg = f(X) expression — plot it on the graph
+    Tangent,       // arg = f(X), value = x — draw the tangent line at x
+    Shade          // arg = "lower,upper" expressions — shade between them
   };
   Kind kind;
   int slot = 0;              // 0-based Y= slot (Y1→0 … Y0→9); -1 = all

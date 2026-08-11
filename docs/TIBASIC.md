@@ -371,7 +371,7 @@ resumable model and hits the milestone with numeric input + string-literal
 - 💭 `Repeat`/`While` performance, `rand`-seeded games, live per-frame graph
   animation from a `getKey` loop.
 
-### P7 — Modern language enhancements 🚧
+### P7 — Modern language enhancements ✅ (complete 2026-08-11)
 
 Improvements the TI-83 community always wanted, added on our modern base (a
 fast interpreter, a real editor, disk persistence). Faithful gaps come first,
@@ -439,9 +439,14 @@ Done:
   `Pt-Off(`/`Pt-Change(` erase/toggle the existing vector points. `ClrDraw`
   clears pixels; ✕ CLR accounts for them. New GFX palette tab collects the
   graphics keywords. +8 tests.
-
-Planned (community wishlist):
-- 📅 **`StorePic`/`RecallPic`, `Shade(`, `Tangent(`, `DrawF`.**
+- ✅ **Graph-drawing extras (2026-08-11):** `StorePic n`/`RecallPic n`
+  snapshot/overlay the current drawing (overlays + pixels; survives
+  `ClrDraw`, kept in `m_pics`); `DrawF <expr>` plots `f(X)` as a sampled
+  polyline ("curve" draw object); `Tangent(<expr>,x)` draws the tangent line
+  at `x` (numeric slope, reuses `drawLine`); `Shade(<lower>,<upper>)` fills
+  between two sampled curves ("shade" object). Expressions are sampled over
+  the x-window by the controller (`sampleCurve`) since the engine needs a
+  concrete X per point. +5 tests. **This completes P7.**
 
 ---
 

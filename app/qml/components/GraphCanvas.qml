@@ -357,6 +357,31 @@ Rectangle {
                         const p = toPx(o.a, o.b)
                         ctx.font = "11px " + Style.monoFamily
                         ctx.fillText(o.text, p.x + 2, p.y - 2)
+                    } else if (o.type === "curve") {
+                        // DrawF — a sampled f(X) polyline.
+                        ctx.beginPath()
+                        for (let k = 0; k < o.pts.length; k++) {
+                            const p = toPx(o.pts[k].x, o.pts[k].y)
+                            if (k === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y)
+                        }
+                        ctx.stroke()
+                    } else if (o.type === "shade") {
+                        // Shade( — fill between two sampled curves (upper
+                        // forward, lower back), then outline both edges.
+                        if (o.upper.length > 0 && o.lower.length > 0) {
+                            ctx.globalAlpha = 0.28
+                            ctx.beginPath()
+                            for (let u = 0; u < o.upper.length; u++) {
+                                const p = toPx(o.upper[u].x, o.upper[u].y)
+                                if (u === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y)
+                            }
+                            for (let w = o.lower.length - 1; w >= 0; w--) {
+                                const p = toPx(o.lower[w].x, o.lower[w].y)
+                                ctx.lineTo(p.x, p.y)
+                            }
+                            ctx.closePath(); ctx.fill()
+                            ctx.globalAlpha = 1.0
+                        }
                     }
                 }
             }
