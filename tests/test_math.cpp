@@ -294,6 +294,56 @@ int main(int argc, char *argv[]) {
   checkTrue("[A]-[B] returns a matrix (not Type Error)",
             matResult.startsWith("[["));
 
+  section("Matrix registry [F]–[J] UI exposure");
+  {
+    // Editor path stores + reads back the extended slots.
+    c.updateMatrix("[J]", 2, 2, QVariantList{1.0, 2.0, 3.0, 4.0});
+    const QVariantMap mj = c.getMatrix("[J]");
+    checkTrue("[J] stores + reads back 2x2",
+              mj["rows"].toInt() == 2 && mj["cols"].toInt() == 2 &&
+              mj["data"].toList().size() == 4);
+
+    // [F]/[G] tokenise and evaluate inside expressions.
+    c.updateMatrix("[F]", 2, 2, QVariantList{1.0, 0.0, 0.0, 1.0});
+    c.updateMatrix("[G]", 2, 2, QVariantList{5.0, 6.0, 7.0, 8.0});
+    checkTrue("[F]+[G] evaluates as a matrix",
+              eval(c, "[F]+[G]").startsWith("[["));
+    checkTrue("det([F]) works for the extended slot", eval(c, "det([F])") == "1");
+
+    // Typed shorthand: `[F]` entered key-by-key (three tokens) must fuse to
+    // the matrix reference, while `[[A][B]]` literals stay literals.
+    auto typeEval = [&c](const QString &pre, const QString &keys,
+                         const QString &post) {
+      c.processInput(QStringLiteral("CLEAR"));
+      if (!pre.isEmpty())
+        c.processExpression(pre);
+      for (const QChar ch : keys)
+        c.processInput(QString(ch));
+      for (const QChar ch : post)
+        c.processInput(QString(ch));
+      c.processInput(QStringLiteral("ENTER"));
+      return c.currentDisplay();
+    };
+    checkTrue("typed [F] resolves to the matrix reference",
+              typeEval("", "[F]", "") == "[[1,0][0,1]]");
+    checkTrue("typed det([F]) works key-by-key",
+              typeEval("det(", "[F]", ")") == "1");
+    eval(c, "3→A");
+    eval(c, "4→B");
+    checkTrue("typed [[A][B]] stays a literal (not fused)",
+              typeEval("", "[[A][B]]", "") == "[[3][4]]");
+    checkTrue("typed [[1,2][3,4]] literal is unaffected",
+              typeEval("", "[[1,2][3,4]]", "") == "[[1,2][3,4]]");
+
+    // Persistence round-trips [F]–[J] (tempdir isolates state.json, BUG-024).
+    c.saveState();
+    UIController c2;
+    c2.loadState();
+    const QVariantMap mj2 = c2.getMatrix("[J]");
+    checkTrue("[J] survives save/load",
+              mj2["rows"].toInt() == 2 && mj2["data"].toList().size() == 4);
+  }
+
   section("Matrix inverse and rref (Phase B)");
   // Inverse of 2×2 [[1,2],[3,4]] is [[-2,1],[1.5,-0.5]].
   c.updateMatrix("[A]", 2, 2, QVariantList{1.0, 2.0, 3.0, 4.0});

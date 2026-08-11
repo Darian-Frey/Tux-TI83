@@ -251,13 +251,18 @@ constexpr TokenSpec kTokens[] = {
     {"xor", Token::Xor,       "xor"},
     {"not", Token::Not,       "not"},
 
-    // Matrices. `[A]`..`[E]` are registry references (longest-match wins
+    // Matrices. `[A]`..`[J]` are registry references (longest-match wins
     // over the bare `[`); `[`/`]` delimit a matrix literal `[[1,2][3,4]]`.
     {"[A]", Token::MatA, "[A]"},
     {"[B]", Token::MatB, "[B]"},
     {"[C]", Token::MatC, "[C]"},
     {"[D]", Token::MatD, "[D]"},
     {"[E]", Token::MatE, "[E]"},
+    {"[F]", Token::MatF, "[F]"},
+    {"[G]", Token::MatG, "[G]"},
+    {"[H]", Token::MatH, "[H]"},
+    {"[I]", Token::MatI, "[I]"},
+    {"[J]", Token::MatJ, "[J]"},
     {"[", Token::OpenBracket, "["},
     {"]", Token::CloseBracket, "]"},
 
@@ -391,6 +396,11 @@ QJsonObject UIController::buildStateJson() const {
   persistMatrix("C", Token::MatC);
   persistMatrix("D", Token::MatD);
   persistMatrix("E", Token::MatE);
+  persistMatrix("F", Token::MatF);
+  persistMatrix("G", Token::MatG);
+  persistMatrix("H", Token::MatH);
+  persistMatrix("I", Token::MatI);
+  persistMatrix("J", Token::MatJ);
   root["matrices"] = matrices;
 
   // Lists L1..L6 (Phase C) — only persist populated slots.
@@ -577,6 +587,11 @@ void UIController::applyStateJson(const QJsonObject &root) {
   restoreMatrix("C", Token::MatC);
   restoreMatrix("D", Token::MatD);
   restoreMatrix("E", Token::MatE);
+  restoreMatrix("F", Token::MatF);
+  restoreMatrix("G", Token::MatG);
+  restoreMatrix("H", Token::MatH);
+  restoreMatrix("I", Token::MatI);
+  restoreMatrix("J", Token::MatJ);
 
   // Lists L1..L6 (Phase C).
   QJsonObject lists = root.value("lists").toObject();
@@ -2267,6 +2282,36 @@ QString UIController::formatScalar(double value) {
          QString::number(engExp);
 }
 
+// Collapse a top-level `[<A..J>]` — a matrix reference typed key by key as
+// three tokens (`[`, letter, `]`) — into the single `Mat` token the string
+// tokeniser would have produced via longest-match. Only a `[` that opens at
+// bracket-depth 0 counts: nested brackets are matrix *literals* (`[[A][B]]`,
+// `[[1,2][3,4]]`) whose inner `[X]` must stay literal element rows. Lets a
+// user type `[F]` and have it mean "matrix F" like the NAMES-tab insertion.
+static void fuseMatrixRefs(std::vector<Token> &buf) {
+  std::vector<Token> out;
+  out.reserve(buf.size());
+  int depth = 0;
+  for (std::size_t i = 0; i < buf.size(); ++i) {
+    const Token t = buf[i];
+    if (t == Token::OpenBracket && depth == 0 && i + 2 < buf.size() &&
+        buf[i + 1] >= Token::VarA && buf[i + 1] <= Token::VarJ &&
+        buf[i + 2] == Token::CloseBracket) {
+      const int off =
+          static_cast<int>(buf[i + 1]) - static_cast<int>(Token::VarA);
+      out.push_back(static_cast<Token>(static_cast<int>(Token::MatA) + off));
+      i += 2;  // skip the letter and the closing bracket
+      continue;
+    }
+    if (t == Token::OpenBracket)
+      ++depth;
+    else if (t == Token::CloseBracket && depth > 0)
+      --depth;
+    out.push_back(t);
+  }
+  buf.swap(out);
+}
+
 // ── processInput dispatcher ───────────────────────────────────
 //
 // Thin switch over the input string. Each branch delegates to a private
@@ -2455,7 +2500,11 @@ void UIController::evaluate() {
   // it from the registry so `5→X: X+1` gives 6. Graph-mode evaluation
   // (plot sweeps) passes its own xValue and bypasses this path.
   const double xIndex = static_cast<double>((int)Token::VarX - (int)Token::VarA);
-  CalculationResult result = msm.evaluate(currentBuf,
+  // Fuse typed `[A]`..`[J]` shorthand into matrix-reference tokens before
+  // handing off — on a copy so the display buffer keeps the keys as typed.
+  std::vector<Token> evalBuf = currentBuf;
+  fuseMatrixRefs(evalBuf);
+  CalculationResult result = msm.evaluate(evalBuf,
       MathStateMachine::varRegistry[static_cast<size_t>(xIndex)]);
   if (result.success) {
     if (result.isMatrix) {

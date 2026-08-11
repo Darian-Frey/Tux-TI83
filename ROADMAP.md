@@ -195,7 +195,10 @@ Engine implements more than the UI currently exposes — listed below.
 - ✅ `Y-VARS` store — `<expr>→Yn` from the home screen stores the LHS expression **tokens** into the Yn function buffer (so it plots and shows in the Y= editor), rather than evaluating to a number; reports `Done` when the target isn't the active slot, else echoes the stored expression. Handled in `UIController::evaluate()` ahead of the engine (the engine's Sto pass rejects a Y target). Added 2026-08-01. 📅 still: window/stat store variants (RegEq, statistical variables).
 - ✅ Memory management — factory RESET button in the MODE popup clears every persisted + in-memory piece of state and removes state.json (see [IMP-038](IMPROVEMENTS.md)), **plus** a full MEM menu (`MEMPopup`, 2ND++) landed 2026-07-26: a live in-use summary (`memInfo()` → vars / matrices / lists / Y= funcs / history counts) and targeted clears — Clear All Lists / All Matrices / Vars A–Z / Entries — alongside the full RESET.
 - ✅ Persistent storage across runs — session state (scalars, matrices, Y= buffers, viewport, MODE, TBLSET) is saved to `~/.local/state/tux-ti83/state.json` on clean exit and reloaded on launch; see [IMP-033](IMPROVEMENTS.md). Save-on-clean-exit only for now — periodic timer save would protect against crashes (follow-up).
-- 💭 `DelVar` for explicit variable deletion
+- ✅ `DelVar` for explicit variable deletion — implemented as a **TI-BASIC
+  program command** (P5a, `2ee4302`): `DelVar A` resets a scalar to 0 /
+  clears a `Str` variable. 💭 still: interactive **home-screen** `DelVar`
+  (a separate code path — `evaluate()` → `core_math`, not the interpreter).
 
 ## Matrices
 
@@ -214,7 +217,7 @@ Engine implements more than the UI currently exposes — listed below.
 - ✅ Matrix ↔ List conversion (`List▶Matr`, `Matr▶List`) — value-producing forms matching the engine's value+STO idiom. `List▶Matr(L1,…,Ln)` → m×n matrix with each list a column (**now variadic** — any number of lists; equal lengths else `ERR:INVALID DIM`; non-list arg → `ERR:DATA TYPE`); the arg count rides in the shunting-yard's variadic-paren counter (new `is_variadic_function`, mirroring `{…}`/`MakeList`). `Matr▶List([A],col)` → 1-based column as a list (out-of-range col → `ERR:INVALID DIM`). Store results with `→[C]` / `→Ln`. Engine + UI via MatrixPopup MATH tab (binary added 2026-08-01, variadic `List▶Matr` 2026-08-01). 📅 still: `Matr▶List` splitting **all** columns into several lists at once — needs multiple baked-in store targets, which doesn't fit the value-producing model (the `([A],col)` form covers single-column extraction).
 - ✅ Variable matrix dimensions — matrix editor v2 supports 1×1 up to 6×6 via R/C steppers (was fixed 3×3); landed 2026-07-22 (IMP-007 + IMP-008). Grid cap is 6 (QML/popup-height pragmatism, not the TI-83 99×99 max).
 - ✅ Extend UI registry exposure to `[A]`–`[E]` (matches TI-83 hardware default) — matrix editor v2 selector + NAMES tab + persistence now cover `[A]`–`[E]`; landed 2026-07-22 (IMP-007 + IMP-008)
-- 💭 Extend UI registry exposure to all 10 (`[A]`–`[J]`, TI-83 Plus / TI-84 range; engine is already there — `matrixTokenForName` already maps A–J, just needs more selector/NAMES entries)
+- ✅ Extend UI registry exposure to all 10 (`[A]`–`[J]`, TI-83 Plus / TI-84 range) — landed 2026-08-11. Turned out to be **four** sites, not two: the tokeniser table (`[F]`–`[J]`→`MatF`–`MatJ`, so they parse in expressions), the NAMES tab + EDIT selector (now two rows of five), and `persist`/`restoreMatrix` (F–J were session-only otherwise). Plus a usability fix — typed `[X]` shorthand now resolves to a matrix reference ([IMP-047](IMPROVEMENTS.md)). Engine (`MatA..MatJ`, `matrixTokenForName`) was already there. 8 tests.
 
 **Phase C in progress — Wave 1 (engine foundation) landed 2026-07-22.**
 The list value type, `L1`–`L6` registry, `{…}` literals, element-wise

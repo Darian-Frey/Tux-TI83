@@ -33,6 +33,17 @@ Each entry uses this template:
 
 ## Applied
 
+### IMP-047: Typed `[A]`–`[J]` on the home screen should resolve to a matrix reference
+
+- **Status:** applied (2026-08-11)
+- **Found:** 2026-08-11 (during the `[A]`–`[J]` UI-exposure work; user hit `ERR:SYNTAX` typing `det([F])`)
+- **Location:** [graph_ui/src/ui_controller.cpp](graph_ui/src/ui_controller.cpp) (`fuseMatrixRefs`, home-screen eval in `processInput`)
+- **Effort:** small
+- **Description:** Typing a matrix reference key-by-key (`[`, `F`, `]`) produced three separate tokens (open-bracket, variable F, close-bracket) → `ERR:SYNTAX`, whereas inserting `[F]` from the MATRX NAMES tab (whole-string `processExpression` → longest-match tokeniser) correctly produced a single `MatF` token. So references were only enterable via the NAMES tab, never by typing — a papercut for all ten slots, not just F–J. (The bracket keys are the matrix-*literal* delimiters, `[[1,2][3,4]]`.)
+- **Fix applied:** `fuseMatrixRefs(std::vector<Token>&)` collapses a top-level `[ , Var(A–J), ]` triple into the single `MatX` token just before the home-screen buffer is handed to the engine (on a *copy*, so the display keeps the keys as typed). Disambiguation is by **bracket depth**: only a `[` opening at depth 0 is a reference, so matrix literals whose rows are single variables (`[[A][B]]`) keep their inner `[X]` as literal elements. Mirrors what the string tokeniser already does via longest-match.
+- **Trade-offs:** none material — the depth-0 rule makes `[F]` (reference) and `[[A][B]]` (literal) unambiguous, matching real TI-83 syntax (references are single-bracket, literals always double-bracket). CLI/REPL already worked (they tokenise whole strings) and are unaffected.
+- **Notes:** +4 tests (853 total): typed `[F]` → reference, typed `det([F])` key-by-key, typed `[[A][B]]` stays a literal, typed `[[1,2][3,4]]` unaffected. Applied alongside the `[A]`–`[J]` registry UI exposure (ROADMAP Matrices).
+
 ### IMP-011: CLI / REPL can't populate matrices — resolved via typed matrix literals + matrix store
 
 - **Status:** applied (2026-08-01)

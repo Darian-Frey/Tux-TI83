@@ -6,7 +6,7 @@ import ".."
 // Modal popup for matrix operations: select, insert, edit.
 //
 // Three tabs (matching the legacy popup's structure):
-//   NAMES — list of available matrices ([A], [B], [C]); click inserts
+//   NAMES — list of available matrices ([A]–[J]); click inserts
 //   MATH  — matrix-specific functions (det() for now); click inserts
 //   EDIT  — 3×3 grid editor for matrix [A]; SAVE commits to the registry
 //
@@ -16,7 +16,7 @@ import ".."
 // popup auto-closes after any insertion or save.
 //
 // Matrix editor v2 (IMP-007 + IMP-008): the EDIT tab now has a matrix
-// selector ([A]–[E]), variable dimensions (1×1 up to 6×6), and reads any
+// selector ([A]–[J]), variable dimensions (1×1 up to 6×6), and reads any
 // existing stored values back into the grid on open / tab-switch /
 // selection so editing an existing matrix doesn't require retyping.
 Popup {
@@ -263,7 +263,8 @@ Popup {
             Item {
                 ListView {
                     anchors.fill: parent
-                    model: ["[A]", "[B]", "[C]", "[D]", "[E]", "[", "]"]
+                    model: ["[A]", "[B]", "[C]", "[D]", "[E]", "[F]", "[G]",
+                            "[H]", "[I]", "[J]", "[", "]"]
                     spacing: 4
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
@@ -362,12 +363,14 @@ Popup {
                 spacing: 8
                 onVisibleChanged: if (visible) root.loadMatrix(root.selectedMatrix)
 
-                // ── Matrix selector [A]–[E] ──
-                Row {
+                // ── Matrix selector [A]–[J] (two rows of five) ──
+                Grid {
                     Layout.fillWidth: true
+                    columns: 5
                     spacing: 5
                     Repeater {
-                        model: ["[A]", "[B]", "[C]", "[D]", "[E]"]
+                        model: ["[A]", "[B]", "[C]", "[D]", "[E]",
+                                "[F]", "[G]", "[H]", "[I]", "[J]"]
                         Rectangle {
                             width: (matrixGrid.width - 4 * 5) / 5
                             height: 30
