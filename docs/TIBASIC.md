@@ -425,11 +425,18 @@ Done:
   a `"…"` literal, so it concatenates (`"A="+toString(A)`) and composes
   (`length(toString(123))`). +5 tests.
 
+- ✅ **Error trapping (2026-08-10):** `Try … Else … End` (TI-84 style) — an
+  error inside the `Try` block jumps to the `Else` handler (or past `End` if
+  none) instead of halting; execution resumes after `End`. `Try` is a
+  non-loop opener; a per-block `TryFrame` records the For/local/call-stack
+  depths at entry, and the catch in `step()` unwinds those (popping sub-program
+  frames, restoring locals) before running the handler. Doesn't catch a user
+  STOP / the runaway guard. +5 tests.
+
 Planned (community wishlist):
 - 📅 **Pixel graphics** — `Pxl-On(`/`Pxl-Off(`/`Pxl-Test(`, `Pt-Off(`,
   `Pt-Change(`.
 - 📅 **`StorePic`/`RecallPic`, `Shade(`, `Tangent(`, `DrawF`.**
-- 📅 **Error trapping** — `try`-style recovery instead of a hard halt.
 
 ---
 

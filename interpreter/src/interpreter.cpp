@@ -202,6 +202,9 @@ bool Interpreter::returnFromCall() {
   restoreLocals();  // this sub-program's locals go back to their saved values
   CallFrame f = std::move(m_callStack.back());
   m_callStack.pop_back();
+  // Discard any Try blocks that belonged to the returning sub-program.
+  while (!m_tryStack.empty() && m_tryStack.back().callDepth > m_callStack.size())
+    m_tryStack.pop_back();
   m_locals = std::move(f.locals);  // caller's locals
   m_statements = std::move(f.statements);
   m_statementSrcLine = std::move(f.srcLine);
@@ -243,12 +246,16 @@ void Interpreter::buildControlTables() {
                matchKeyword(s, "Repeat")) {
       stack.push_back(i);
       loopStack.push_back(i);
-    } else if (matchKeyword(s, "Then") || matchKeyword(s, "Define")) {
+    } else if (matchKeyword(s, "Then") || matchKeyword(s, "Define") ||
+               matchKeyword(s, "Try")) {
       stack.push_back(i);  // non-loop opener (matched to its End)
     } else if (matchKeyword(s, "Else")) {
       if (!stack.empty() &&
-          matchKeyword(m_statements[static_cast<size_t>(stack.back())], "Then"))
-        m_thenToElse[static_cast<size_t>(stack.back())] = i;
+          (matchKeyword(m_statements[static_cast<size_t>(stack.back())],
+                        "Then") ||
+           matchKeyword(m_statements[static_cast<size_t>(stack.back())],
+                        "Try")))
+        m_thenToElse[static_cast<size_t>(stack.back())] = i;  // opener → Else
     } else if (matchKeyword(s, "End")) {
       if (!stack.empty()) {
         const int opener = stack.back();
@@ -539,6 +546,7 @@ void Interpreter::reset() {
   m_forStack.clear();
   m_callStack.clear();
   m_locals.clear();
+  m_tryStack.clear();
   m_returnValue = 0.0;
   m_status = RunStatus::Running;
 }
@@ -625,8 +633,29 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
     return RunStatus::Running;
   }
 
+  if (matchKeyword(stmt, "Try")) {
+    // Begin a protected block: on an error inside it, execution jumps to the
+    // Else handler (or past End if none) instead of halting (P7).
+    const int endIdx = m_openerToEnd[here];
+    if (endIdx < 0)
+      return fail("ERR:SYNTAX");
+    TryFrame tf;
+    tf.elseIdx = m_thenToElse[here];
+    tf.endIdx = endIdx;
+    tf.forDepth = m_forStack.size();
+    tf.localDepth = m_locals.size();
+    tf.callDepth = m_callStack.size();
+    m_tryStack.push_back(tf);
+    ++m_pc;  // enter the try body
+    return RunStatus::Running;
+  }
+
   if (matchKeyword(stmt, "Else")) {
-    // Reached only after the true branch fell through — skip past the End.
+    // Reached by falling through (If's true branch, or a Try body that
+    // finished without error) — skip past the End. A Try that completes
+    // cleanly pops its frame here so its handler is skipped.
+    if (!m_tryStack.empty() && m_tryStack.back().elseIdx == static_cast<int>(here))
+      m_tryStack.pop_back();
     const int endIdx = m_elseToEnd[here];
     m_pc = (endIdx >= 0) ? static_cast<std::size_t>(endIdx) + 1 : N;
     return RunStatus::Running;
@@ -753,7 +782,12 @@ RunStatus Interpreter::execStatement(const std::string &stmt) {
       // Repeat loops *until* the condition becomes true.
       m_pc = truthy ? here + 1 : static_cast<std::size_t>(opener) + 1;
     } else {
-      ++m_pc;  // If-Then block — just continue
+      // If-Then or Try block — just continue. A Try with no Else that
+      // finished cleanly pops its frame here.
+      if (matchKeyword(op, "Try") && !m_tryStack.empty() &&
+          m_tryStack.back().endIdx == static_cast<int>(here))
+        m_tryStack.pop_back();
+      ++m_pc;
     }
     return RunStatus::Running;
   }
@@ -1273,6 +1307,27 @@ RunStatus Interpreter::step() {
 
   const RunStatus st = execStatement(m_statements[m_pc]);
   if (st == RunStatus::Error) {
+    // A `Try` block catches the error: unwind back to it and run its handler
+    // instead of halting (P7). Nearest Try = top of the stack.
+    if (!m_tryStack.empty()) {
+      const TryFrame tf = m_tryStack.back();
+      m_tryStack.pop_back();
+      while (m_callStack.size() > tf.callDepth)
+        returnFromCall();  // unwind sub-program frames
+      while (m_forStack.size() > tf.forDepth)
+        m_forStack.pop_back();
+      while (m_locals.size() > tf.localDepth) {  // restore locals opened in Try
+        if (m_eval)
+          m_eval("(" + numLiteral(m_locals.back().second) + ")->" +
+                 m_locals.back().first);
+        m_locals.pop_back();
+      }
+      m_errorLine = -1;  // swallow the error
+      m_errorMessage.clear();
+      m_pc = (tf.elseIdx >= 0) ? static_cast<std::size_t>(tf.elseIdx) + 1
+                               : static_cast<std::size_t>(tf.endIdx) + 1;
+      return m_status;  // still Running
+    }
     m_status = RunStatus::Error;
     return m_status;
   }

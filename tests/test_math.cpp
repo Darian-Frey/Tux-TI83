@@ -3145,6 +3145,47 @@ int main(int argc, char *argv[]) {
     pc.deleteProgram("P");
   }
 
+  section("TI-BASIC — P7 error trapping (Try/Else/End)");
+  {
+    UIController pc;
+    auto runP = [&](const QString &src) -> QStringList {
+      pc.saveProgram("P", src);
+      pc.runProgram("P");
+      return pc.programOutput();
+    };
+    auto last = [](const QStringList &o) {
+      return o.isEmpty() ? QString() : o.last();
+    };
+
+    // An error in the Try block runs the Else handler, then execution resumes.
+    {
+      QStringList o = runP("Try\nDisp 5/0\nElse\nDisp 99\nEnd\nDisp 1");
+      checkTrue("caught error runs the handler",
+                o.contains("99") && o.last() == "1");
+    }
+    // No error → the Else handler is skipped.
+    {
+      QStringList o = runP("Try\nDisp 5\nElse\nDisp 99\nEnd\nDisp 1");
+      checkTrue("no error → handler skipped",
+                o.contains("5") && o.last() == "1" && !o.contains("99"));
+    }
+    // Try with no Else swallows the error and continues.
+    checkTrue("Try without Else swallows the error",
+              last(runP("Try\nDisp 5/0\nEnd\nDisp 1")) == "1");
+    // A For loop inside the Try is unwound when the error is caught.
+    {
+      QStringList o =
+          runP("Try\nFor(I,1,3)\n1/0\nEnd\nElse\nDisp 88\nEnd\nDisp 1");
+      checkTrue("For inside Try is unwound on catch",
+                o.contains("88") && o.last() == "1");
+    }
+    // A failing store is caught too.
+    checkTrue("caught error in a store",
+              last(runP("Try\n5/0->A\nElse\nDisp 77\nEnd")) == "77");
+
+    pc.deleteProgram("P");
+  }
+
   std::cout << "\n----------------------------------------\n"
             << "Total: " << (gPassed + gFailed) << "  Passed: " << gPassed
             << "  Failed: " << gFailed << '\n';

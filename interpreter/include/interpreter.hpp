@@ -256,6 +256,16 @@ private:
   // e.g. "Y1", "Xmax", "A", "Str1"; sets `lhs`. Empty if there's no arrow.
   static std::string storeTargetName(const std::string &stmt, std::string &lhs);
 
+  // One active `Try` block (P7): where its handler / End are, and the state
+  // depths at entry, so a caught error can unwind back to here.
+  struct TryFrame {
+    int elseIdx = -1;  // handler start (Else index) or -1 if no Else
+    int endIdx = -1;   // matching End
+    std::size_t forDepth = 0;
+    std::size_t localDepth = 0;
+    std::size_t callDepth = 0;
+  };
+
   // Per-For loop state (endVal/step captured at loop entry, TI-style).
   struct ForFrame {
     std::string var;      // loop variable (e.g. "A")
@@ -320,6 +330,7 @@ private:
   std::vector<int> m_enclosingLoop; // stmt → innermost enclosing loop opener (-1)
   std::map<std::string, int> m_labels;  // Lbl name → Lbl statement index
   std::vector<ForFrame> m_forStack;     // active For loops
+  std::vector<TryFrame> m_tryStack;     // active Try blocks (P7 error trapping)
   // Local variables of the current frame: {name, saved global value} — the
   // value is written back when the frame (program / sub-program) exits (P7-B3).
   std::vector<std::pair<std::string, double>> m_locals;

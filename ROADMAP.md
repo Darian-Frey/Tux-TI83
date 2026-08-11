@@ -461,10 +461,12 @@ _pragmatic subset first_. Phases (each independently shippable):
     and runs the body in a nested interpreter. 6 tests.
   - ✅ **`toString(`** (2026-08-10) — number → string, in the string-function
     pass; concatenates + composes (`"A="+toString(A)`). 5 tests.
+  - ✅ **Error trapping** (2026-08-10) — `Try … Else … End` (TI-84 style);
+    catch in `step()` unwinds For/local/call-stack depths back to the `Try`.
+    5 tests.
   - 📅 **Pixel graphics** — `Pxl-On(`/`Pxl-Off(`/`Pxl-Test(`, `Pt-Off(`,
     `Pt-Change(`
   - 📅 **`StorePic`/`RecallPic`, `Shade(`, `Tangent(`, `DrawF`**
-  - 📅 **Error trapping** (`try`-style recovery)
 
 ## Connectivity & data exchange
 
