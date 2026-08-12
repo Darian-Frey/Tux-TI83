@@ -1844,6 +1844,50 @@ int main(int argc, char *argv[]) {
     c.setActiveFunction(0);
   }
 
+  section("Inequality intersection shading (Inequalz)");
+  {
+    c.setProperty("graphMode", 0);   // Func mode
+    c.setProperty("shadeMode", 1);   // intersection
+    // Y1 = 0 with `>` (region y>0); Y2 = 2 with `<` (region y<2).
+    c.setActiveFunction(0); eval(c, "0");
+    c.cycleFunctionRelation(0); c.cycleFunctionRelation(0);   // rel 2 (>)
+    c.setActiveFunction(1); eval(c, "2");
+    c.cycleFunctionRelation(1);                                // rel 1 (<)
+
+    QVariantList segs = c.getInequalityShade(100);
+    checkTrue("intersection returns a band", !segs.isEmpty());
+    if (!segs.isEmpty()) {
+      const QVariantList seg = segs[0].toList();
+      checkTrue("band has columns", seg.size() >= 2);
+      const QVariantMap col = seg[0].toMap();
+      checkTrue("band top = 2 (min of upper bounds)",
+                qFuzzyCompare(col["top"].toDouble() + 1.0, 3.0));
+      checkTrue("band bottom = 0 (max of lower bounds)",
+                qFuzzyCompare(col["bottom"].toDouble() + 1.0, 1.0));
+    }
+
+    // Union mode yields no intersection band (canvas uses per-slot fills).
+    c.setProperty("shadeMode", 0);
+    checkTrue("union mode → no intersection band",
+              c.getInequalityShade(100).isEmpty());
+
+    // Contradictory bounds (y>5 AND y<3) → empty region, no segment.
+    c.setProperty("shadeMode", 1);
+    c.setActiveFunction(0); c.processInput("CLEAR"); eval(c, "5");  // Y1=5 (>)
+    c.setActiveFunction(1); c.processInput("CLEAR"); eval(c, "3");  // Y2=3 (<)
+    checkTrue("contradictory inequalities → empty band",
+              c.getInequalityShade(100).isEmpty());
+
+    // Clean up: relations back to 0, buffers cleared, union mode.
+    c.setProperty("shadeMode", 0);
+    c.setActiveFunction(0); c.processInput("CLEAR");
+    c.cycleFunctionRelation(0); c.cycleFunctionRelation(0); c.cycleFunctionRelation(0);  // 2→0
+    c.setActiveFunction(1); c.processInput("CLEAR");
+    c.cycleFunctionRelation(1); c.cycleFunctionRelation(1);
+    c.cycleFunctionRelation(1); c.cycleFunctionRelation(1);       // 1→0
+    c.setActiveFunction(0);
+  }
+
   section("Xres graph resolution (Phase D)");
   {
     c.setProperty("graphMode", 0);          // Func mode

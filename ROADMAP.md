@@ -325,9 +325,14 @@ default on) gating the graph canvas. RESET restores them.
   (`>`/`≥`) the curve, translucent in the slot's colour, on `GraphCanvas`. A
   tappable relation chip in the `YEditorPopup` cycles the operator. Reuses the
   existing `getMultiGraphPoints` sampling; core_math untouched. 5 tests.
-  - 💭 Deferred (each much larger): intersection/union shading of multiple
-    inequalities (region clipping), `X=` vertical inequalities (needs an X=
-    function type), point-of-intersection trace.
+  - ✅ Intersection/union combine mode — landed 2026-08-12. FORMAT menu
+    `Ineq: Union / Inter` (persisted). Union = per-slot independent fills;
+    Intersect = controller `getInequalityShade()` scanlines the x-window and
+    returns band segments covering where ALL relational inequalities hold
+    (lo = max of `>`/`≥` bounds, hi = min of `<`/`≤` bounds, clamped to the
+    viewport), filled as one band. Func mode only; core_math untouched. 6 tests.
+  - 💭 Deferred: `X=` vertical inequalities (needs an X= function type),
+    point-of-intersection trace.
 
 ## UI / UX
 

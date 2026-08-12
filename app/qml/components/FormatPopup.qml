@@ -14,7 +14,9 @@ Popup {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
     width: 340
-    height: 300
+    // Size to content so the panel always encloses every row + DONE
+    // (adding a toggle row no longer overflows the fixed height).
+    height: col.implicitHeight + topPadding + bottomPadding
     padding: 14
 
     x: (parent.width - width) / 2
@@ -83,6 +85,7 @@ Popup {
     }
 
     contentItem: ColumnLayout {
+        id: col
         spacing: 12
 
         Text {
@@ -135,10 +138,17 @@ Popup {
             value: uiController.exprOn
             onPicked: (on) => uiController.exprOn = on
         }
-
-        Item { Layout.fillHeight: true }
+        // Inequality shade combine mode: Union (each slot independent) vs
+        // Intersect (shade only where all relational inequalities hold).
+        ToggleRow {
+            label: "Ineq"
+            options: ["Union", "Inter"]
+            value: uiController.shadeMode === 1
+            onPicked: (inter) => uiController.shadeMode = inter ? 1 : 0
+        }
 
         CalcKey {
+            Layout.topMargin: 4
             label: "DONE"
             keyType: "enter"
             onPressed: root.close()

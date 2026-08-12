@@ -492,6 +492,7 @@ QJsonObject UIController::buildStateJson() const {
   mode["labelOn"] = m_labelOn;
   mode["coordMode"] = m_coordMode;
   mode["exprOn"]    = m_exprOn;
+  mode["shadeMode"] = m_shadeMode;
   mode["paramTMin"]  = m_paramTMin;
   mode["paramTMax"]  = m_paramTMax;
   mode["paramTStep"] = m_paramTStep;
@@ -705,6 +706,7 @@ void UIController::applyStateJson(const QJsonObject &root) {
   if (mode.contains("labelOn")) m_labelOn = mode["labelOn"].toBool();
   if (mode.contains("coordMode")) m_coordMode = mode["coordMode"].toInt();
   if (mode.contains("exprOn"))    m_exprOn    = mode["exprOn"].toBool();
+  if (mode.contains("shadeMode")) m_shadeMode = (mode["shadeMode"].toInt() == 1) ? 1 : 0;
 
   // TBLSET restore. Step must be non-zero — guard against bad data.
   QJsonObject table = root.value("table").toObject();
@@ -1892,6 +1894,7 @@ void UIController::resetAll() {
   m_axesOn = true;
   m_coordOn = true;
   m_labelOn = true;
+  m_shadeMode = 0;
   m_paramTMin = 0.0;
   m_paramTMax = 6.283185307179586;
   m_paramTStep = 0.02;
@@ -3826,6 +3829,70 @@ QVariantList UIController::getMultiGraphPoints(int resolution) {
     allFunctions.append(QVariant::fromValue(points));
   }
   return allFunctions;
+}
+
+QVariantList UIController::getInequalityShade(int resolution) {
+  QVariantList out;
+  // Intersection shading is a Func-mode feature (like the real Inequalz app);
+  // union mode uses the per-slot fills in the canvas, so nothing to do here.
+  if (m_graphMode != 0 || m_shadeMode != 1)
+    return out;
+
+  // Collect enabled slots that carry a relation (1 < / 2 > / 3 ≤ / 4 ≥).
+  struct Rel { std::size_t slot; int rel; };
+  std::vector<Rel> rels;
+  for (std::size_t f = 0; f < m_functionBuffers.size(); ++f) {
+    if (f < m_functionEnabled.size() && m_functionEnabled[f] &&
+        f < m_functionRelation.size() && m_functionRelation[f] != 0 &&
+        !m_functionBuffers[f].empty())
+      rels.push_back({f, m_functionRelation[f]});
+  }
+  if (rels.empty())
+    return out;
+
+  MathStateMachine msm;
+  bindEngine(msm);
+  const int funcRes = std::max(1, resolution / std::clamp(m_xres, 1, 8));
+  const double step = (m_xMax - m_xMin) / funcRes;
+
+  // Walk x columns; at each, the satisfied y-band is [lo, hi] clamped to the
+  // viewport — lo = max of the `>`/`≥` bounds, hi = min of the `<`/`≤` bounds.
+  // Contiguous columns with lo < hi form one fillable segment; a column that
+  // can't be evaluated or where the band collapses breaks the segment.
+  QVariantList seg;
+  auto flush = [&]() {
+    if (seg.size() >= 2)
+      out.append(QVariant::fromValue(seg));
+    seg.clear();
+  };
+  for (int i = 0; i <= funcRes; ++i) {
+    const double x = m_xMin + i * step;
+    double lo = m_yMin, hi = m_yMax;
+    bool ok = true;
+    for (const auto &r : rels) {
+      const CalculationResult res = msm.evaluate(m_functionBuffers[r.slot], x);
+      if (!res.success || res.isMatrix || res.isList ||
+          !std::isfinite(res.value)) {
+        ok = false;
+        break;
+      }
+      if (r.rel == 2 || r.rel == 4)  // > / ≥ → lower bound (region above)
+        lo = std::max(lo, res.value);
+      else                           // < / ≤ → upper bound (region below)
+        hi = std::min(hi, res.value);
+    }
+    if (ok && lo < hi) {
+      QVariantMap col;
+      col["x"] = x;
+      col["top"] = hi;
+      col["bottom"] = lo;
+      seg.append(col);
+    } else {
+      flush();
+    }
+  }
+  flush();
+  return out;
 }
 
 void UIController::pan(double dx, double dy, double vw, double vh) {

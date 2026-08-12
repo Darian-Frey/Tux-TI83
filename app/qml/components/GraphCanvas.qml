@@ -214,34 +214,60 @@ Rectangle {
             // Sequential reveals along the concatenated curves in order.
             const simul = uiController.plotMode === 1
 
-            // Inequality shading (Inequalz-style) — for any slot with a
-            // relation set, fill the region below (< / ≤) or above (> / ≥)
-            // its curve. Drawn first, translucent, so the curve lines and
-            // everything else render on top. Skipped during the plot
+            // Inequality shading (Inequalz-style). Skipped during the plot
             // draw-animation (reveal >= 0) to avoid a half-swept polygon.
             if (root.reveal < 0) {
-                for (let g = 0; g < multiPts.length; g++) {
-                    const rel = uiController.functionRelation(g)
-                    if (rel === 0) continue
-                    const gpts = multiPts[g]
-                    if (!gpts || gpts.length < 2) continue
-                    const below = (rel === 1 || rel === 3)  // < or ≤
-                    const edgeY = below ? height : 0
-                    ctx.fillStyle = Style.graphColors[g % Style.graphColors.length]
-                    ctx.globalAlpha = 0.18
-                    ctx.beginPath()
-                    const g0 = toPx(gpts[0].x, gpts[0].y)
-                    ctx.moveTo(g0.x, g0.y)
-                    for (let i = 1; i < gpts.length; i++) {
-                        const gp = toPx(gpts[i].x, gpts[i].y)
-                        ctx.lineTo(gp.x, gp.y)
+                if (uiController.shadeMode === 1) {
+                    // Intersection: the controller returns band segments
+                    // covering the region where ALL relational inequalities
+                    // hold. Fill each as one translucent polygon.
+                    const segs = uiController.getInequalityShade(600)
+                    if (segs.length > 0) {
+                        ctx.fillStyle = Style.textResult
+                        ctx.globalAlpha = 0.26
+                        for (let s = 0; s < segs.length; s++) {
+                            const seg = segs[s]
+                            ctx.beginPath()
+                            for (let i = 0; i < seg.length; i++) {
+                                const p = toPx(seg[i].x, seg[i].top)
+                                if (i === 0) ctx.moveTo(p.x, p.y)
+                                else ctx.lineTo(p.x, p.y)
+                            }
+                            for (let i = seg.length - 1; i >= 0; i--) {
+                                const p = toPx(seg[i].x, seg[i].bottom)
+                                ctx.lineTo(p.x, p.y)
+                            }
+                            ctx.closePath()
+                            ctx.fill()
+                        }
+                        ctx.globalAlpha = 1.0
                     }
-                    const gl = toPx(gpts[gpts.length - 1].x, gpts[gpts.length - 1].y)
-                    ctx.lineTo(gl.x, edgeY)
-                    ctx.lineTo(g0.x, edgeY)
-                    ctx.closePath()
-                    ctx.fill()
-                    ctx.globalAlpha = 1.0
+                } else {
+                    // Union: each slot with a relation fills the region below
+                    // (< / ≤) or above (> / ≥) its own curve, independently.
+                    for (let g = 0; g < multiPts.length; g++) {
+                        const rel = uiController.functionRelation(g)
+                        if (rel === 0) continue
+                        const gpts = multiPts[g]
+                        if (!gpts || gpts.length < 2) continue
+                        const below = (rel === 1 || rel === 3)  // < or ≤
+                        const edgeY = below ? height : 0
+                        ctx.fillStyle = Style.graphColors[g % Style.graphColors.length]
+                        ctx.globalAlpha = 0.18
+                        ctx.beginPath()
+                        const g0 = toPx(gpts[0].x, gpts[0].y)
+                        ctx.moveTo(g0.x, g0.y)
+                        for (let i = 1; i < gpts.length; i++) {
+                            const gp = toPx(gpts[i].x, gpts[i].y)
+                            ctx.lineTo(gp.x, gp.y)
+                        }
+                        const gl = toPx(gpts[gpts.length - 1].x, gpts[gpts.length - 1].y)
+                        ctx.lineTo(gl.x, edgeY)
+                        ctx.lineTo(g0.x, edgeY)
+                        ctx.closePath()
+                        ctx.fill()
+                        ctx.globalAlpha = 1.0
+                    }
                 }
             }
 

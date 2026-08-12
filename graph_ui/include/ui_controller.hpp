@@ -151,6 +151,9 @@ private:
     Q_PROPERTY(int coordMode MEMBER m_coordMode NOTIFY formatChanged)
     // ExprOn/ExprOff: show the traced function's equation while tracing.
     Q_PROPERTY(bool exprOn MEMBER m_exprOn NOTIFY formatChanged)
+    // Inequality-shade combine mode: 0 = union (each relational slot shades
+    // independently), 1 = intersection (shade only where ALL are satisfied).
+    Q_PROPERTY(int shadeMode MEMBER m_shadeMode NOTIFY formatChanged)
     // TRACE soft-key state. When true, the graph canvas draws a
     // crosshair on the active function's curve at `traceX` and shows
     // an X / Y readout. Left/Right arrow input is routed to
@@ -546,6 +549,12 @@ public:
     // plot). Empty/undefined/mismatched lists set `error`.
     Q_INVOKABLE QVariantMap getStatPlotData() const;
     Q_INVOKABLE QVariantList getMultiGraphPoints(int resolution);
+    // Inequality intersection band (Func mode only). When shadeMode == 1 and
+    // there are active relational slots, returns a list of contiguous band
+    // segments — each a list of {x, top, bottom} columns — covering the
+    // region where ALL relational inequalities hold. Empty otherwise (union
+    // mode uses the per-slot fills instead).
+    Q_INVOKABLE QVariantList getInequalityShade(int resolution);
     Q_INVOKABLE void pan(double dx, double dy, double vw, double vh);
     Q_INVOKABLE void zoom(double f, double mx, double my, double vw, double vh);
 
@@ -749,6 +758,7 @@ private:
     bool m_labelOn = true;
     int  m_coordMode = 0;    // 0 = RectGC (X/Y), 1 = PolarGC (R/θ)
     bool m_exprOn = true;    // show equation while tracing (ExprOn)
+    int  m_shadeMode = 0;    // 0 = union, 1 = intersection (Inequalz shading)
     // Parametric/polar parameter window (defaults: a smooth full turn
     // in radians — ~314 points). Reset to the angle-appropriate defaults
     // when the angle mode changes.
