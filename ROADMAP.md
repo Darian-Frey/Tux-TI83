@@ -370,9 +370,18 @@ default on) gating the graph canvas. RESET restores them.
 - ✅ `:` statement separator — added 2026-04-29 (`Token::Colon`; `evaluate()` splits on Colon, evaluates each segment in order, returns the last non-empty segment; errors short-circuit but earlier Sto mutations commit, matching TI-83 per-statement semantics; ALPHA + `.` inserts `:`, wired in alphaMap)
 
 ### Considering
-- 💭 Resizable window (currently fixed 720×760)
+- ✅ Resizable window — landed 2026-08-12. The calculator is laid out at a
+  fixed 720×760 design size and scaled uniformly (aspect-locked) to fill the
+  window via `scale: Math.min(root.width/720, root.height/760)` on the root
+  layout, so keys/display/fonts/history grow together; `minimumWidth/Height`
+  pin the floor at the design size (scale ≥ 1), and `Style.bgShell` fills the
+  letterbox margin. Lays the groundwork for the UI-scale setting below (which
+  would just multiply this factor). Known limitation: popups render at native
+  1× (they're window-overlay elements) — logged as a follow-up 💭.
 - 💭 Themes beyond Nord (light mode, high contrast, monochrome retro LCD)
 - 💭 UI scale / zoom setting — global multiplier on key sizes, font sizes, and display pixel sizes so the whole calculator can be scaled up for accessibility or larger monitors. Likely implemented as a `Style.uiScale` property feeding into every pixel-size/size constant, with a persisted setting and a control in a future Settings panel. Pairs naturally with the theming work since both live in `Style.qml`.
+- 💭 Scale popups with the window too (follow-up to the resizable-window
+  work — popups currently render at native 1× as window-overlay elements)
 - 💭 Touch input refinement
 - ✅ On-screen 2nd/Alpha sub-labels on each key — added 2026-04-18 (tiny amber 2ND function in top-left corner, green ALPHA letter in top-right; 2ND labels shown only for wired variants, ALPHA letters follow TI-83 layout)
 

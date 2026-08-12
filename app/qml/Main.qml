@@ -8,6 +8,10 @@ ApplicationWindow {
     visible: true
     width: 720
     height: 760
+    // Resizable window: the design size is also the floor, so the uniform
+    // scale factor (below) is always >= 1 — the calculator only ever grows.
+    minimumWidth: 720
+    minimumHeight: 760
     title: "Tux-TI83"
     color: Style.bgShell
 
@@ -254,7 +258,18 @@ ApplicationWindow {
     // Layout — calculator column on the left, history on the right.
     // ─────────────────────────────────────────────────────
     RowLayout {
-        anchors.fill: parent
+        // Resizable window: lay the calculator out at a fixed design size
+        // and scale it uniformly (aspect-locked) to fill the window, so the
+        // keys, display, and fonts all grow together. The window's minimum
+        // size equals the design size, so `scale` is always >= 1 and the
+        // (unscaled, window-centred) popups always fit. Style.bgShell — the
+        // window colour — fills the letterbox margin around the scaled body.
+        id: content
+        width: 720
+        height: 760
+        anchors.centerIn: parent
+        transformOrigin: Item.Center
+        scale: Math.min(root.width / width, root.height / height)
         spacing: 0
         focus: true
 
