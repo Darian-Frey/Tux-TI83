@@ -31,7 +31,9 @@ Popup {
     // Height bumped a second time (was 420) to fit the RESET button
     // added below the option rows — DONE was clipped off the bottom.
     width: 420
-    height: 540
+    // Size to content so adding an option row never clips DONE off the
+    // bottom (was a fixed 540 sized to the exact row count).
+    height: col.implicitHeight + topPadding + bottomPadding
     padding: 14
 
     x: (parent.width - width) / 2
@@ -121,7 +123,19 @@ Popup {
         }
     }
 
+    // Zoom presets for the "UI Size" row (values map to uiController.uiZoom).
+    readonly property var zoomLevels: [0.75, 1.0, 1.25, 1.5, 2.0]
+    function zoomIndex() {
+        var best = 0, bestD = 1e9
+        for (var i = 0; i < zoomLevels.length; i++) {
+            var d = Math.abs(zoomLevels[i] - uiController.uiZoom)
+            if (d < bestD) { bestD = d; best = i }
+        }
+        return best
+    }
+
     contentItem: ColumnLayout {
+        id: col
         spacing: 12
 
         // ── Header ──
@@ -237,8 +251,16 @@ Popup {
             active: true
             onSelected: (index) => uiController.theme = index
         }
-
-        Item { Layout.fillHeight: true }
+        // UI Size — a persisted zoom multiplier on the whole calculator
+        // (window + popups). Not a TI-83 setting; the MODE screen is our
+        // settings hub. The comma forces the binding to track uiZoom.
+        ModeRow {
+            label: "UI Size"
+            options: ["75%", "100%", "125%", "150%", "200%"]
+            selectedIndex: (uiController.uiZoom, root.zoomIndex())
+            active: true
+            onSelected: (index) => uiController.uiZoom = root.zoomLevels[index]
+        }
 
         // Factory reset — wipes scalars / matrices / Y= buffers /
         // history / MODE / viewport and removes the state.json so

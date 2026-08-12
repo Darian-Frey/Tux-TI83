@@ -2173,12 +2173,14 @@ int main(int argc, char *argv[]) {
     c.setProperty("plotMode", 1);        // Simul
     c.setProperty("screenMode", 2);      // G-T
     c.setProperty("theme", 2);           // Amber
+    c.setProperty("uiZoom", 1.5);        // UI zoom 150%
     checkTrue("format save writes", c.exportState("fmt"));
     c.setProperty("coordMode", 0);
     c.setProperty("exprOn", true);
     c.setProperty("plotMode", 0);
     c.setProperty("screenMode", 0);
     c.setProperty("theme", 0);
+    c.setProperty("uiZoom", 1.0);
     checkTrue("format import succeeds", c.importState("fmt"));
     checkTrue("coordMode restored to PolarGC",
               c.property("coordMode").toInt() == 1);
@@ -2189,12 +2191,20 @@ int main(int argc, char *argv[]) {
               c.property("screenMode").toInt() == 2);
     checkTrue("theme restored to 2 (Amber)",
               c.property("theme").toInt() == 2);
+    checkTrue("uiZoom restored to 1.5",
+              qFuzzyCompare(c.property("uiZoom").toDouble(), 1.5));
+    // uiZoom clamps to [0.75, 2.5].
+    c.setProperty("uiZoom", 99.0);
+    checkTrue("uiZoom clamps high", c.property("uiZoom").toDouble() <= 2.5);
+    c.setProperty("uiZoom", 0.1);
+    checkTrue("uiZoom clamps low", c.property("uiZoom").toDouble() >= 0.75);
     c.deleteSave("fmt");
     c.setProperty("coordMode", 0);       // reset to defaults
     c.setProperty("exprOn", true);
     c.setProperty("plotMode", 0);
     c.setProperty("screenMode", 0);
     c.setProperty("theme", 0);
+    c.setProperty("uiZoom", 1.0);
 
     // Name sanitisation + missing-save handling.
     checkTrue("blank name rejected", !c.exportState("   "));

@@ -379,7 +379,12 @@ default on) gating the graph canvas. RESET restores them.
   would just multiply this factor). Known limitation: popups render at native
   1× (they're window-overlay elements) — logged as a follow-up 💭.
 - 💭 Themes beyond Nord (light mode, high contrast, monochrome retro LCD)
-- 💭 UI scale / zoom setting — global multiplier on key sizes, font sizes, and display pixel sizes so the whole calculator can be scaled up for accessibility or larger monitors. Likely implemented as a `Style.uiScale` property feeding into every pixel-size/size constant, with a persisted setting and a control in a future Settings panel. Pairs naturally with the theming work since both live in `Style.qml`.
+- ✅ UI scale / zoom setting — landed 2026-08-13. A persisted `uiController.uiZoom`
+  multiplier (clamped [0.75, 2.5]) drives the window's minimum/natural size; the
+  resizable-window `scale` transform then renders the whole calculator (and
+  popups) at uiZoom×. Presets **75/100/125/150/200%** in the MODE menu's "UI Size"
+  row; RESET → 100%. Chose the transform-scaling route (built on the resizable
+  window) over a per-constant `Style.uiScale`, so no size constant can be missed.
 - ✅ Scale popups with the window — landed 2026-08-12. Popups reparent to the
   shared `Overlay.overlay`; binding its `scale` to the root layout's factor
   (from its centre) grows every popup in step with the calculator, no per-file

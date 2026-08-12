@@ -481,6 +481,7 @@ QJsonObject UIController::buildStateJson() const {
   mode["plotMode"]    = m_plotMode;
   mode["screenMode"]  = m_screenMode;
   mode["theme"]       = m_theme;
+  mode["uiZoom"]      = m_uiZoom;
   mode["graphMode"]   = m_graphMode;
   mode["statPlotOn"]    = m_statPlotOn;
   mode["statPlotType"]  = m_statPlotType;
@@ -678,6 +679,8 @@ void UIController::applyStateJson(const QJsonObject &root) {
     // Back-compat with the earlier bool-based setting.
     m_theme = mode["darkTheme"].toBool(true) ? 0 : 1;
   }
+  if (mode.contains("uiZoom"))
+    m_uiZoom = std::clamp(mode["uiZoom"].toDouble(1.0), 0.75, 2.5);
   if (mode.contains("graphMode"))
   {
     const int g = mode["graphMode"].toInt();
@@ -1884,6 +1887,7 @@ void UIController::resetAll() {
   m_plotMode = 0;
   m_screenMode = 0;
   m_theme = 0;
+  m_uiZoom = 1.0;
   m_programs.clear();
   m_graphMode = 0;
   m_statPlotOn = false;
@@ -1941,6 +1945,7 @@ void UIController::resetAll() {
   emit plotModeChanged();
   emit screenModeChanged();
   emit themeChanged();
+  emit uiZoomChanged();
   emit programsChanged();
 }
 
@@ -3893,6 +3898,14 @@ QVariantList UIController::getInequalityShade(int resolution) {
   }
   flush();
   return out;
+}
+
+void UIController::setUiZoom(double z) {
+  z = std::clamp(z, 0.75, 2.5);
+  if (qFuzzyCompare(z, m_uiZoom))
+    return;
+  m_uiZoom = z;
+  emit uiZoomChanged();
 }
 
 void UIController::pan(double dx, double dy, double vw, double vh) {

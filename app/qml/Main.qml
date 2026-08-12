@@ -8,10 +8,11 @@ ApplicationWindow {
     visible: true
     width: 720
     height: 760
-    // Resizable window: the design size is also the floor, so the uniform
-    // scale factor (below) is always >= 1 — the calculator only ever grows.
-    minimumWidth: 720
-    minimumHeight: 760
+    // Resizable window: the design size (× the UI-zoom multiplier) is the
+    // floor, so the uniform scale factor (below) is always >= uiZoom — the
+    // calculator never renders smaller than the chosen zoom.
+    minimumWidth: Math.round(720 * uiController.uiZoom)
+    minimumHeight: Math.round(760 * uiController.uiZoom)
     title: "Tux-TI83"
     color: Style.bgShell
 
@@ -29,11 +30,26 @@ ApplicationWindow {
     // the window instead of staying at native 1×. Popups reparent to the
     // shared Overlay.overlay; scaling it from its centre keeps centred popups
     // centred. transformOrigin is set once — it isn't animated.
-    Component.onCompleted: Overlay.overlay.transformOrigin = Item.Center
+    Component.onCompleted: {
+        Overlay.overlay.transformOrigin = Item.Center
+        // Open at the persisted UI-zoom's natural size (the min-size binding
+        // grows it for zoom > 1; this also honours a saved zoom < 1).
+        root.width = Math.round(720 * uiController.uiZoom)
+        root.height = Math.round(760 * uiController.uiZoom)
+    }
     Binding {
         target: Overlay.overlay
         property: "scale"
         value: content.scale
+    }
+    // UI-zoom changes snap the window to the zoom's natural size for
+    // immediate feedback (set imperatively so later manual resizes stick).
+    Connections {
+        target: uiController
+        function onUiZoomChanged() {
+            root.width = Math.round(720 * uiController.uiZoom)
+            root.height = Math.round(760 * uiController.uiZoom)
+        }
     }
 
     // ─────────────────────────────────────────────────────

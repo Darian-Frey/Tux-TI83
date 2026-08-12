@@ -111,6 +111,15 @@ private:
     // themes. No evaluator effect.
     Q_PROPERTY(int theme MEMBER m_theme NOTIFY themeChanged)
 
+    // UI zoom: a persisted multiplier on the window's design size, so the
+    // whole calculator (and popups) can be scaled up for larger monitors /
+    // accessibility. The QML side multiplies the 720×760 design floor by
+    // this; the existing window-fit scale then renders at uiZoom×. Clamped
+    // to a sane range. Default 1.0.
+    Q_PROPERTY(double uiZoom READ uiZoom WRITE setUiZoom NOTIFY uiZoomChanged)
+    double uiZoom() const { return m_uiZoom; }
+    void setUiZoom(double z);
+
     // Graph type (MODE → Graph row). 0 = Func (Cartesian y=f(x)),
     // 2 = Pol (polar r=f(θ)). Values match the row's option order
     // [Func,Par,Pol,Seq]; Par(1)/Seq(3) are unimplemented and rejected
@@ -585,6 +594,7 @@ signals:
     void plotModeChanged();
     void screenModeChanged();
     void themeChanged();
+    void uiZoomChanged();
     void graphModeSettingChanged();
     void statPlotChanged();
     void formatChanged();
@@ -743,6 +753,7 @@ private:
     int m_screenMode = 0;
     // 0 = Dark (default), 1 = Light, 2 = Amber. See theme property above.
     int m_theme = 0;
+    double m_uiZoom = 1.0;   // UI zoom multiplier (persisted); see uiZoom
     // Graph type: 0 = Func, 2 = Pol (option-index encoding). See the
     // graphMode property above.
     int m_graphMode = 0;
