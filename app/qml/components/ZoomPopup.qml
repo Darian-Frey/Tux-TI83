@@ -111,7 +111,7 @@ Popup {
                     anchors.leftMargin: 12
                     anchors.verticalCenter: parent.verticalCenter
                     text: modelData.label
-                    color: Style.textDisplay
+                    color: Style.textPrimary
                     font.family: Style.monoFamily
                     font.pixelSize: Style.keyLabelPixelSize
                 }

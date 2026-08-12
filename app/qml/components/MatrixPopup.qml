@@ -133,7 +133,7 @@ Popup {
             width: 18
             horizontalAlignment: Text.AlignHCenter
             text: stp.value
-            color: Style.textDisplay
+            color: Style.textPrimary
             font.family: Style.monoFamily
             font.pixelSize: Style.keyLabelPixelSize
         }
@@ -281,7 +281,7 @@ Popup {
                             anchors.leftMargin: 12
                             anchors.verticalCenter: parent.verticalCenter
                             text: modelData
-                            color: Style.textDisplay
+                            color: Style.textPrimary
                             font.family: Style.monoFamily
                             font.pixelSize: Style.keyLabelPixelSize
                         }
@@ -337,7 +337,7 @@ Popup {
                             anchors.leftMargin: 12
                             anchors.verticalCenter: parent.verticalCenter
                             text: modelData.display
-                            color: Style.textDisplay
+                            color: Style.textPrimary
                             font.family: Style.monoFamily
                             font.pixelSize: Style.keyLabelPixelSize
                         }

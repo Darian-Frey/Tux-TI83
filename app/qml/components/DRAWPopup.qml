@@ -193,6 +193,15 @@ Popup {
                 selectByMouse: true
                 text: (root.cmd, "")
                 onTextChanged: root.txt = text
+                // Match the argument fields above: a dark bgDisplay panel so
+                // the textDisplay-coloured text is readable (was on the
+                // default light control background — invisible in both themes).
+                background: Rectangle {
+                    color: Style.bgDisplay
+                    radius: 4
+                    border.color: parent.activeFocus ? Style.textExpr : Style.keyBorderNeutral
+                    border.width: 1
+                }
             }
         }
 

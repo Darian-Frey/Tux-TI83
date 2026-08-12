@@ -191,7 +191,7 @@ Popup {
                 Layout.preferredWidth: 18
                 horizontalAlignment: Text.AlignHCenter
                 text: root.mLen
-                color: Style.textDisplay
+                color: Style.textPrimary
                 font.family: Style.monoFamily
                 font.pixelSize: Style.keyLabelPixelSize
             }

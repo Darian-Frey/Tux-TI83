@@ -77,7 +77,7 @@ Popup {
                     Text {
                         text: (root.info && root.info[modelData.k] !== undefined)
                               ? root.info[modelData.k] : "0"
-                        color: Style.textDisplay
+                        color: Style.textPrimary
                         font.family: Style.monoFamily
                         font.pixelSize: Style.funcKeyLabelPixelSize
                     }
@@ -181,7 +181,7 @@ Popup {
                 Text {
                     Layout.fillWidth: true
                     text: modelData
-                    color: Style.textDisplay
+                    color: Style.textPrimary
                     font.family: Style.monoFamily
                     font.pixelSize: Style.funcKeyLabelPixelSize
                     elide: Text.ElideRight

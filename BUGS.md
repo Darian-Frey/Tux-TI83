@@ -57,6 +57,15 @@ Each entry uses this template:
 
 ## Fixed
 
+### BUG-027: More popup labels unreadable in the light theme (BUG-026 stragglers)
+
+- **Status:** fixed (2026-08-13, UI-scale session)
+- **Location:** ZoomPopup, MathMenuPopup, RegMenuPopup, LogicMenuPopup, CatalogPopup, MatrixPopup (NAMES + MATH menus + R/C dim stepper), StatResultsPopup, MEMPopup (counts + saved-snapshot names), ListPopup (length stepper), YEditorPopup (active-row function text), DRAWPopup (Text-command input field) — see the commit for exact lines.
+- **Severity:** low (readability; light theme only)
+- **Description:** Same class as [BUG-026](#bug-026-prgm-program-names-and-other-labels-unreadable-in-the-light-theme), which fixed only PRGM/DRAW. A full audit of all 31 `Style.textDisplay` usages found **13** more that sit on theme-flipping surfaces (`bgSection` list/menu delegates and `bgSurface` popup cards) — light-on-light in the light theme, so ZOOM/MATH/CATALOG/MATRIX/reg/logic menu entries, matrix `[A]`–`[J]` names, MEM counts, stat values, and stepper values were all faint/invisible.
+- **Fix:** Swap those surface labels to `Style.textPrimary` (theme-flipping). Two special cases: the `YEditorPopup` function text now picks `textPrimary` only on the **active** row (its background is `bgSection`) and keeps `textDisplay` on the dark inactive rows; the `DRAWPopup` Text-command field was missing a `bgDisplay` background entirely (invisible in *both* themes) — added the dark panel its sibling arg fields already had. The other 15 `textDisplay` usages are correct — they sit on the dark LCD / `bgDisplay` input fields — and were left alone.
+- **Notes:** Reported by the user via light-theme screenshots (ZOOM/MATRIX/MATH popups). Audited every usage rather than fixing only the three reported, so this should close the class. The recurring gotcha remains `textDisplay` (LCD-fixed light) vs `textPrimary` (theme-flipping): on `bgDisplay` → `textDisplay`; on `bgSurface`/`bgSection` → `textPrimary`.
+
 ### BUG-026: PRGM program names (and other labels) unreadable in the light theme
 
 - **Status:** fixed (2026-08-10, syntax-highlighting session)

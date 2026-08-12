@@ -91,7 +91,7 @@ Popup {
             }
             Text {
                 text: row.labelText
-                color: Style.textDisplay
+                color: Style.textPrimary
                 font.family: Style.monoFamily
                 font.pixelSize: Style.keyLabelPixelSize
                 Layout.fillWidth: true

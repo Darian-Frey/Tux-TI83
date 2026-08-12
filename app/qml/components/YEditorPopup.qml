@@ -130,7 +130,12 @@ Popup {
                         // string (which a home-screen eval clobbers with the
                         // result) — BUG-022. root.rev forces re-eval on change.
                         text: (root.rev, uiController.functionBufferText(index)) || "—"
-                        color: slotRow.on ? Style.textDisplay : Style.textMuted
+                        // The active row's background is bgSection (flips light
+                        // in the light theme), so its text must use textPrimary
+                        // there; inactive rows sit on the dark bgDisplay where
+                        // the LCD-light textDisplay is correct.
+                        color: !slotRow.on ? Style.textMuted
+                               : (slotRow.isActive ? Style.textPrimary : Style.textDisplay)
                         font.family: Style.monoFamily
                         font.pixelSize: Style.funcKeyLabelPixelSize
                         elide: Text.ElideRight

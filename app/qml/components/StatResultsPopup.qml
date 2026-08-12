@@ -159,7 +159,7 @@ Popup {
                             return "" + root.results.n
                         return uiController.formatScalar(root.results[modelData.key])
                     }
-                    color: Style.textDisplay
+                    color: Style.textPrimary
                     font.family: Style.monoFamily
                     font.pixelSize: Style.keyLabelPixelSize
                     elide: Text.ElideRight
