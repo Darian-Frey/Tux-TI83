@@ -24,6 +24,18 @@ ApplicationWindow {
         value: uiController.theme
     }
 
+    // Resizable window: scale the popup overlay in step with the calculator
+    // body (see the root layout's `scale` below), so modal popups grow with
+    // the window instead of staying at native 1×. Popups reparent to the
+    // shared Overlay.overlay; scaling it from its centre keeps centred popups
+    // centred. transformOrigin is set once — it isn't animated.
+    Component.onCompleted: Overlay.overlay.transformOrigin = Item.Center
+    Binding {
+        target: Overlay.overlay
+        property: "scale"
+        value: content.scale
+    }
+
     // ─────────────────────────────────────────────────────
     // Modifier state (2ND / ALPHA)
     //

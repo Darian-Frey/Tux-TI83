@@ -380,8 +380,10 @@ default on) gating the graph canvas. RESET restores them.
   1× (they're window-overlay elements) — logged as a follow-up 💭.
 - 💭 Themes beyond Nord (light mode, high contrast, monochrome retro LCD)
 - 💭 UI scale / zoom setting — global multiplier on key sizes, font sizes, and display pixel sizes so the whole calculator can be scaled up for accessibility or larger monitors. Likely implemented as a `Style.uiScale` property feeding into every pixel-size/size constant, with a persisted setting and a control in a future Settings panel. Pairs naturally with the theming work since both live in `Style.qml`.
-- 💭 Scale popups with the window too (follow-up to the resizable-window
-  work — popups currently render at native 1× as window-overlay elements)
+- ✅ Scale popups with the window — landed 2026-08-12. Popups reparent to the
+  shared `Overlay.overlay`; binding its `scale` to the root layout's factor
+  (from its centre) grows every popup in step with the calculator, no per-file
+  edits. Closes the resizable-window follow-up.
 - 💭 Touch input refinement
 - ✅ On-screen 2nd/Alpha sub-labels on each key — added 2026-04-18 (tiny amber 2ND function in top-left corner, green ALPHA letter in top-right; 2ND labels shown only for wired variants, ALPHA letters follow TI-83 layout)
 
