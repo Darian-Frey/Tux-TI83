@@ -319,7 +319,15 @@ default on) gating the graph canvas. RESET restores them.
 - ✅ Sequence mode (u(n), v(n), w(n)) — landed 2026-07-26 (Phase F). MODE → Graph → Seq; slots 0/1/2 are u/v/w, plotted as (n, value). `X` stands in for n and `Ans` for the previous term u(n−1); the engine auto-detects recursion (buffer contains `Ans`) — explicit sequences evaluate directly, recursive ones seed u(nMin) from an initial value and iterate. nMax + u/v/w(nMin) initial values live in the WINDOW popup (Seq mode only); nMin fixed at 1; `SEQ` header indicator; persisted. Caveats: one previous term only (`Ans` = u(n−1), so two-term recurrences like Fibonacci aren't directly expressible), nMin fixed at 1, three sequences.
 
   **All four graph modes (Func / Par / Pol / Seq) are now implemented.**
-- 💭 Inequality shading (Inequalz app on TI-83 Plus)
+- ✅ Inequality shading (Inequalz-style) — landed 2026-08-12. **Basic per-slot
+  Y version:** each Y= slot has a relation (`=` `<` `>` `≤` `≥`, `m_functionRelation`,
+  persisted); a non-`=` relation shades the region below (`<`/`≤`) or above
+  (`>`/`≥`) the curve, translucent in the slot's colour, on `GraphCanvas`. A
+  tappable relation chip in the `YEditorPopup` cycles the operator. Reuses the
+  existing `getMultiGraphPoints` sampling; core_math untouched. 5 tests.
+  - 💭 Deferred (each much larger): intersection/union shading of multiple
+    inequalities (region clipping), `X=` vertical inequalities (needs an X=
+    function type), point-of-intersection trace.
 
 ## UI / UX
 

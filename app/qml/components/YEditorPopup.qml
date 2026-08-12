@@ -41,6 +41,7 @@ Popup {
     }
 
     readonly property var styleGlyphs: ["―", "█", "⋯"]  // thin / thick / dotted
+    readonly property var relGlyphs: ["=", "<", ">", "≤", "≥"]  // inequality shading
 
     contentItem: ColumnLayout {
         spacing: 10
@@ -95,6 +96,33 @@ Popup {
                         font.family: Style.monoFamily
                         font.pixelSize: Style.funcKeyLabelPixelSize
                         Layout.preferredWidth: 34
+                    }
+                    // Relation chip (Inequalz shading): tap to cycle
+                    // = < > ≤ ≥. A non-`=` relation shades the graph
+                    // above/below this curve.
+                    Rectangle {
+                        Layout.preferredWidth: 22
+                        Layout.preferredHeight: 24
+                        radius: 4
+                        readonly property int rel: (root.rev, uiController.functionRelation(index))
+                        color: relArea.containsMouse
+                               ? Qt.lighter(Style.bgSection, 1.0 + Style.keyHoverLighten)
+                               : Style.bgSection
+                        border.width: Style.keyBorderWidth
+                        border.color: rel === 0 ? Style.keyBorderNeutral : slotRow.slotColor
+                        Text {
+                            anchors.centerIn: parent
+                            text: root.relGlyphs[parent.rel]
+                            color: parent.rel === 0 ? Style.textMuted : slotRow.slotColor
+                            font.family: Style.monoFamily
+                            font.pixelSize: Style.funcKeyLabelPixelSize
+                        }
+                        MouseArea {
+                            id: relArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: uiController.cycleFunctionRelation(index)
+                        }
                     }
                     Text {
                         Layout.fillWidth: true

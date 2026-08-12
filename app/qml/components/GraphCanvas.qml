@@ -213,6 +213,38 @@ Rectangle {
             // (steady state). Simul reveals `reveal` points of every curve;
             // Sequential reveals along the concatenated curves in order.
             const simul = uiController.plotMode === 1
+
+            // Inequality shading (Inequalz-style) — for any slot with a
+            // relation set, fill the region below (< / ≤) or above (> / ≥)
+            // its curve. Drawn first, translucent, so the curve lines and
+            // everything else render on top. Skipped during the plot
+            // draw-animation (reveal >= 0) to avoid a half-swept polygon.
+            if (root.reveal < 0) {
+                for (let g = 0; g < multiPts.length; g++) {
+                    const rel = uiController.functionRelation(g)
+                    if (rel === 0) continue
+                    const gpts = multiPts[g]
+                    if (!gpts || gpts.length < 2) continue
+                    const below = (rel === 1 || rel === 3)  // < or ≤
+                    const edgeY = below ? height : 0
+                    ctx.fillStyle = Style.graphColors[g % Style.graphColors.length]
+                    ctx.globalAlpha = 0.18
+                    ctx.beginPath()
+                    const g0 = toPx(gpts[0].x, gpts[0].y)
+                    ctx.moveTo(g0.x, g0.y)
+                    for (let i = 1; i < gpts.length; i++) {
+                        const gp = toPx(gpts[i].x, gpts[i].y)
+                        ctx.lineTo(gp.x, gp.y)
+                    }
+                    const gl = toPx(gpts[gpts.length - 1].x, gpts[gpts.length - 1].y)
+                    ctx.lineTo(gl.x, edgeY)
+                    ctx.lineTo(g0.x, edgeY)
+                    ctx.closePath()
+                    ctx.fill()
+                    ctx.globalAlpha = 1.0
+                }
+            }
+
             let priorTotal = 0
             for (let f = 0; f < multiPts.length; f++) {
                 const pts = multiPts[f]

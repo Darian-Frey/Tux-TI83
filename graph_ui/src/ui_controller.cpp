@@ -341,6 +341,7 @@ UIController::UIController(QObject *parent) : QObject(parent), m_activeIdx(0) {
   m_displayStrings.resize(kFunctionCount, "");
   m_functionEnabled.assign(kFunctionCount, true);
   m_functionStyle.assign(kFunctionCount, 0);
+  m_functionRelation.assign(kFunctionCount, 0);
   // Note: persisted state is NOT auto-loaded here. The GUI's
   // main.cpp calls loadState() explicitly post-construction so the
   // CLI / REPL / test binaries (which all instantiate a controller
@@ -440,11 +441,13 @@ QJsonObject UIController::buildStateJson() const {
   for (const auto &str : m_displayStrings) functions.append(str);
   root["functions"] = functions;
   // Y-editor per-slot on/off and line style.
-  QJsonArray fnEnabled, fnStyle;
+  QJsonArray fnEnabled, fnStyle, fnRelation;
   for (bool b : m_functionEnabled) fnEnabled.append(b);
   for (int s : m_functionStyle) fnStyle.append(s);
+  for (int r : m_functionRelation) fnRelation.append(r);
   root["fnEnabled"] = fnEnabled;
   root["fnStyle"] = fnStyle;
+  root["fnRelation"] = fnRelation;
   // DRAW overlays.
   root["draw"] = QJsonArray::fromVariantList(m_drawObjects);
 
@@ -748,6 +751,11 @@ void UIController::applyStateJson(const QJsonObject &root) {
   for (int i = 0; i < fnStyle.size() && i < kFunctionCount; ++i) {
     int s = fnStyle[i].toInt(0);
     m_functionStyle[i] = (s >= 0 && s <= 2) ? s : 0;
+  }
+  QJsonArray fnRelation = root.value("fnRelation").toArray();
+  for (int i = 0; i < fnRelation.size() && i < kFunctionCount; ++i) {
+    int r = fnRelation[i].toInt(0);
+    m_functionRelation[i] = (r >= 0 && r <= 4) ? r : 0;
   }
   m_drawObjects = root.value("draw").toArray().toVariantList();
 
@@ -1859,6 +1867,7 @@ void UIController::resetAll() {
   for (auto &s   : m_displayStrings)  s.clear();
   std::fill(m_functionEnabled.begin(), m_functionEnabled.end(), true);
   std::fill(m_functionStyle.begin(), m_functionStyle.end(), 0);
+  std::fill(m_functionRelation.begin(), m_functionRelation.end(), 0);
   m_drawObjects.clear();
   m_history.clear();
   m_entryHistory.clear();

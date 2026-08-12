@@ -264,6 +264,19 @@ public:
             emit functionsChanged();
         }
     }
+    // Inequality shading (Inequalz-style): per-slot relation to the curve.
+    // 0 `=` (plain plot), 1 `<`, 2 `>`, 3 `≤`, 4 `≥`. A non-zero relation
+    // shades the region below (`<`/`≤`) or above (`>`/`≥`) the curve f(x).
+    Q_INVOKABLE int functionRelation(int i) const {
+        return (i >= 0 && i < static_cast<int>(m_functionRelation.size()))
+                   ? m_functionRelation[i] : 0;
+    }
+    Q_INVOKABLE void cycleFunctionRelation(int i) {
+        if (i >= 0 && i < static_cast<int>(m_functionRelation.size())) {
+            m_functionRelation[i] = (m_functionRelation[i] + 1) % 5;
+            emit functionsChanged();
+        }
+    }
     // The display string (expression preview) for slot i.
     Q_INVOKABLE QString functionExpr(int i) const {
         return (i >= 0 && i < static_cast<int>(m_displayStrings.size()))
@@ -674,6 +687,7 @@ private:
     // Per-slot on/off (default on) and line style (0 thin/1 thick/2 dot).
     std::vector<bool> m_functionEnabled;
     std::vector<int> m_functionStyle;
+    std::vector<int> m_functionRelation;  // 0 = / 1 < / 2 > / 3 ≤ / 4 ≥
     // DRAW-menu overlays (each a QVariantMap {type, a, b, c, d, text}).
     QVariantList m_drawObjects;
     QSet<int> m_pixels;  // on pixels, key = row*95 + col (P7)

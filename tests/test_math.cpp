@@ -1818,6 +1818,26 @@ int main(int argc, char *argv[]) {
     c.cycleFunctionStyle(2); c.cycleFunctionStyle(2);
     checkTrue("style wraps back to thin(0)", c.functionStyle(2) == 0);
 
+    // Inequality shading relation cycles = < > ≤ ≥ → = (mod 5).
+    checkTrue("default relation is = (0)", c.functionRelation(3) == 0);
+    c.cycleFunctionRelation(3);
+    checkTrue("relation cycles to < (1)", c.functionRelation(3) == 1);
+    c.cycleFunctionRelation(3); c.cycleFunctionRelation(3);
+    c.cycleFunctionRelation(3);
+    checkTrue("relation reaches ≥ (4)", c.functionRelation(3) == 4);
+    c.cycleFunctionRelation(3);
+    checkTrue("relation wraps back to = (0)", c.functionRelation(3) == 0);
+
+    // Relation persists across a save/load round-trip.
+    c.cycleFunctionRelation(5);  // Y6 → <
+    c.cycleFunctionRelation(5);  // Y6 → >
+    c.saveState();
+    UIController c3;
+    c3.loadState();
+    checkTrue("relation survives save/load", c3.functionRelation(5) == 2);
+    c.cycleFunctionRelation(5); c.cycleFunctionRelation(5);
+    c.cycleFunctionRelation(5);  // back to 0
+
     // Clean up the buffers we defined.
     c.setActiveFunction(0); c.processInput("CLEAR");
     c.setActiveFunction(7); c.processInput("CLEAR");
