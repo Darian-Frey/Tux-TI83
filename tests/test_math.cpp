@@ -1888,6 +1888,43 @@ int main(int argc, char *argv[]) {
     c.setActiveFunction(0);
   }
 
+  section("POI trace (point-of-intersection)");
+  {
+    const double R2 = std::sqrt(2.0);
+    c.setProperty("graphMode", 0);   // Func mode
+    c.resetViewport();               // −10..10
+    // Y1 = X² (active), Y2 = 2 → intersections at x = ±√2.
+    c.setActiveFunction(0); eval(c, "X^2");
+    c.setActiveFunction(1); eval(c, "2");
+    c.setActiveFunction(0);
+    if (!c.isTracing()) c.toggleTrace();
+
+    c.togglePoiTrace();
+    checkTrue("POI trace turns on", c.property("poiTrace").toBool());
+    checkTrue("snaps to a POI (−√2, nearest to centre)",
+              std::abs(c.property("traceX").toDouble() + R2) < 1e-3);
+    c.traceRight();
+    checkTrue("→ jumps to the next POI (+√2)",
+              std::abs(c.property("traceX").toDouble() - R2) < 1e-3);
+    c.traceRight();
+    checkTrue("→ past the last POI wraps to the first (−√2)",
+              std::abs(c.property("traceX").toDouble() + R2) < 1e-3);
+    c.traceLeft();
+    checkTrue("← before the first POI wraps to the last (+√2)",
+              std::abs(c.property("traceX").toDouble() - R2) < 1e-3);
+    c.togglePoiTrace();
+    checkTrue("POI trace turns off", !c.property("poiTrace").toBool());
+    // Exiting trace clears POI mode.
+    c.togglePoiTrace();
+    c.toggleTrace();  // trace off
+    checkTrue("leaving trace clears POI mode", !c.property("poiTrace").toBool());
+
+    c.setActiveFunction(0); c.processInput("CLEAR");
+    c.setActiveFunction(1); c.processInput("CLEAR");
+    c.setActiveFunction(0);
+    c.resetViewport();
+  }
+
   section("Xres graph resolution (Phase D)");
   {
     c.setProperty("graphMode", 0);          // Func mode

@@ -172,6 +172,10 @@ private:
     Q_PROPERTY(bool isTracing READ isTracing NOTIFY traceChanged)
     Q_PROPERTY(double traceX READ traceX NOTIFY traceChanged)
     Q_PROPERTY(double traceY READ traceY NOTIFY traceChanged)
+    // Point-of-intersection trace (Inequalz-style): when on, ←/→ jump the
+    // trace cursor between intersections of the active curve and the other
+    // enabled curves, rather than stepping by 1/100 of the window. Func mode.
+    Q_PROPERTY(bool poiTrace READ poiTrace NOTIFY traceChanged)
 
 public:
     explicit UIController(QObject* parent = nullptr);
@@ -221,7 +225,9 @@ public:
     bool isTracing() const { return m_isTracing; }
     double traceX() const { return m_traceX; }
     double traceY() const;
+    bool poiTrace() const { return m_poiTrace; }
     Q_INVOKABLE void toggleTrace();
+    Q_INVOKABLE void togglePoiTrace();
     Q_INVOKABLE void traceLeft();
     Q_INVOKABLE void traceRight();
 
@@ -786,6 +792,14 @@ private:
     // m_traceX is reset to viewport centre on every toggleTrace(true).
     bool m_isTracing = false;
     double m_traceX = 0.0;
+    bool m_poiTrace = false;  // point-of-intersection trace mode (transient)
+
+    // Intersections (sorted, deduped x) of the active curve with every other
+    // enabled curve, over the current x-window. Func mode only; empty if the
+    // active slot is undefined. Used by the POI trace navigation.
+    std::vector<double> poiXs() const;
+    // Move m_traceX to the next (dir > 0) / previous (dir < 0) POI, wrapping.
+    void jumpToPoi(int dir);
 };
 
 } // namespace tux_ti83

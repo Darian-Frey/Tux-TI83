@@ -331,8 +331,12 @@ default on) gating the graph canvas. RESET restores them.
     returns band segments covering where ALL relational inequalities hold
     (lo = max of `>`/`≥` bounds, hi = min of `<`/`≤` bounds, clamped to the
     viewport), filled as one band. Func mode only; core_math untouched. 6 tests.
-  - 💭 Deferred: `X=` vertical inequalities (needs an X= function type),
-    point-of-intersection trace.
+  - ✅ Point-of-intersection trace — landed 2026-08-13. While tracing in Func
+    mode a ◆ POI toggle appears; when on, ←/→ jump the cursor between
+    intersections of the active curve and the other enabled curves (controller
+    `poiXs()` samples `f_active − f_other` and bisects each sign change; wraps
+    at the ends). Readout shows `POI  X=… Y=…`. 7 tests.
+  - 💭 Deferred: `X=` vertical inequalities (needs an X= function type).
 
 ## UI / UX
 

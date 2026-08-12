@@ -3311,12 +3311,115 @@ void UIController::toggleTrace() {
     // user always starts from a known visible spot, even if they
     // panned away last time.
     m_traceX = (m_xMin + m_xMax) * 0.5;
+  } else {
+    m_poiTrace = false;  // POI mode is only meaningful while tracing
+  }
+  emit traceChanged();
+}
+
+void UIController::togglePoiTrace() {
+  if (!m_isTracing)
+    return;
+  m_poiTrace = !m_poiTrace;
+  if (m_poiTrace) {
+    // Land on the nearest intersection immediately so the mode has visible
+    // effect even before the user presses an arrow.
+    const auto xs = poiXs();
+    if (!xs.empty()) {
+      double best = xs.front(), bestD = std::abs(xs.front() - m_traceX);
+      for (double x : xs) {
+        const double d = std::abs(x - m_traceX);
+        if (d < bestD) { bestD = d; best = x; }
+      }
+      m_traceX = best;
+    }
+  }
+  emit traceChanged();
+}
+
+std::vector<double> UIController::poiXs() const {
+  std::vector<double> xs;
+  if (m_graphMode != 0)  // Func mode only (like the real Inequalz POI-Trace)
+    return xs;
+  if (m_activeIdx < 0 || m_activeIdx >= static_cast<int>(m_functionBuffers.size()))
+    return xs;
+  const auto &fa = m_functionBuffers[m_activeIdx];
+  if (fa.empty())
+    return xs;
+  MathStateMachine msm;
+  bindEngine(msm);
+  const int N = 400;  // sign-change scan resolution across the window
+  const double span = m_xMax - m_xMin;
+  const double step = span / N;
+  for (int g = 0; g < static_cast<int>(m_functionBuffers.size()); ++g) {
+    if (g == m_activeIdx)
+      continue;
+    if (g >= static_cast<int>(m_functionEnabled.size()) || !m_functionEnabled[g])
+      continue;
+    const auto &fb = m_functionBuffers[g];
+    if (fb.empty())
+      continue;
+    double prevD = 0.0;
+    bool havePrev = false, prevOk = false;
+    double prevX = m_xMin;
+    for (int i = 0; i <= N; ++i) {
+      const double x = m_xMin + i * step;
+      const CalculationResult ra = msm.evaluate(fa, x);
+      const CalculationResult rb = msm.evaluate(fb, x);
+      const bool ok = ra.success && !ra.isMatrix && !ra.isList &&
+                      rb.success && !rb.isMatrix && !rb.isList &&
+                      std::isfinite(ra.value) && std::isfinite(rb.value);
+      const double d = ok ? (ra.value - rb.value) : 0.0;
+      if (ok && havePrev && prevOk &&
+          ((prevD <= 0 && d >= 0) || (prevD >= 0 && d <= 0)) &&
+          !(prevD == 0.0 && d == 0.0)) {
+        // Bisect [prevX, x] for the crossing of d(x) = fa(x) - fb(x).
+        double lo = prevX, hi = x, dlo = prevD;
+        for (int it = 0; it < 60; ++it) {
+          const double mid = 0.5 * (lo + hi);
+          const CalculationResult ma = msm.evaluate(fa, mid);
+          const CalculationResult mb = msm.evaluate(fb, mid);
+          if (!ma.success || !mb.success) break;
+          const double dm = ma.value - mb.value;
+          if (!std::isfinite(dm)) break;
+          if ((dlo < 0 && dm < 0) || (dlo > 0 && dm > 0)) { lo = mid; dlo = dm; }
+          else { hi = mid; }
+        }
+        xs.push_back(0.5 * (lo + hi));
+      }
+      prevX = x; prevD = d; prevOk = ok; havePrev = true;
+    }
+  }
+  std::sort(xs.begin(), xs.end());
+  // Merge near-duplicate crossings (e.g. same POI found against two curves).
+  std::vector<double> out;
+  const double eps = span * 1e-4;
+  for (double x : xs)
+    if (out.empty() || std::abs(x - out.back()) > eps)
+      out.push_back(x);
+  return out;
+}
+
+void UIController::jumpToPoi(int dir) {
+  const auto xs = poiXs();
+  if (xs.empty())
+    return;
+  const double eps = (m_xMax - m_xMin) * 1e-6;
+  if (dir > 0) {
+    for (double x : xs)
+      if (x > m_traceX + eps) { m_traceX = x; emit traceChanged(); return; }
+    m_traceX = xs.front();  // wrap to the first
+  } else {
+    for (auto it = xs.rbegin(); it != xs.rend(); ++it)
+      if (*it < m_traceX - eps) { m_traceX = *it; emit traceChanged(); return; }
+    m_traceX = xs.back();    // wrap to the last
   }
   emit traceChanged();
 }
 
 void UIController::traceLeft() {
   if (!m_isTracing) return;
+  if (m_poiTrace) { jumpToPoi(-1); return; }
   // Step by 1/100 of the viewport width — matches real TI-83 sample
   // density and keeps the cursor within the visible curve.
   const double step = (m_xMax - m_xMin) / 100.0;
@@ -3326,6 +3429,7 @@ void UIController::traceLeft() {
 
 void UIController::traceRight() {
   if (!m_isTracing) return;
+  if (m_poiTrace) { jumpToPoi(+1); return; }
   const double step = (m_xMax - m_xMin) / 100.0;
   m_traceX += step;
   emit traceChanged();

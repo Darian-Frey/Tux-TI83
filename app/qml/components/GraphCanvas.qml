@@ -522,6 +522,8 @@ Rectangle {
                         readout = "X=" + uiController.formatScalar(tx) +
                                   "  Y=" + uiController.formatScalar(ty)
                     }
+                    if (uiController.poiTrace)
+                        readout = "POI  " + readout
                     ctx.font = "11px " + Style.monoFamily
                     const textW = ctx.measureText(readout).width
                     const padX = 6, padY = 4
@@ -653,6 +655,37 @@ Rectangle {
             anchors.fill: parent
             hoverEnabled: true
             onClicked: uiController.clrDraw()
+        }
+    }
+
+    // POI toggle — point-of-intersection trace. Shown only while tracing in
+    // Func mode; when on, ←/→ jump between intersections of the active curve
+    // and the other enabled curves. Sits top-left, clear of the ✕ CLR button.
+    Rectangle {
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.margins: 6
+        visible: uiController.isTracing && uiController.graphMode === 0
+        width: poiLabel.width + 14
+        height: 24
+        radius: 4
+        opacity: poiArea.containsMouse ? 1.0 : 0.85
+        color: uiController.poiTrace ? Style.opBg : Style.bgSurface
+        border.color: uiController.poiTrace ? Style.textExpr : Style.keyBorderNeutral
+        border.width: 1
+        Text {
+            id: poiLabel
+            anchors.centerIn: parent
+            text: "◆ POI"
+            color: uiController.poiTrace ? Style.textExpr : Style.textSecondary
+            font.family: Style.monoFamily
+            font.pixelSize: Style.funcKeyLabelPixelSize
+        }
+        MouseArea {
+            id: poiArea
+            anchors.fill: parent
+            hoverEnabled: true
+            onClicked: uiController.togglePoiTrace()
         }
     }
 }
