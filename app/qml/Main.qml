@@ -111,7 +111,11 @@ ApplicationWindow {
         "3":    "L3",
         "4":    "L4",
         "5":    "L5",
-        "6":    "L6"
+        "6":    "L6",
+        // EE / scientific-exponent entry (TI's 2ND+, ). We insert ×10^ (both
+        // existing tokens) rather than a dedicated ᴇ token, so the engine
+        // needs no change: 1.5×10^3 = 1500 (^ binds tighter than ×).
+        ",":    "×10^"
     })
 
     // Primary-label → ALPHA-variant token. Backed by the VarA..VarZ
@@ -440,6 +444,7 @@ ApplicationWindow {
                 ".": ".",
                 "+": "+", "-": "−", "*": "×", "/": "÷",
                 "^": "^", "(": "(", ")": ")",
+                ",": ",",   // arg separator; 2ND+, (via \) inserts ×10^ (EE)
                 "[": "[", "]": "]",   // matrix-literal brackets [[1,2][3,4]]
                 "{": "{", "}": "}",   // list-literal braces {1,2,3}
                 "s": "sin(", "c": "cos(", "t": "tan(",
@@ -783,7 +788,7 @@ ApplicationWindow {
             // Row 1
             CalcKey { label: "(";  keyType: "function"; secondLabel: "{"; alphaLabel: "["; onPressed: root.handleKey("(") }
             CalcKey { label: ")";  keyType: "function"; secondLabel: "}"; alphaLabel: "]"; onPressed: root.handleKey(")") }
-            CalcKey { label: ",";  keyType: "function"; alphaLabel: "J"; onPressed: root.handleKey(",") }
+            CalcKey { label: ",";  keyType: "function"; secondLabel: "ᴇ"; alphaLabel: "J"; onPressed: root.handleKey(",") }
             // X inserts the graph variable; 2ND+X opens the Y-VARS picker
             // (the only on-screen way to enter a Y-function token — BUG-023).
             CalcKey { label: "X";  keyType: "function"; secondLabel: "Y-VARS"; onPressed: {

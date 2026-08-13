@@ -3505,6 +3505,15 @@ int main(int argc, char *argv[]) {
     pc.deleteProgram("P");
   }
 
+  section("EE scientific-exponent entry (×10^)");
+  {
+    // 2ND+, inserts "×10^"; these are the values that entry produces.
+    checkTrue("1.5×10^3 = 1500", eval(c, "1.5×10^3") == "1500");
+    checkTrue("2×10^3+1 = 2001 (^ binds tighter than ×)",
+              eval(c, "2×10^3+1") == "2001");
+    checkTrue("6.022×10^2 = 602.2", eval(c, "6.022×10^2") == "602.2");
+  }
+
   section("TI-BASIC — .8xp import");
   {
     // Build a minimal .8xp for program "TEST" with body `5→A : Disp A`.
