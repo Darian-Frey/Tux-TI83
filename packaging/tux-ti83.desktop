@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Tux-TI83
+GenericName=Graphing Calculator
+Comment=A Linux-native graphing calculator reimagining the TI-83 Plus
+Exec=tux_ti83
+Icon=tux-ti83
+Categories=Education;Science;Math;Calculator;
+Terminal=false
+Keywords=calculator;graphing;math;TI-83;

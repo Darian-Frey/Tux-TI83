@@ -65,7 +65,18 @@ will find the CLI binaries useful.
 
 ## Getting Started
 
-After [building the project](README.md#build):
+**Easiest — the AppImage** (no build, no system Qt needed). Grab the
+self-contained `Tux-TI83-x86_64.AppImage`, make it executable, and run it:
+
+```bash
+chmod +x Tux-TI83-x86_64.AppImage
+./Tux-TI83-x86_64.AppImage        # GUI
+```
+
+It runs on any modern x86-64 Linux desktop. Build it yourself with
+`./packaging/build-appimage.sh` (see [packaging/README.md](packaging/README.md)).
+
+**From source** — after [building the project](README.md#build):
 
 ```bash
 ./build/tux_ti83              # GUI
@@ -95,6 +106,11 @@ for what you're looking at.
 - **NUMERIC section** — digits, operators, `Ans`, `ENTER`
 - **History panel** (right-side column) — every expression you've
   evaluated, most recent at top
+
+**Resizing & scale.** Drag the window larger and the whole calculator
+(keys, display, fonts, popups) scales up to fill it, aspect-locked. For a
+fixed larger size, set **MODE → UI Size** (75–200 %); it's remembered
+across launches.
 
 ## Basic Calculations
 
@@ -156,6 +172,9 @@ amber label, or `ALPHA` then the key for the green letter. `2ND` then
 primary `(` `)`, `2ND` → `{` `}` (list literals), `ALPHA` → `[` `]`
 (matrix literals). The displaced letters `K` / `L` moved to `ALPHA` +
 `π` / `e`.
+
+**Scientific-exponent entry (EE).** `2ND` + `,` (the comma key's `ᴇ`
+function) inserts `×10^`, so `1.5` `2ND+,` `3` gives `1.5×10^3` = `1500`.
 
 **Y-VARS.** `2ND` + `X` opens the **Y-VARS picker** — buttons `Y1`–`Y0`
 that insert a function-reference token (see [Variables & Storage](#variables--storage)).
@@ -254,19 +273,24 @@ the MODE popup wipes everything back to defaults.
 Press the `MATRX` key (SCIENTIFIC section, row 2). The popup has three
 tabs:
 
-- **NAMES** — click `[A]`–`[E]` to insert a matrix reference, or `[` / `]`
+- **NAMES** — click `[A]`–`[J]` to insert a matrix reference, or `[` / `]`
   to insert the literal brackets
 - **MATH** — insert matrix functions (see the table below)
-- **EDIT** — the matrix editor v2: pick a matrix with the `[A]`–`[E]`
-  selector, set its dimensions with the `R`/`C` steppers (up to 6×6), fill
-  the grid, and click `SAVE TO [x]`. Existing values are read back when
-  you open a matrix, so you can edit rather than retype.
+- **EDIT** — the matrix editor v2: pick a matrix with the `[A]`–`[J]`
+  selector (two rows of five), set its dimensions with the `R`/`C` steppers
+  (up to 6×6), fill the grid, and click `SAVE TO [x]`. Existing values are
+  read back when you open a matrix, so you can edit rather than retype.
 
 **Typed matrix literals.** You can also type a matrix directly:
 `[[1,2][3,4]]` (outer brackets wrap the matrix; each `[…]` is a row;
 elements are comma-separated and may be expressions). Enter the brackets
 via `ALPHA` + `(` / `)`, the physical `[` / `]` keys, or the NAMES tab.
 Store a matrix into a register with `→`: `[[1,2][3,4]]→[A]`.
+
+**Typed matrix references.** Typing `[A]`–`[J]` (single bracket + one
+letter) refers to a stored matrix — e.g. `det([F])` works by typing it
+directly, not just from the NAMES tab. Double brackets (`[[…]]`) stay a
+literal, so `[[A][B]]` is still a 2×1 literal of variables A and B.
 
 Operations currently supported:
 
@@ -289,8 +313,8 @@ Operations currently supported:
 Errors surface as `ERR:INVALID DIM` (mismatched shapes),
 `ERR:DATA TYPE` (mixing matrix and scalar where not allowed),
 `ERR:SINGULAR MAT` (inverting a singular matrix), or `ERR:UNDEFINED`
-(matrix referenced before editing). The engine backs `[A]`–`[J]`; the UI
-currently exposes `[A]`–`[E]`.
+(matrix referenced before editing). All ten registers `[A]`–`[J]` are
+available (editor, NAMES tab, typed references, and persistence).
 
 ## Lists & Statistics
 
@@ -371,13 +395,33 @@ ZoomFit (auto-scale Y), Zoom In/Out, ZSquare, ZTrig, ZDecimal, ZInteger.
 with a live readout; `←`/`→` step along the curve and `↑`/`↓` cycle
 between slots.
 
+- **Point-of-intersection trace.** While tracing in Func mode, a **◆ POI**
+  toggle appears top-left of the graph. Turn it on and `←`/`→` jump the
+  cursor between the **intersections** of the active curve and the other
+  enabled curves (the readout is prefixed `POI`). Handy for finding where
+  `Y1` and `Y2` cross — e.g. `Y1 = X²−2`, `Y2 = X` cross at two points.
+
+**Inequality shading (Inequalz-style).** In the **Y= editor**, each row
+has a **relation chip** after the `Yn` label. Tap it to cycle
+`= < > ≤ ≥`. A non-`=` relation shades the graph region **below** the
+curve (`<` / `≤`) or **above** it (`>` / `≥`), in the slot's colour.
+
+- **Vertical inequalities.** The **X INEQ** button (bottom of the Y=
+  editor) opens a manager where you add `X <rel> value` entries (e.g.
+  `X < 3`, `X ≥ −2`); each shades a vertical half-plane.
+- **Union vs Intersect.** FORMAT → **Ineq** picks how they combine:
+  *Union* shades each inequality independently; *Intersect* shades only
+  the region where **all** of them hold (so `X > −2`, `X < 3`, and
+  `Y1 > X` together shade a single 2-D region).
+
 **FORMAT** (`2ND` + `ZOOM`): toggle **Grid**, **Axes**, **Coord** (the
 trace readout), and **Label**; choose **RectGC / PolarGC** (trace readout
-as `X=/Y=` or `R=/θ=`); and **ExprOn / ExprOff** (show the traced
-function's equation top-left).
+as `X=/Y=` or `R=/θ=`); **ExprOn / ExprOff** (show the traced function's
+equation top-left); and **Ineq** (inequality-shade **Union / Intersect**).
 
 **DRAW** (`2ND` + `TRACE`): overlay a `Line`, `Horizontal`, `Vertical`,
-`Pt-On`, or `Text`, delete overlays one at a time, or `ClrDraw` them all.
+`Circle`, `Pt-On`, or `Text`, delete overlays one at a time, or `ClrDraw`
+them all. (Programs can draw more — see the Programming command reference.)
 
 **Table.** `2ND` + `GRAPH` opens the `TABLE` view — a scrollable
 `X | Y1 | Y2 | Y3` grid. `2ND` + `WINDOW` opens `TBLSET` to set the table
@@ -405,6 +449,19 @@ delete it (**✕**), or create one with **NEW** (name: A–Z / 0–9, up to 8
 characters). Programs persist across restarts, saved with the rest of the
 calculator's state.
 
+### Importing a real TI-83 program (`.8xp`)
+
+You can import genuine TI-83/84 Plus **`.8xp`** program files. In the program
+manager, use the **Import .8xp** field near the bottom: paste the file's full
+path and press **IMPORT**. The program's tokens are decoded to source text, it
+appears in the list, and you can **RUN** or **EDIT** it like any other. A few
+ready-made samples live in [`docs/programs/`](docs/programs/).
+
+Commands and functions Tux-TI83 supports run directly; anything exotic still
+imports as readable source (a note reports how many unrecognised tokens showed
+up as `?`). TI-84+ CE colour programs and assembly (`Asm`) programs are out of
+scope.
+
 ### The editor
 
 A program is plain source text — **one statement per line**, or several on a
@@ -412,9 +469,10 @@ line separated by a colon `:`. The store arrow `→` is entered with the **STO�
 key or by typing `->`.
 
 Rather than type keywords by hand, tap **⌨ COMMANDS** to open a palette with
-four tabs — **CTL** (control flow), **I/O** (input/output), **STR** (strings),
-**FN** (functions and `→`) — and click any keyword to insert it at the cursor.
-Press **SAVE** to store, **CANCEL** to discard.
+five tabs — **CTL** (control flow), **I/O** (input/output), **STR** (strings),
+**FN** (functions and `→`), and **GFX** (graph/drawing commands) — and click
+any keyword to insert it at the cursor. Press **SAVE** to store, **CANCEL** to
+discard.
 
 ### Running a program
 
@@ -462,14 +520,19 @@ the offending line.
 | `While cond` … `End` | Loop while `cond` holds |
 | `Repeat cond` … `End` | Loop until `cond` becomes true (body always runs once) |
 | `Lbl name` / `Goto name` | Label and jump |
+| `break` / `continue` | Exit / skip to the next pass of the innermost loop |
+| `Try` … `Else` … `End` | Run the block; on a runtime error, jump to `Else` (error recovery) |
 | `Stop` | End the program |
+| `# comment` | Everything after `#` on a line is ignored |
 
-**Program control**
+**Program control & functions**
 
 | Command | Does |
 |---|---|
 | `prgmNAME` | Run another program as a sub-routine, then continue |
 | `Return` | Return from a sub-program (ends the run in the main program) |
+| `Define f(A,B)` … `Return expr` … `End` | Define a reusable function, callable as `f(3,4)` in any expression (params must be `A`–`Z`; recursion allowed) |
+| `Local A,B,…` | Make those variables local to the current program/function |
 | `DelVar VAR` | Reset a scalar to 0 / clear a `StrN` |
 
 **Strings**
@@ -482,6 +545,14 @@ the offending line.
 | `sub(str,begin,count)` | Substring (1-based) |
 | `inString(str,sub[,start])` | 1-based position, or 0 if not found |
 | `expr(str)` | The string evaluated as an expression |
+| `toString(n)` | A number as a string (so `"A="+toString(A)`) |
+
+**Lists**
+
+| Command | Does |
+|---|---|
+| `L1(3)` / `5→L1(3)` | Read / write an element (writing at `dim+1` appends) |
+| `SortA(L1[,L2…])` / `SortD(L1[,…])` | Sort a list ascending / descending (extra lists reorder in parallel) |
 
 **Graphing** (see also [Graph Mode](#graph-mode))
 
@@ -496,8 +567,14 @@ the offending line.
 | `Line(x1,y1,x2,y2)` | Draw a line (graph coordinates) |
 | `Circle(x,y,r)` | Draw a circle |
 | `Horizontal y` / `Vertical x` | Draw a full-width / full-height line |
-| `Pt-On(x,y)` | Draw a point |
+| `Pt-On(x,y)` / `Pt-Off(x,y)` / `Pt-Change(x,y)` | Draw / erase / toggle a point |
+| `Pxl-On(r,c)` / `Pxl-Off(r,c)` | Set / clear a pixel (63×95 grid) |
+| `Pxl-Test(r,c)` | `1` if the pixel is on, else `0` (usable in expressions) |
 | `Text(x,y,value)` | Draw text at a graph position |
+| `DrawF expr` | Plot `f(X)` directly on the graph |
+| `Tangent(expr,x)` | Draw the tangent line to `f(X)` at `x` |
+| `Shade(lower,upper)` | Shade the region between two curves |
+| `StorePic n` / `RecallPic n` | Save / overlay the current drawing |
 
 Any graphics command switches to the graph automatically. When drawings are
 present, a **✕ CLR** button appears at the top-right of the graph to clear them
@@ -559,19 +636,22 @@ effect immediately and are reflected in the header indicator:
 | **Plot** | Sequential / Simul | Draw-animation order — one curve fully, or all curves together |
 | **Complex** | Real / a+bi / re^θi | Whether non-real results are allowed, and how they display |
 | **Screen** | Full / Horiz / G-T | Single view, graph-over-keypad, or graph-beside-table |
-| **Theme** | Dark / Light / Amber | App-wide UI theme (see below) |
+| **Theme** | Dark / Light / Amber / Green / HiCon | App-wide UI theme (see below) |
+| **UI Size** | 75 / 100 / 125 / 150 / 200 % | Scales the whole calculator + popups (also grows by resizing the window) |
 
 Every row is wired and takes effect immediately. `RESET` (in this popup)
 restores factory defaults and clears all saved state.
 
 ### Themes
 
-Three UI themes, chosen from **MODE → Theme** and remembered across
-launches:
+Five UI themes, chosen from **MODE → Theme** and remembered across launches:
 
 - **Dark** — the default (Nord-ish dark).
 - **Light** — a light calculator body with dark text.
 - **Amber** — an orange-on-black terminal look (outlined keys, amber text).
+- **Green** — a monochrome green-phosphor "retro LCD" look.
+- **HiCon** — high contrast: pure-black body, white text, saturated key
+  borders (for accessibility).
 
 The LCD panel stays a dark "screen" in every theme (authentic to a real
 calculator); its readout text is themed to match.

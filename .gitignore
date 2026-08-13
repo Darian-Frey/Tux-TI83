@@ -41,3 +41,9 @@ compile_commands.json
 
 # Logs
 *.log
+
+# AppImage packaging build artifacts (the packaging/ SOURCES are committed;
+# the generated AppDir / build tree / .AppImage are not)
+build-appimage/
+AppDir/
+*.AppImage

@@ -26,7 +26,7 @@ Four executables come out of the build:
 | `tux_ti83` | The GUI calculator. `./build/tux_ti83` launches it. |
 | `tux_ti83_cli` | One-shot CLI: `tux_ti83_cli "2+2"` prints `4` and exits. |
 | `tux_ti83_repl` | Interactive REPL — prompt-per-line, `Ans` recall, `:quit` to exit. |
-| `tux_ti83_tests` | Regression test suite (**395** assertions, also wired into CTest). |
+| `tux_ti83_tests` | Regression test suite (**899** assertions, also wired into CTest). |
 
 ## Features
 
@@ -113,6 +113,20 @@ Four executables come out of the build:
 - ANSI-coloured output (green result, red error, blue prompt) when stdout is a tty; plain output when piped
 
 ## Build
+
+### Run without building — AppImage
+
+The quickest way to run the GUI on any modern x86-64 Linux desktop, with no
+system Qt install required:
+
+```bash
+chmod +x Tux-TI83-x86_64.AppImage
+./Tux-TI83-x86_64.AppImage
+```
+
+Build the AppImage yourself with `./packaging/build-appimage.sh` (needs
+`linuxdeploy`, `linuxdeploy-plugin-qt`, and `appimagetool` on `PATH`); see
+[`packaging/README.md`](packaging/README.md). To build from source instead:
 
 ### Prerequisites
 
