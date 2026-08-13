@@ -5,7 +5,8 @@ QtObject {
     id: style
 
     // Theme index: 0 = Dark (default), 1 = Light, 2 = Amber (orange-on-black
-    // terminal). Bound to uiController.theme in Main.qml. Every themed colour
+    // terminal), 3 = Green (monochrome retro LCD), 4 = High Contrast.
+    // Bound to uiController.theme in Main.qml. Every themed colour
     // reads from the active palette below, so switching restyles the whole
     // UI. The LCD *panel* background stays dark in all themes (an authentic
     // screen); its text is themed. Colours that also label the LCD (muted /
@@ -55,6 +56,34 @@ QtObject {
             numericBg: "#120c06", keyBorderNeutral: "#7a4a1a",
             badge2nd: "#ff7a1a", badgeAlpha: "#ffc266",
             gridLine: "#33240f", lcdOverlay: "#1c1206"
+        }),
+        ({ // 3 — Monochrome Green (retro phosphor LCD; green-on-near-black).
+           // Everything in shades of green, like an old calculator screen.
+            bgShell: "#050a05", bgSurface: "#0a120a", bgSection: "#122012",
+            textPrimary: "#5dff8f", textSecondary: "#43c46e", textMuted: "#2f8f4e",
+            textError: "#ff6b6b",
+            textDisplay: "#66ff99", textExpr: "#43c46e", textResult: "#8effb3",
+            opBorder: "#2f9e5f", opBg: "#0a1f0f",
+            enterBorder: "#5dff8f", enterBg: "#0f3d20",
+            secondBorder: "#43c46e", secondBg: "#0d240d",
+            alphaBorder: "#8effb3", alphaBg: "#0d2a12",
+            numericBg: "#060f06", keyBorderNeutral: "#1f4a2a",
+            badge2nd: "#5dff8f", badgeAlpha: "#8effb3",
+            gridLine: "#12240f", lcdOverlay: "#0a140a"
+        }),
+        ({ // 4 — High Contrast (pure-black body, white text, saturated
+           // accent borders, visible grey neutral borders — for accessibility).
+            bgShell: "#000000", bgSurface: "#0a0a0a", bgSection: "#1c1c1c",
+            textPrimary: "#ffffff", textSecondary: "#d4d4d4", textMuted: "#9a9a9a",
+            textError: "#ff4d4d",
+            textDisplay: "#ffffff", textExpr: "#4db8ff", textResult: "#33ff66",
+            opBorder: "#4db8ff", opBg: "#00203a",
+            enterBorder: "#33ff66", enterBg: "#003316",
+            secondBorder: "#ffb020", secondBg: "#3a2600",
+            alphaBorder: "#33ff99", alphaBg: "#00301a",
+            numericBg: "#000000", keyBorderNeutral: "#707070",
+            badge2nd: "#ffb020", badgeAlpha: "#33ff99",
+            gridLine: "#2a2a2a", lcdOverlay: "#000000"
         })
     ]
     readonly property var _p: _palettes[(theme >= 0 && theme < _palettes.length) ? theme : 0]

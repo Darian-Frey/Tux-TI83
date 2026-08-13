@@ -2301,6 +2301,15 @@ int main(int argc, char *argv[]) {
     checkTrue("uiZoom clamps high", c.property("uiZoom").toDouble() <= 2.5);
     c.setProperty("uiZoom", 0.1);
     checkTrue("uiZoom clamps low", c.property("uiZoom").toDouble() >= 0.75);
+    // Extended theme range (Green = 3, High Contrast = 4) survives the
+    // widened persistence clamp rather than falling back to Dark.
+    c.setProperty("theme", 4);
+    c.exportState("thm");
+    c.setProperty("theme", 0);
+    c.importState("thm");
+    checkTrue("theme 4 (HiCon) survives save/load",
+              c.property("theme").toInt() == 4);
+    c.deleteSave("thm");
     c.deleteSave("fmt");
     c.setProperty("coordMode", 0);       // reset to defaults
     c.setProperty("exprOn", true);

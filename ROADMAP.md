@@ -388,7 +388,11 @@ default on) gating the graph canvas. RESET restores them.
   letterbox margin. Lays the groundwork for the UI-scale setting below (which
   would just multiply this factor). Known limitation: popups render at native
   1× (they're window-overlay elements) — logged as a follow-up 💭.
-- 💭 Themes beyond Nord (light mode, high contrast, monochrome retro LCD)
+- ✅ Themes beyond Nord — Light (2026-08-01), then **Green** (monochrome retro
+  phosphor LCD) and **HiCon** (high contrast: black body, white text, saturated
+  accent borders) added 2026-08-13. Each is a palette object in `Style.qml`
+  (24 colour roles) selectable in MODE → Theme (Dark · Light · Amber · Green ·
+  HiCon); persisted. The LCD panel + grid/overlay stay dark in all themes.
 - ✅ UI scale / zoom setting — landed 2026-08-13. A persisted `uiController.uiZoom`
   multiplier (clamped [0.75, 2.5]) drives the window's minimum/natural size; the
   resizable-window `scale` transform then renders the whole calculator (and

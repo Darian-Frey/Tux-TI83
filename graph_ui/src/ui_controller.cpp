@@ -682,7 +682,7 @@ void UIController::applyStateJson(const QJsonObject &root) {
   }
   if (mode.contains("theme")) {
     const int t = mode["theme"].toInt();
-    m_theme = (t >= 0 && t <= 2) ? t : 0;
+    m_theme = (t >= 0 && t <= 4) ? t : 0;
   } else if (mode.contains("darkTheme")) {
     // Back-compat with the earlier bool-based setting.
     m_theme = mode["darkTheme"].toBool(true) ? 0 : 1;

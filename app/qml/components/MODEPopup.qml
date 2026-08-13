@@ -246,7 +246,7 @@ Popup {
         // orange-on-black terminal look. The LCD panel stays dark in all.
         ModeRow {
             label: "Theme"
-            options: ["Dark", "Light", "Amber"]
+            options: ["Dark", "Light", "Amber", "Green", "HiCon"]
             selectedIndex: uiController.theme
             active: true
             onSelected: (index) => uiController.theme = index
