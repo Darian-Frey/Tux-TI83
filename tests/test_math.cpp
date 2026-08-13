@@ -7,8 +7,10 @@
 
 #include "ui_controller.hpp"
 #include "interpreter.hpp"
+#include "program_import.hpp"
 #include <QCoreApplication>
 #include <QDir>
+#include <QFile>
 #include <QString>
 #include <iostream>
 #include <string>
@@ -3501,6 +3503,67 @@ int main(int argc, char *argv[]) {
     }
 
     pc.deleteProgram("P");
+  }
+
+  section("TI-BASIC — .8xp import");
+  {
+    // Build a minimal .8xp for program "TEST" with body `5→A : Disp A`.
+    auto mk8xp = [](const std::string &name,
+                    const std::vector<uint8_t> &body) {
+      std::vector<uint8_t> f;
+      auto p16 = [](std::vector<uint8_t> &v, uint16_t x) {
+        v.push_back(x & 0xFF); v.push_back((x >> 8) & 0xFF);
+      };
+      const char *sig = "**TI83F*";
+      for (int i = 0; i < 8; ++i) f.push_back(static_cast<uint8_t>(sig[i]));
+      f.push_back(0x1A); f.push_back(0x0A); f.push_back(0x00);
+      for (int i = 0; i < 42; ++i) f.push_back(0x00);  // comment
+      std::vector<uint8_t> ds;
+      p16(ds, 0x0B);                                    // header size
+      p16(ds, static_cast<uint16_t>(body.size() + 2));  // var data length
+      ds.push_back(0x05);                               // type: program
+      for (int i = 0; i < 8; ++i)
+        ds.push_back(i < static_cast<int>(name.size())
+                         ? static_cast<uint8_t>(name[i]) : 0x00);
+      p16(ds, static_cast<uint16_t>(body.size()));      // body length
+      for (uint8_t b : body) ds.push_back(b);
+      p16(f, static_cast<uint16_t>(ds.size()));         // data-section length
+      for (uint8_t b : ds) f.push_back(b);
+      p16(f, 0x0000);                                   // checksum (ignored)
+      return f;
+    };
+
+    // 5→A \n Disp A   →  0x35 0x04 0x41 0x3F 0xDE 0x41
+    const std::vector<uint8_t> body = {0x35, 0x04, 0x41, 0x3F, 0xDE, 0x41};
+    const std::vector<uint8_t> bytes = mk8xp("TEST", body);
+
+    const tux_ti83::Import8xpResult r = tux_ti83::decode8xp(bytes);
+    checkTrue(".8xp decodes ok", r.ok);
+    checkTrue(".8xp name is TEST", r.name == "TEST");
+    checkTrue(".8xp detokenises to source",
+              r.source == std::string("5\xE2\x86\x92") + "A\nDisp A");
+    checkTrue(".8xp no unknown tokens", r.unknownTokens == 0);
+
+    std::vector<uint8_t> bad = bytes;
+    bad[0] = 'X';
+    checkTrue("bad signature rejected", !tux_ti83::decode8xp(bad).ok);
+
+    // Controller import via a temp file, then run it.
+    UIController pc;
+    const QString path = QDir::tempPath() + "/t83_import_TEST.8xp";
+    QFile fo(path);
+    checkTrue("temp .8xp opens for write", fo.open(QIODevice::WriteOnly));
+    fo.write(reinterpret_cast<const char *>(bytes.data()),
+             static_cast<qint64>(bytes.size()));
+    fo.close();
+    const QVariantMap res = pc.importProgram8xp(path);
+    checkTrue("importProgram8xp ok", res["ok"].toBool());
+    checkTrue("imported program exists", pc.programExists("TEST"));
+    pc.runProgram("TEST");
+    checkTrue("imported program runs (Disp A → 5)",
+              !pc.programOutput().isEmpty() && pc.programOutput().last() == "5");
+    QFile::remove(path);
+    pc.deleteProgram("TEST");
   }
 
   std::cout << "\n----------------------------------------\n"

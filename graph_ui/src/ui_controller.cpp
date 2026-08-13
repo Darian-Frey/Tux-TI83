@@ -1,6 +1,8 @@
 #include "ui_controller.hpp"
 #include "crash_logger.hpp"
+#include "program_import.hpp"
 #include <QClipboard>
+#include <QUrl>
 #include <QCoreApplication>
 #include <QDir>
 #include <QElapsedTimer>
@@ -904,6 +906,53 @@ QString UIController::saveProgram(const QString &name, const QString &text) {
   emit programsChanged();
   saveState();  // persist immediately
   return clean;
+}
+
+QVariantMap UIController::importProgram8xp(const QString &path) {
+  CrashLogger::logEvent(QStringLiteral("importProgram8xp: ") + path);
+  QVariantMap out;
+  out["ok"] = false;
+  // Accept a file:// URL, a plain path, or a pasted path that arrived with
+  // surrounding whitespace or quotes (common when copying from a file
+  // manager or shell).
+  QString local = path.trimmed();
+  if ((local.startsWith('"') && local.endsWith('"')) ||
+      (local.startsWith('\'') && local.endsWith('\'')))
+    local = local.mid(1, local.size() - 2);
+  local = local.trimmed();
+  if (local.startsWith("file://"))
+    local = QUrl(local).toLocalFile();
+
+  QFile f(local);
+  if (!f.open(QIODevice::ReadOnly)) {
+    out["error"] = QStringLiteral("Could not open file");
+    return out;
+  }
+  const QByteArray blob = f.readAll();
+  f.close();
+  std::vector<uint8_t> bytes(blob.begin(), blob.end());
+
+  const tux_ti83::Import8xpResult r = tux_ti83::decode8xp(bytes);
+  if (!r.ok) {
+    out["error"] = QString::fromStdString(r.error);
+    return out;
+  }
+  // Fall back to the file's base name if the embedded name normalises away.
+  QString name = normalizeProgramName(QString::fromStdString(r.name));
+  if (name.isEmpty())
+    name = normalizeProgramName(QFileInfo(local).completeBaseName());
+  if (name.isEmpty())
+    name = QStringLiteral("IMPORTED");
+
+  const QString saved = saveProgram(name, QString::fromStdString(r.source));
+  if (saved.isEmpty()) {
+    out["error"] = QStringLiteral("Could not save the imported program");
+    return out;
+  }
+  out["ok"] = true;
+  out["name"] = saved;
+  out["unknownTokens"] = r.unknownTokens;
+  return out;
 }
 
 void UIController::deleteProgram(const QString &name) {

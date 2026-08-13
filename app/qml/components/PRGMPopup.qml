@@ -36,6 +36,24 @@ Popup {
     property string pendingEditName: ""
     property int pendingEditLine: -1
 
+    // .8xp import feedback (green on success, red on failure).
+    property string importMsg: ""
+    property bool importOk: false
+
+    // Import a .8xp by path (from the text field) or a dropped file URL.
+    function do8xpImport(pathOrUrl) {
+        var res = uiController.importProgram8xp("" + pathOrUrl)
+        root.importOk = res.ok === true
+        if (root.importOk) {
+            root.importMsg = "Imported  prgm" + res.name +
+                (res.unknownTokens > 0
+                 ? "  (" + res.unknownTokens + " unknown → ?)" : "")
+            root.refresh()
+        } else {
+            root.importMsg = "Import failed: " + res.error
+        }
+    }
+
     // ── Command-paste palette (insert keywords without hand-typing) ──
     property bool cmdPaletteOpen: false
     property string cmdCategory: "CTL"
@@ -221,11 +239,62 @@ Popup {
                 horizontalAlignment: Text.AlignHCenter
             }
 
+            // Result of the last .8xp import (green ok / red error).
+            Text {
+                Layout.fillWidth: true
+                visible: root.importMsg.length > 0
+                text: root.importMsg
+                color: root.importOk ? Style.textResult : Style.textError
+                font.family: Style.monoFamily
+                font.pixelSize: Style.keyLabelPixelSize
+                wrapMode: Text.Wrap
+                horizontalAlignment: Text.AlignHCenter
+            }
+
             CalcKey {
                 Layout.fillWidth: true
                 label: "NEW"
                 keyType: "function"
                 onPressed: root.startNew()
+            }
+
+            // ── Import a real TI-83 .8xp program ──
+            // No QML file-dialog module ships with the stock Qt6 base, so we
+            // take the .8xp file's path directly.
+            Text {
+                Layout.fillWidth: true
+                text: "Import .8xp — paste the file's full path:"
+                color: Style.textMuted
+                font.family: Style.monoFamily
+                font.pixelSize: Style.keyLabelPixelSize
+                wrapMode: Text.Wrap
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                TextField {
+                    id: pathField
+                    Layout.fillWidth: true
+                    placeholderText: "/path/to/PROGRAM.8xp"
+                    color: Style.textDisplay
+                    font.family: Style.monoFamily
+                    font.pixelSize: Style.keyLabelPixelSize
+                    selectByMouse: true
+                    background: Rectangle {
+                        color: Style.bgDisplay
+                        radius: 4
+                        border.color: pathField.activeFocus ? Style.textExpr : Style.keyBorderNeutral
+                        border.width: 1
+                    }
+                    onAccepted: if (text.length > 0) root.do8xpImport(text)
+                }
+                CalcKey {
+                    Layout.preferredWidth: 80
+                    Layout.fillWidth: false
+                    label: "IMPORT"
+                    keyType: "enter"
+                    onPressed: if (pathField.text.length > 0) root.do8xpImport(pathField.text)
+                }
             }
         }
 

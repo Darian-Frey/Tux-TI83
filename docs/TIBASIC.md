@@ -366,8 +366,12 @@ resumable model and hits the milestone with numeric input + string-literal
   overlays exist, via a reactive `drawObjectCount` property) → one tap clears
   all drawings; the DRAW menu (2ND+TRACE) still offers per-item delete.
   **P6 graphics complete.**
-- 💭 `.8xp` import — parse real TI-83 program files (cross-references the
-  Connectivity roadmap's `.8xp` item). Requires a token-value mapping.
+- ✅ `.8xp` import (2026-08-13) — parse real TI-83/84 program files. Pure-C++
+  `decode8xp` (interpreter lib) validates the container + detokenises the body
+  using the TI token table (verified against TI-Toolkit `8X.xml`), decoding to
+  our source forms so it re-tokenises + runs. Controller `importProgram8xp`;
+  PRGM popup **Import .8xp** path field. Samples in `docs/programs/`. Unknown
+  tokens → `?` (counted); Asm + TI-84+ CE `0xEF` page out of scope.
 - 💭 `Repeat`/`While` performance, `rand`-seeded games, live per-frame graph
   animation from a `getKey` loop.
 

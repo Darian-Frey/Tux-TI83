@@ -394,6 +394,9 @@ public:
     // Returns the normalised name actually stored (empty if the name was
     // invalid).
     Q_INVOKABLE QString saveProgram(const QString& name, const QString& text);
+    // Import a .8xp (TI-83/84 program) file. Reads + detokenises it and saves
+    // the result as a program. Returns {ok, name, error, unknownTokens}.
+    Q_INVOKABLE QVariantMap importProgram8xp(const QString& path);
     Q_INVOKABLE void deleteProgram(const QString& name);
     // Normalise a candidate program name (uppercase, A–Z/0–9, ≤8 chars).
     Q_INVOKABLE QString normalizeProgramName(const QString& name) const;

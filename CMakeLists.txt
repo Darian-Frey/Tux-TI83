@@ -15,7 +15,10 @@ target_include_directories(core_math PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/core_mat
 # TI-BASIC interpreter — statement-level execution layer above core_math.
 # Pure C++ (no Qt) so the CLI/REPL and tests can run programs headless.
 # See docs/TIBASIC.md.
-add_library(interpreter interpreter/src/interpreter.cpp)
+add_library(interpreter
+    interpreter/src/interpreter.cpp
+    interpreter/src/program_import.cpp
+)
 target_include_directories(interpreter PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/interpreter/include
     ${CMAKE_CURRENT_SOURCE_DIR}/core_math/include

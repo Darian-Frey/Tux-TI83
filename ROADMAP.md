@@ -524,7 +524,13 @@ _pragmatic subset first_. Phases (each independently shippable):
 
 - ✅ Save/load full calculator state to disk — landed 2026-07-26 (Phase F #34). Named snapshots (`~/.local/state/tux-ti83/saves/<name>.t83`, JSON) via `UIController::exportState`/`importState`/`listSaves`/`deleteSave`, sharing the auto-state serialization through refactored `buildStateJson`/`applyStateJson`. Managed from a SAVE/LOAD section in the MEM menu (name field + Export; per-save Load / ✕ delete). This is the automatic `state.json` plus explicit user-named saves.
 - 💭 Export/import individual variables/lists/matrices as files (whole-state snapshots done above; per-object export is the remaining bit)
-- 💭 `.8xp` (TI program) import — would let users run real TI-83 programs
+- ✅ `.8xp` (TI program) import — landed 2026-08-13. Parses the TI-83/84
+  container + detokenises the program body to our source text (interpreter-lib
+  `decode8xp`; token table cross-verified against TI-Toolkit `8X.xml`), then
+  `saveProgram`s it. Controller `importProgram8xp(path)`; PRGM popup has an
+  **Import .8xp** path field (stock Qt6 ships no QML file-dialog module, so a
+  pasted path keeps it dependency-free). Sample files in [docs/programs/](docs/programs/).
+  Scope: TI-83+/84+ BASIC; Asm + the TI-84+ CE `0xEF` colour page out of scope.
 - 💭 Link cable simulation between two running instances
 
 ---
