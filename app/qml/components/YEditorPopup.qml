@@ -43,6 +43,9 @@ Popup {
     readonly property var styleGlyphs: ["―", "█", "⋯"]  // thin / thick / dotted
     readonly property var relGlyphs: ["=", "<", ">", "≤", "≥"]  // inequality shading
 
+    // Emitted when the user taps "X INEQ" — Main opens the XIneqPopup.
+    signal openXIneq()
+
     contentItem: ColumnLayout {
         spacing: 10
 
@@ -53,8 +56,8 @@ Popup {
                    uiController.graphMode === 3 ? "SEQ u/v/w" : "Y=") + " EDITOR"
             color: Style.textMuted
             font.family: Style.monoFamily
-            font.pixelSize: Style.sectionLabelPixelSize
-            font.letterSpacing: Style.sectionLabelPixelSize * Style.sectionLabelLetterSpacing
+            font.pixelSize: Style.popupTitlePixelSize
+            font.letterSpacing: Style.popupTitlePixelSize * Style.sectionLabelLetterSpacing
             font.capitalization: Font.AllUppercase
             horizontalAlignment: Text.AlignHCenter
         }
@@ -106,8 +109,8 @@ Popup {
                         radius: 4
                         readonly property int rel: (root.rev, uiController.functionRelation(index))
                         color: relArea.containsMouse
-                               ? Qt.lighter(Style.bgSection, 1.0 + Style.keyHoverLighten)
-                               : Style.bgSection
+                               ? Qt.lighter(Style.bgSurface, 1.0 + Style.keyHoverLighten)
+                               : Style.bgSurface
                         border.width: Style.keyBorderWidth
                         border.color: rel === 0 ? Style.keyBorderNeutral : slotRow.slotColor
                         Text {
@@ -152,8 +155,8 @@ Popup {
                         Layout.preferredHeight: 24
                         radius: 4
                         color: onArea.containsMouse
-                               ? Qt.lighter(Style.bgSection, 1.0 + Style.keyHoverLighten)
-                               : Style.bgSection
+                               ? Qt.lighter(Style.bgSurface, 1.0 + Style.keyHoverLighten)
+                               : Style.bgSurface
                         border.width: 1
                         border.color: slotRow.on ? Style.enterBorder : Style.keyBorderNeutral
                         Text {
@@ -175,8 +178,8 @@ Popup {
                         Layout.preferredHeight: 24
                         radius: 4
                         color: stArea.containsMouse
-                               ? Qt.lighter(Style.bgSection, 1.0 + Style.keyHoverLighten)
-                               : Style.bgSection
+                               ? Qt.lighter(Style.bgSurface, 1.0 + Style.keyHoverLighten)
+                               : Style.bgSurface
                         border.width: Style.keyBorderWidth
                         border.color: Style.keyBorderNeutral
                         Text {
@@ -197,10 +200,20 @@ Popup {
             }
         }
 
-        CalcKey {
-            label: "DONE"
-            keyType: "enter"
-            onPressed: root.close()
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 6
+            // Opens the vertical-inequality (X <rel> value) manager.
+            CalcKey {
+                label: "X INEQ"
+                keyType: "function"
+                onPressed: { root.close(); root.openXIneq() }
+            }
+            CalcKey {
+                label: "DONE"
+                keyType: "enter"
+                onPressed: root.close()
+            }
         }
     }
 }

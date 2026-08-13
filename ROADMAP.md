@@ -336,7 +336,13 @@ default on) gating the graph canvas. RESET restores them.
     intersections of the active curve and the other enabled curves (controller
     `poiXs()` samples `f_active − f_other` and bisects each sign change; wraps
     at the ends). Readout shows `POI  X=… Y=…`. 7 tests.
-  - 💭 Deferred: `X=` vertical inequalities (needs an X= function type).
+  - ✅ `X=` vertical inequalities — landed 2026-08-13. `X <rel> value` entries
+    (rel `< > ≤ ≥`) each shade a vertical half-plane; managed via an **X INEQ**
+    popup off the Y= editor (`m_xIneqs`, persisted). They combine with the Y
+    inequalities under the same union / intersect mode — in intersect, the X
+    constraints clip the band's x-range (`getInequalityShade`). Scope: `X <rel>
+    constant` (Inequalz common case), not sideways `x = g(y)` curves. core_math
+    untouched. 11 tests. **Closes inequality shading.**
 
 ## UI / UX
 

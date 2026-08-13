@@ -1888,6 +1888,72 @@ int main(int argc, char *argv[]) {
     c.setActiveFunction(0);
   }
 
+  section("Vertical inequalities (X= shading)");
+  {
+    c.setProperty("graphMode", 0);
+    c.resetViewport();  // −10..10
+
+    // CRUD.
+    c.addXIneq(2, -3.0);   // X > −3
+    checkTrue("addXIneq stores an entry", c.getXIneqs().size() == 1);
+    checkTrue("entry rel/val readable",
+              c.getXIneqs()[0].toMap()["rel"].toInt() == 2 &&
+              qFuzzyCompare(c.getXIneqs()[0].toMap()["val"].toDouble() + 1.0, -2.0));
+    c.updateXIneq(0, 1, 5.0);  // → X < 5
+    checkTrue("updateXIneq changes rel/val",
+              c.getXIneqs()[0].toMap()["rel"].toInt() == 1 &&
+              qFuzzyCompare(c.getXIneqs()[0].toMap()["val"].toDouble(), 5.0));
+    c.addXIneq(9, 0.0);  // invalid relation ignored
+    checkTrue("invalid relation rejected", c.getXIneqs().size() == 1);
+    c.removeXIneq(0);
+    checkTrue("removeXIneq clears it", c.getXIneqs().isEmpty());
+
+    // Intersection integration: X > 0 alone → full-height band over x > 0.
+    c.setProperty("shadeMode", 1);
+    c.addXIneq(2, 0.0);  // X > 0
+    {
+      const QVariantList segs = c.getInequalityShade(100);
+      checkTrue("X-only intersection produces a band", !segs.isEmpty());
+      const QVariantList seg = segs[0].toList();
+      const QVariantMap c0 = seg[0].toMap();
+      checkTrue("band starts at x ≈ 0 (clipped by X>0)",
+                c0["x"].toDouble() >= -1e-6 && c0["x"].toDouble() < 0.3);
+      checkTrue("X-only band spans the viewport height",
+                qFuzzyCompare(c0["top"].toDouble(), 10.0) &&
+                qFuzzyCompare(c0["bottom"].toDouble(), -10.0));
+    }
+
+    // X < 2 AND Y1 = 0 with `>` → band is x ≤ 2, y > 0.
+    c.updateXIneq(0, 1, 2.0);  // X < 2
+    c.setActiveFunction(0); eval(c, "0");
+    c.cycleFunctionRelation(0); c.cycleFunctionRelation(0);  // Y1 rel 2 (>)
+    {
+      const QVariantList segs = c.getInequalityShade(100);
+      checkTrue("combined X+Y band exists", !segs.isEmpty());
+      const QVariantList seg = segs.last().toList();
+      const QVariantMap last = seg.last().toMap();
+      checkTrue("band clipped to x ≤ 2 by X<2", last["x"].toDouble() <= 2.0 + 1e-6);
+      checkTrue("band floor is y = 0 (Y1 > 0)",
+                qFuzzyCompare(last["bottom"].toDouble() + 1.0, 1.0));
+    }
+
+    // Persistence round-trip.
+    c.exportState("xineq");
+    c.removeXIneq(0);
+    c.importState("xineq");
+    checkTrue("X inequality survives save/load",
+              c.getXIneqs().size() == 1 &&
+              c.getXIneqs()[0].toMap()["rel"].toInt() == 1);
+    c.deleteSave("xineq");
+
+    // Cleanup.
+    c.setProperty("shadeMode", 0);
+    while (!c.getXIneqs().isEmpty()) c.removeXIneq(0);
+    c.setActiveFunction(0); c.processInput("CLEAR");
+    c.cycleFunctionRelation(0); c.cycleFunctionRelation(0); c.cycleFunctionRelation(0);  // 2→0
+    c.setActiveFunction(0);
+  }
+
   section("POI trace (point-of-intersection)");
   {
     const double R2 = std::sqrt(2.0);

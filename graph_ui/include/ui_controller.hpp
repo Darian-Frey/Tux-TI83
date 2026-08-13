@@ -570,6 +570,13 @@ public:
     // region where ALL relational inequalities hold. Empty otherwise (union
     // mode uses the per-slot fills instead).
     Q_INVOKABLE QVariantList getInequalityShade(int resolution);
+    // Vertical inequalities (Inequalz `X <rel> value`): each shades a vertical
+    // half-plane (rel 1 `<` / 2 `>` / 3 `≤` / 4 `≥`, value on the x-axis). They
+    // combine with the Y inequalities under the same union / intersect mode.
+    Q_INVOKABLE QVariantList getXIneqs() const;   // list of {rel, val}
+    Q_INVOKABLE void addXIneq(int rel, double val);
+    Q_INVOKABLE void updateXIneq(int index, int rel, double val);
+    Q_INVOKABLE void removeXIneq(int index);
     Q_INVOKABLE void pan(double dx, double dy, double vw, double vh);
     Q_INVOKABLE void zoom(double f, double mx, double my, double vw, double vh);
 
@@ -713,6 +720,9 @@ private:
     std::vector<bool> m_functionEnabled;
     std::vector<int> m_functionStyle;
     std::vector<int> m_functionRelation;  // 0 = / 1 < / 2 > / 3 ≤ / 4 ≥
+    // Vertical inequalities: X <rel> value (rel 1 < / 2 > / 3 ≤ / 4 ≥).
+    struct XIneq { int rel; double val; };
+    std::vector<XIneq> m_xIneqs;
     // DRAW-menu overlays (each a QVariantMap {type, a, b, c, d, text}).
     QVariantList m_drawObjects;
     QSet<int> m_pixels;  // on pixels, key = row*95 + col (P7)

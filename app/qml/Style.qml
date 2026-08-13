@@ -124,6 +124,9 @@ QtObject {
     readonly property int displayPixelSize:      30
     readonly property int exprPixelSize:         11
     readonly property int sectionLabelPixelSize: 8
+    // Popup header titles (FORMAT, MODE, Y= EDITOR, …). Larger than the tiny
+    // keypad section-divider label so titles read clearly in every theme.
+    readonly property int popupTitlePixelSize:   12
     readonly property int keyLabelPixelSize:     13
     readonly property int funcKeyLabelPixelSize: 12
     readonly property int headerBrandPixelSize:  10

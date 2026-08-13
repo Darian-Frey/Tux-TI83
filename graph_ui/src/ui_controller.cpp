@@ -448,6 +448,14 @@ QJsonObject UIController::buildStateJson() const {
   root["fnEnabled"] = fnEnabled;
   root["fnStyle"] = fnStyle;
   root["fnRelation"] = fnRelation;
+  QJsonArray xIneqs;
+  for (const auto &xi : m_xIneqs) {
+    QJsonObject o;
+    o["rel"] = xi.rel;
+    o["val"] = xi.val;
+    xIneqs.append(o);
+  }
+  root["xIneqs"] = xIneqs;
   // DRAW overlays.
   root["draw"] = QJsonArray::fromVariantList(m_drawObjects);
 
@@ -761,6 +769,14 @@ void UIController::applyStateJson(const QJsonObject &root) {
   for (int i = 0; i < fnRelation.size() && i < kFunctionCount; ++i) {
     int r = fnRelation[i].toInt(0);
     m_functionRelation[i] = (r >= 0 && r <= 4) ? r : 0;
+  }
+  m_xIneqs.clear();
+  const QJsonArray xIneqs = root.value("xIneqs").toArray();
+  for (const QJsonValue &v : xIneqs) {
+    const QJsonObject o = v.toObject();
+    const int r = o["rel"].toInt(0);
+    if (r >= 1 && r <= 4)
+      m_xIneqs.push_back({r, o["val"].toDouble(0.0)});
   }
   m_drawObjects = root.value("draw").toArray().toVariantList();
 
@@ -1873,6 +1889,7 @@ void UIController::resetAll() {
   std::fill(m_functionEnabled.begin(), m_functionEnabled.end(), true);
   std::fill(m_functionStyle.begin(), m_functionStyle.end(), 0);
   std::fill(m_functionRelation.begin(), m_functionRelation.end(), 0);
+  m_xIneqs.clear();
   m_drawObjects.clear();
   m_history.clear();
   m_entryHistory.clear();
@@ -3956,7 +3973,7 @@ QVariantList UIController::getInequalityShade(int resolution) {
         !m_functionBuffers[f].empty())
       rels.push_back({f, m_functionRelation[f]});
   }
-  if (rels.empty())
+  if (rels.empty() && m_xIneqs.empty())
     return out;
 
   MathStateMachine msm;
@@ -3978,7 +3995,15 @@ QVariantList UIController::getInequalityShade(int resolution) {
     const double x = m_xMin + i * step;
     double lo = m_yMin, hi = m_yMax;
     bool ok = true;
+    // Vertical (X) constraints clip the band's x-range: a column that fails
+    // any X inequality contributes no band (breaks the segment).
+    for (const auto &xi : m_xIneqs) {
+      const bool sat = (xi.rel == 1 || xi.rel == 3) ? (x <= xi.val)   // < / ≤
+                                                     : (x >= xi.val);  // > / ≥
+      if (!sat) { ok = false; break; }
+    }
     for (const auto &r : rels) {
+      if (!ok) break;
       const CalculationResult res = msm.evaluate(m_functionBuffers[r.slot], x);
       if (!res.success || res.isMatrix || res.isList ||
           !std::isfinite(res.value)) {
@@ -4002,6 +4027,38 @@ QVariantList UIController::getInequalityShade(int resolution) {
   }
   flush();
   return out;
+}
+
+QVariantList UIController::getXIneqs() const {
+  QVariantList out;
+  for (const auto &xi : m_xIneqs) {
+    QVariantMap m;
+    m["rel"] = xi.rel;
+    m["val"] = xi.val;
+    out.append(m);
+  }
+  return out;
+}
+
+void UIController::addXIneq(int rel, double val) {
+  if (rel < 1 || rel > 4)
+    return;
+  m_xIneqs.push_back({rel, val});
+  emit functionsChanged();  // repaint the shading
+}
+
+void UIController::updateXIneq(int index, int rel, double val) {
+  if (index < 0 || index >= static_cast<int>(m_xIneqs.size()) || rel < 1 || rel > 4)
+    return;
+  m_xIneqs[static_cast<std::size_t>(index)] = {rel, val};
+  emit functionsChanged();
+}
+
+void UIController::removeXIneq(int index) {
+  if (index < 0 || index >= static_cast<int>(m_xIneqs.size()))
+    return;
+  m_xIneqs.erase(m_xIneqs.begin() + index);
+  emit functionsChanged();
 }
 
 void UIController::setUiZoom(double z) {

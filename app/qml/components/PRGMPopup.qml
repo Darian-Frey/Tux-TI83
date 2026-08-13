@@ -148,8 +148,8 @@ Popup {
                                : "PRGM"
             color: Style.textMuted
             font.family: Style.monoFamily
-            font.pixelSize: Style.sectionLabelPixelSize
-            font.letterSpacing: Style.sectionLabelPixelSize * Style.sectionLabelLetterSpacing
+            font.pixelSize: Style.popupTitlePixelSize
+            font.letterSpacing: Style.popupTitlePixelSize * Style.sectionLabelLetterSpacing
             font.capitalization: Font.AllUppercase
             horizontalAlignment: Text.AlignHCenter
         }

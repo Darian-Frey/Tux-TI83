@@ -938,6 +938,11 @@ ApplicationWindow {
 
     YEditorPopup {
         id: yEditorPopup
+        onOpenXIneq: xIneqPopup.open()
+    }
+
+    XIneqPopup {
+        id: xIneqPopup
     }
 
     YVarsPopup {

@@ -57,6 +57,15 @@ Each entry uses this template:
 
 ## Fixed
 
+### BUG-028: Popup titles too small + Y-editor row buttons blend in the light theme
+
+- **Status:** fixed (2026-08-13, X= inequalities session)
+- **Location:** popup title `Text` across all popups (`app/qml/components/*.qml`); Y-editor row buttons in [app/qml/components/YEditorPopup.qml](app/qml/components/YEditorPopup.qml)
+- **Severity:** low (readability / polish)
+- **Description:** Two light-theme issues, reported via screenshots. (1) Every popup **title** (FORMAT, MODE, Y= EDITOR, …) used `Style.sectionLabelPixelSize` (8px) — the tiny keypad section-divider size — so titles were hard to read. (2) In the Y= editor, each row's **relation chip / on-off toggle / style button** used `Style.bgSection`, the *same* colour as the active (selected) row, so on that row they were invisible in the light theme.
+- **Fix:** (1) Added a dedicated `Style.popupTitlePixelSize` (12px) and pointed all popup titles at it (keypad dividers stay 8px). (2) Filled the three Y-editor row buttons with `Style.bgSurface` (the card colour) instead of `bgSection`, so they contrast on both the light active row and the dark inactive rows.
+- **Notes:** Same theme-token family as [BUG-026](#bug-026-prgm-program-names-and-other-labels-unreadable-in-the-light-theme)/[BUG-027](#bug-027-more-popup-labels-unreadable-in-the-light-theme-bug-026-stragglers): surface elements must use theme-flipping tokens sized for their role, not the LCD-fixed / tiny-divider ones.
+
 ### BUG-027: More popup labels unreadable in the light theme (BUG-026 stragglers)
 
 - **Status:** fixed (2026-08-13, UI-scale session)

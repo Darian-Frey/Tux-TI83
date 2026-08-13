@@ -268,6 +268,22 @@ Rectangle {
                         ctx.fill()
                         ctx.globalAlpha = 1.0
                     }
+                    // Vertical (X) inequalities — shade a half-plane left
+                    // (< / ≤) or right (> / ≥) of x = value, plus its boundary
+                    // line. (Intersect mode folds these into the band instead.)
+                    const xis = uiController.getXIneqs()
+                    for (let k = 0; k < xis.length; k++) {
+                        const bx = toPx(xis[k].val, 0).x
+                        const left = (xis[k].rel === 1 || xis[k].rel === 3)
+                        ctx.fillStyle = Style.textExpr
+                        ctx.globalAlpha = 0.18
+                        if (left) ctx.fillRect(0, 0, bx, height)
+                        else ctx.fillRect(bx, 0, width - bx, height)
+                        ctx.globalAlpha = 1.0
+                        ctx.strokeStyle = Style.textExpr
+                        ctx.lineWidth = 1.5
+                        ctx.beginPath(); ctx.moveTo(bx, 0); ctx.lineTo(bx, height); ctx.stroke()
+                    }
                 }
             }
 
