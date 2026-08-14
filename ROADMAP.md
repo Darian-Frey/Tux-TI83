@@ -94,16 +94,15 @@ Candidate next areas (no commitment):
   `tux_ti83_tests` on every push).
 - 📅 CLI commands beyond bare expressions: `:vars`, `:matrix [A]`,
   `:graph X^2 -10 10`, etc. Currently REPL only handles expressions.
-- 🚧 [`USER_MANUAL.md`](USER_MANUAL.md) — end-user documentation covering
+- ✅ [`USER_MANUAL.md`](USER_MANUAL.md) — end-user documentation covering
   the GUI keypad layout, MATH / MATRX / WINDOW menus, graph mode,
   keyboard shortcuts, CLI / REPL usage, error messages, and worked
-  examples. **Skeleton landed 2026-04-08**; **brought current 2026-08-01**
-  — now documents all four graph modes, the full Y= editor, the complete
-  MODE menu (incl. Plot/Complex/Screen), UI themes, complex numbers,
-  probability distributions, typed matrix literals + the matrix/list
-  toolkit, Y-VARS store, bracket entry, and named save snapshots. A few
-  sections still flag *"planned"* content (screenshots, the
-  function-reference appendix, more worked examples).
+  examples. Skeleton 2026-04-08; **fully refreshed 2026-08-13** — documents
+  all four graph modes, the full Y= editor, the complete MODE menu (incl.
+  Plot/Complex/Screen/Theme×5/UI Size), inequality shading (Y + X= +
+  union/intersect), POI trace, `.8xp` import, EE entry, the AppImage,
+  matrices `[A]`–`[J]`, the full P0–P7 TI-BASIC command reference, and named
+  save snapshots. (Screenshots are the only remaining *"planned"* content.)
 - 💭 Test coverage measurement (gcov / lcov) once the test suite grows.
 - 💭 Property-based / fuzz testing for the parser (FuzzTest, libFuzzer).
 
@@ -229,7 +228,7 @@ arithmetic, and `STO→` to a list are done in the engine and covered by
 - ✅ List arithmetic (vectorised ops) — element-wise `+ − × ÷ ^` with equal-length lists (`ERR:INVALID DIM` otherwise) and scalar broadcasting; implicit-mul (`2L1`, `2{1,2}`) works. Unary/binary math functions reject lists (`ERR:DATA TYPE`) pending Wave 3 element-wise mapping. Landed 2026-07-22.
 - ✅ List functions: `sum(`, `prod(`, `mean(`, `min(`, `max(`, `stdDev(`, `variance(` — Wave 3a, landed 2026-07-22. `mean`/`stdDev`/`variance` are list-only (sample n−1 for stdDev/variance; `ERR:DOMAIN` for n<2). `sum(`/`prod(` overload the calculus 4-arg forms by arity (1 list arg → reduction); `min(`/`max(` overload the 2-scalar forms by operand type. In the MATH menu. Limitation: 2-arg `min(`/`max(` with a list operand (element-wise) not yet supported.
 - ✅ `seq(expr, var, start, end[, step])` — Wave 3b, landed 2026-07-22. Reuses the deferred-eval framework (IMP-044) to sample the unevaluated first arg over the stepped range and collect a list. Default step 1; negative steps allowed; backwards range → `ERR:INVALID DIM`, zero step → `ERR:DOMAIN`. The authentic TI-83 `sum(seq(...))` summation form now works. Also added `median(` (Wave 3b).
-- 📅 `median(` alongside 1-var stats — ✅ done early as a list reduction in Wave 3b (odd → middle, even → mean of the two middle values).
+- ✅ `median(` alongside 1-var stats — done as a list reduction in Wave 3b (odd → middle, even → mean of the two middle values).
 - ✅ List ↔ Matrix conversion — `List▶Matr(L1,…,Ln)` (variadic, n columns) / `Matr▶List([A],col)` value-producing forms landed 2026-08-01 (see the Matrices section). 📅 still: `Matr▶List` all-column split (needs multiple store targets).
 - 📅 Custom named lists (`L1`–`L6` plus `αLIST`)
 
@@ -298,7 +297,8 @@ lists the current drawings with a per-item ✕ delete; CLRDRAW clears all.
 - ✅ `Circle(`
 - ✅ `Text(` (overlay text on graph)
 - ✅ `ClrDraw` + per-element delete (delete one / clear all)
-- 📅 `Tangent(`, `Pen` (freehand), `Shade(`, `DrawF`, `DrawInv` — deferred
+- ✅ `Tangent(`, `Shade(`, `DrawF` — landed in TI-BASIC P7 (2026-08-10/11); usable as program commands
+- 📅 `Pen` (freehand) / `DrawInv` — the last two DRAW commands, deferred
 
 ### Format menu
 
@@ -370,7 +370,7 @@ default on) gating the graph canvas. RESET restores them.
 - ✅ Cursor movement within an expression (left/right arrow editing) — added 2026-04-18 (token-level cursor in UIController; insertToken/backspace are cursor-aware; Left/Right/Home/End keyboard shortcuts; Display's TextInput binds to cursorOffset so the visual cursor tracks edits mid-expression; unary-negation disambiguation now looks at the token immediately left of the cursor rather than the tail)
 - ✅ Insert mode toggle (2nd + DEL) — added 2026-04-29 (`m_insertMode` flag on UIController; default INS splices, OVR replaces the token at the cursor and falls back to append past the end; header `OVR` badge; DEL key has an `INS` 2ND corner label; on-screen `CURSOR` section also added with HOME / ← / → / END to complement the existing keyboard shortcuts)
 - ✅ ALPHA-lock mode — added 2026-04-18 (2ND + ALPHA toggles a persistent `alphaLocked` flag in addition to the one-shot `alphaArmed`; header shows "A-LOCK" when locked; any letter keypress fires its ALPHA variant without clearing the lock; ALPHA alone or CLEAR releases it; 2ND during lock preserves the lock so 2ND+letter combos stay usable mid-typing)
-- 🚧 `MODE` menu follow-ups — Angle, Notation (Normal/Sci/Eng), Decimal (Float/Fix N), Base (Dec/Hex/Oct/Bin), Draw (Connected/Dot), **Graph: Func/Par/Pol/Seq (all four wired)**, **Complex: Real/a+bi/re^θi (wired)**, and **Plot: Sequential/Simul (wired 2026-08-01)** are done — Graph rows back `setGraphMode`, Complex backs `setComplexMode`, Plot backs `plotMode` (drives the GraphCanvas draw animation: Sequential reveals each curve fully then the next, Simul advances all curves in lockstep; ~0.4s sweep on entering the graph / editing functions / switching Plot; persisted). Remaining placeholder, still deliberately greyed: Screen (see below).
+- ✅ `MODE` menu follow-ups — **complete**. Angle, Notation (Normal/Sci/Eng), Decimal (Float/Fix N), Base (Dec/Hex/Oct/Bin), Draw (Connected/Dot), **Graph: Func/Par/Pol/Seq**, **Complex: Real/a+bi/re^θi**, **Plot: Sequential/Simul**, and **Screen: Full/Horiz/G-T** (below) are all wired + persisted. Graph rows back `setGraphMode`, Complex backs `setComplexMode`, Plot backs `plotMode` (drives the GraphCanvas draw animation: Sequential reveals each curve fully then the next, Simul advances all curves in lockstep; ~0.4s sweep on entering the graph / editing functions / switching Plot). The MODE popup also hosts **Theme** (Dark/Light/Amber/Green/HiCon) and **UI Size** (75–200 %).
 - ✅ `MODE` → **Screen: Full / Horiz / G-T** (split-screen) — `screenMode` property (0 Full / 1 Horiz / 2 G-T), wired + persisted (added 2026-08-01). The main view region was restructured from a `StackLayout` into a `ColumnLayout` with a graph+table `RowLayout` above the keypad: Full shows the active view alone; **G-T** shows graph beside table; **Horiz** shows the graph on top with the keypad below (our "home" is the keypad, so Horiz keeps the keys usable while graphing rather than a TI-style home-entry strip). Keypad fills only when it's the sole content; in Horiz it takes its natural height with the graph filling above.
 - ✅ `CATALOG` browser (alphabetical list of every command) — `CatalogPopup` (2ND+0), auto-generated from `UIController::catalogEntries()` (deduped + sorted from the token table), with an incremental search field. Because it's token-table-driven it stays complete automatically — every function added since (lists, stats, regressions, random, distributions, …) is already listed.
 - ✅ Mode indicator in the header — dynamic, binds to `notation` / `fixDecimals` / `angleMode`. Renders e.g. `NORMAL  RAD` (defaults) or `SCI  FIX 2  DEG`; see [IMP-034](IMPROVEMENTS.md).
@@ -414,10 +414,10 @@ single-expression evaluator. Full design + phased plan lives in
 **[docs/TIBASIC.md](docs/TIBASIC.md)**; scope decision (2026-08-01):
 _pragmatic subset first_. Phases (each independently shippable):
 
-- 🚧 **P0 — Scaffolding** — core landed 2026-08-01: new pure-C++
+- ✅ **P0 — Scaffolding** — landed 2026-08-01: new pure-C++
   `interpreter` library with the `Interpreter` (RunStatus step loop,
   statement splitter, run-to-Done) and `ProgramStore`; 21 tests. Persistence
-  wiring deferred to P1 (nothing to persist until the editor exists).
+  wiring completed in P1.
 - ✅ **P1 — Program editor** — landed 2026-08-01: PRGM popup (2ND+`√(`) with
   list (RUN/EDIT/✕/NEW) + a freeform multi-line source editor; `ProgramStore`
   in the controller (CRUD + `runProgram`); programs persist in state JSON;
@@ -432,7 +432,7 @@ _pragmatic subset first_. Phases (each independently shippable):
   `End`), `For(` (asc/step/desc), `While`, `Repeat`, `Lbl`/`Goto`. Structural
   pre-pass jump table + For-frame stack; `execStatement` owns the PC; a 5M-step
   runaway guard. Unary-minus fix in the program evaluator. 13 tests.
-- 🚧 **P4 — Strings + I/O** — split in two. **Interaction ✅ (2026-08-01):**
+- ✅ **P4 — Strings + I/O** — complete. **Interaction ✅ (2026-08-01):**
   `Input`/`Prompt`/`Pause` via the resumable step model (`NeedInput`/`NeedKey`);
   the controller holds the interpreter and drives `runProgram`/
   `provideProgramInput`/`resumeProgram`; run view gets an input field, a
@@ -484,7 +484,7 @@ _pragmatic subset first_. Phases (each independently shippable):
   existing DRAW layer: `Line(`/`Circle(`/`Horizontal`/`Vertical`/`Pt-On(`/
   `Text(`/`ClrDraw` (graphics commands auto-show the graph). Added a ✕ CLR
   button on `GraphCanvas` (shown when overlays exist) to clear all drawings.
-  9 tests. **P6 graphics complete.** 💭 `.8xp` import remains (optional).
+  9 tests. **P6 graphics complete.** ✅ `.8xp` import also done (2026-08-13, see Connectivity).
 - **P7 — Modern language enhancements** ✅ **complete 2026-08-11** (make
   TI-BASIC genuinely better than the original — see
   [docs/TIBASIC.md](docs/TIBASIC.md)):
