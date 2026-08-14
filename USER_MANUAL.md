@@ -350,8 +350,9 @@ then use the editor's buttons:
 
 - `2-VAR L1,L2` — the two-variable summary plus **LinReg** (slope `a`,
   intercept `b`, correlation `r`, `r²`)
-- `REGRESSIONS ▸` — a menu of `QuadReg`, `CubicReg`, `ExpReg`, `LnReg`,
-  `PwrReg` (each reports its coefficients and `R²` / `r`)
+- `REGRESSIONS ▸` — a menu of `QuadReg`, `CubicReg`, `QuartReg`, `ExpReg`,
+  `LnReg`, `PwrReg`, `SinReg` (`a·sin(bx+c)+d`), and `Logistic`
+  (`c/(1+a·e⁻ᵇˣ)`) — each reports its coefficients and `R²` / `r`
 
 Exp/Ln/Pwr models require positive data where the maths demands it
 (`ERR:DOMAIN` otherwise); mismatched list lengths give `ERR:INVALID DIM`.

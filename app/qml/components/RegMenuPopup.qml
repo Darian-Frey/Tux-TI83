@@ -32,9 +32,12 @@ Popup {
     readonly property var models: [
         { type: "quad",  label: "QuadReg  ax²+bx+c" },
         { type: "cubic", label: "CubicReg  ax³+bx²+cx+d" },
+        { type: "quart", label: "QuartReg  ax⁴+…+e" },
         { type: "exp",   label: "ExpReg  a·bˣ" },
         { type: "ln",    label: "LnReg  a+b·ln x" },
-        { type: "pwr",   label: "PwrReg  a·xᵇ" }
+        { type: "pwr",   label: "PwrReg  a·xᵇ" },
+        { type: "sin",   label: "SinReg  a·sin(bx+c)+d" },
+        { type: "logistic", label: "Logistic  c/(1+a·e⁻ᵇˣ)" }
     ]
 
     contentItem: ColumnLayout {

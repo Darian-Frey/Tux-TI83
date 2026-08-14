@@ -69,6 +69,7 @@ Popup {
         { key: "b",  label: "b" },
         { key: "c",  label: "c" },
         { key: "d",  label: "d" },
+        { key: "e",  label: "e" },
         { key: "r",  label: "r" },
         { key: "r2", label: "R²" }
     ]

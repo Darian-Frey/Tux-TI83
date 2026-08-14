@@ -3072,6 +3072,136 @@ bool linFit(const std::vector<double> &x, const std::vector<double> &y,
   return true;
 }
 
+// Golden-section minimise f over [lo, hi] (≈60 iterations → ~1e-12 relative).
+template <typename F>
+double goldenMin(F f, double lo, double hi) {
+  const double g = 0.6180339887498949;
+  double c1 = hi - g * (hi - lo), c2 = lo + g * (hi - lo);
+  double f1 = f(c1), f2 = f(c2);
+  for (int it = 0; it < 60; ++it) {
+    if (f1 < f2) { hi = c2; c2 = c1; f2 = f1; c1 = hi - g * (hi - lo); f1 = f(c1); }
+    else         { lo = c1; c1 = c2; f1 = f2; c2 = lo + g * (hi - lo); f2 = f(c2); }
+  }
+  return 0.5 * (lo + hi);
+}
+
+// SinReg — nonlinear fit y = a·sin(bx+c)+d. For a fixed frequency b the model
+// is LINEAR in [P=a·cos c, Q=a·sin c, d] (y = P·sin(bx)+Q·cos(bx)+d), so we
+// solve that 3×3 least-squares at each b and 1-D-search b for the minimum SSE
+// (coarse grid over plausible periods, then golden-section refine).
+QVariantMap sinReg(const std::vector<double> &X, const std::vector<double> &Y) {
+  QVariantMap out;
+  const int n = static_cast<int>(X.size());
+  if (n < 4) { out["error"] = "DOMAIN"; return out; }
+  double xmin = X[0], xmax = X[0];
+  for (double xv : X) { xmin = std::min(xmin, xv); xmax = std::max(xmax, xv); }
+  const double span = xmax - xmin;
+  if (span < 1e-9) { out["error"] = "DOMAIN"; return out; }
+  double meanY = 0; for (double yv : Y) meanY += yv; meanY /= n;
+  double ssTot = 0; for (double yv : Y) ssTot += (yv - meanY) * (yv - meanY);
+
+  // Least-squares fit at frequency b → SSE, filling P, Q, d.
+  auto fitB = [&](double b, double &P, double &Q, double &d) -> double {
+    std::vector<std::vector<double>> A(3, std::vector<double>(3, 0.0));
+    std::vector<double> rhs(3, 0.0);
+    for (int i = 0; i < n; ++i) {
+      const double basis[3] = {std::sin(b * X[i]), std::cos(b * X[i]), 1.0};
+      for (int r = 0; r < 3; ++r) {
+        for (int c = 0; c < 3; ++c) A[r][c] += basis[r] * basis[c];
+        rhs[r] += basis[r] * Y[i];
+      }
+    }
+    std::vector<double> sol;
+    if (!solveLinear(A, rhs, sol))
+      return std::numeric_limits<double>::infinity();
+    P = sol[0]; Q = sol[1]; d = sol[2];
+    double sse = 0;
+    for (int i = 0; i < n; ++i) {
+      const double yh = P * std::sin(b * X[i]) + Q * std::cos(b * X[i]) + d;
+      sse += (Y[i] - yh) * (Y[i] - yh);
+    }
+    return sse;
+  };
+
+  const double bLo = 2 * M_PI / (2.0 * span);   // period up to ~2× the span
+  const double bHi = 2 * M_PI / (span / 8.0);   // period down to ~span/8
+  double bestB = bLo, bestSSE = std::numeric_limits<double>::infinity();
+  const int G = 500;
+  double P, Q, d;
+  for (int i = 0; i <= G; ++i) {
+    const double b = bLo + (bHi - bLo) * i / G;
+    const double sse = fitB(b, P, Q, d);
+    if (sse < bestSSE) { bestSSE = sse; bestB = b; }
+  }
+  const double step = (bHi - bLo) / G;
+  const double b = goldenMin([&](double bb) { double p, q, dd; return fitB(bb, p, q, dd); },
+                             std::max(bLo, bestB - step), std::min(bHi, bestB + step));
+  const double sse = fitB(b, P, Q, d);
+  out["error"] = "";
+  out["n"] = n;
+  out["a"] = std::hypot(P, Q);
+  out["b"] = b;
+  out["c"] = std::atan2(Q, P);
+  out["d"] = d;
+  if (ssTot > 1e-12) out["r2"] = 1.0 - sse / ssTot;
+  return out;
+}
+
+// Logistic — nonlinear fit y = c/(1 + a·e^(−bx)). For a fixed capacity c the
+// model linearises: ln(c/y − 1) = ln(a) − b·x, so we straight-line-fit at each
+// c and 1-D-search c (> max Y) for the minimum SSE.
+QVariantMap logisticReg(const std::vector<double> &X,
+                        const std::vector<double> &Y) {
+  QVariantMap out;
+  const int n = static_cast<int>(X.size());
+  if (n < 3) { out["error"] = "DOMAIN"; return out; }
+  double ymax = Y[0], ymin = Y[0];
+  for (double yv : Y) { ymax = std::max(ymax, yv); ymin = std::min(ymin, yv); }
+  if (ymin <= 0.0) { out["error"] = "DOMAIN"; return out; }
+  double meanY = 0; for (double yv : Y) meanY += yv; meanY /= n;
+  double ssTot = 0; for (double yv : Y) ssTot += (yv - meanY) * (yv - meanY);
+
+  auto fitC = [&](double capC, double &a, double &b) -> double {
+    std::vector<double> z(n), xx(n);
+    for (int i = 0; i < n; ++i) {
+      const double ratio = capC / Y[i] - 1.0;
+      if (ratio <= 0.0) return std::numeric_limits<double>::infinity();
+      z[i] = std::log(ratio); xx[i] = X[i];
+    }
+    double slope, intercept, r;
+    if (!linFit(xx, z, slope, intercept, r))
+      return std::numeric_limits<double>::infinity();
+    a = std::exp(intercept); b = -slope;
+    double sse = 0;
+    for (int i = 0; i < n; ++i) {
+      const double yh = capC / (1.0 + a * std::exp(-b * X[i]));
+      sse += (Y[i] - yh) * (Y[i] - yh);
+    }
+    return sse;
+  };
+
+  const double cLo = ymax * 1.001, cHi = ymax * 3.0 + 1.0;
+  double bestC = cLo, bestSSE = std::numeric_limits<double>::infinity();
+  const int G = 500;
+  double a, b;
+  for (int i = 0; i <= G; ++i) {
+    const double capC = cLo + (cHi - cLo) * i / G;
+    const double sse = fitC(capC, a, b);
+    if (sse < bestSSE) { bestSSE = sse; bestC = capC; }
+  }
+  const double step = (cHi - cLo) / G;
+  const double capC = goldenMin([&](double cc) { double aa, bb; return fitC(cc, aa, bb); },
+                                std::max(cLo, bestC - step), std::min(cHi, bestC + step));
+  const double sse = fitC(capC, a, b);
+  out["error"] = "";
+  out["n"] = n;
+  out["a"] = a;
+  out["b"] = b;
+  out["c"] = capC;
+  if (ssTot > 1e-12) out["r2"] = 1.0 - sse / ssTot;
+  return out;
+}
+
 }  // namespace
 
 QVariantMap UIController::regression(const QString &type, const QString &xName,
@@ -3101,6 +3231,9 @@ QVariantMap UIController::regression(const QString &type, const QString &xName,
 
   if (t == "quad") return polyReg(X, Y, 2);
   if (t == "cubic") return polyReg(X, Y, 3);
+  if (t == "quart") return polyReg(X, Y, 4);
+  if (t == "sin") return sinReg(X, Y);
+  if (t == "logistic") return logisticReg(X, Y);
 
   // Linearised models: exp (y=a·bˣ), ln (y=a+b·lnx), pwr (y=a·xᵇ).
   const bool needXpos = (t == "ln" || t == "pwr");

@@ -1491,6 +1491,51 @@ int main(int argc, char *argv[]) {
     QVariantMap dm = c.regression("quad", "L1", "L2");
     checkTrue("reg dim mismatch → DIM", dm["error"].toString() == "DIM");
 
+    // QuartReg: y = x⁴ − 2x² + 1 (exact → R²=1). a=1, c=−2, e=1.
+    c.updateList("L1", QVariantList{-2, -1, 0, 1, 2, 3});
+    c.updateList("L2", QVariantList{9, 0, 1, 0, 9, 64});
+    QVariantMap qt = c.regression("quart", "L1", "L2");
+    checkTrue("QuartReg a = 1", std::abs(qt["a"].toDouble() - 1.0) < 1e-2);
+    checkTrue("QuartReg c = -2", std::abs(qt["c"].toDouble() + 2.0) < 1e-2);
+    checkTrue("QuartReg e = 1", std::abs(qt["e"].toDouble() - 1.0) < 1e-2);
+    checkTrue("QuartReg R² ≈ 1", qt["r2"].toDouble() > 0.9999);
+
+    // SinReg: y = 3·sin(2x+0.5)+1.
+    {
+      QVariantList sx, sy;
+      for (int i = 0; i <= 14; ++i) {
+        const double x = i * 0.4;
+        sx << x; sy << 3.0 * std::sin(2.0 * x + 0.5) + 1.0;
+      }
+      c.updateList("L1", sx); c.updateList("L2", sy);
+      QVariantMap s = c.regression("sin", "L1", "L2");
+      checkTrue("SinReg fits (R² ≈ 1)", s["r2"].toDouble() > 0.999);
+      checkTrue("SinReg a ≈ 3", std::abs(s["a"].toDouble() - 3.0) < 0.05);
+      checkTrue("SinReg b ≈ 2", std::abs(s["b"].toDouble() - 2.0) < 0.05);
+      checkTrue("SinReg d ≈ 1", std::abs(s["d"].toDouble() - 1.0) < 0.05);
+    }
+
+    // Logistic: y = 10 / (1 + 4·e^(−1.5x)).
+    {
+      QVariantList lx, ly;
+      for (int i = 0; i <= 10; ++i) {
+        const double x = i * 0.5;
+        lx << x; ly << 10.0 / (1.0 + 4.0 * std::exp(-1.5 * x));
+      }
+      c.updateList("L1", lx); c.updateList("L2", ly);
+      QVariantMap lg = c.regression("logistic", "L1", "L2");
+      checkTrue("Logistic fits (R² ≈ 1)", lg["r2"].toDouble() > 0.999);
+      checkTrue("Logistic c ≈ 10", std::abs(lg["c"].toDouble() - 10.0) < 0.1);
+      checkTrue("Logistic b ≈ 1.5", std::abs(lg["b"].toDouble() - 1.5) < 0.05);
+      checkTrue("Logistic a ≈ 4", std::abs(lg["a"].toDouble() - 4.0) < 0.1);
+    }
+
+    // SinReg needs at least 4 points.
+    c.updateList("L1", QVariantList{0, 1, 2});
+    c.updateList("L2", QVariantList{1, 2, 3});
+    checkTrue("SinReg <4 points → DOMAIN",
+              c.regression("sin", "L1", "L2")["error"].toString() == "DOMAIN");
+
     tux_ti83::MathStateMachine::listRegistry.clear();
   }
 
