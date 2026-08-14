@@ -1487,6 +1487,51 @@ void UIController::sortLists(const QString &stmt, tux_ti83::EvalResult &out) {
   out.value = 0.0;
 }
 
+void UIController::splitMatrToLists(const QString &stmt,
+                                   tux_ti83::EvalResult &out) {
+  const int lp = stmt.indexOf('('), rp = stmt.lastIndexOf(')');
+  if (rp <= lp) { out.ok = false; out.error = "ERR:SYNTAX"; return; }
+  const auto args = tux_ti83::Interpreter::splitArgs(
+      stmt.mid(lp + 1, rp - lp - 1).toStdString());
+  if (args.size() < 2) { out.ok = false; out.error = "ERR:ARGUMENT"; return; }
+
+  // Matrix operand — accept "[A]".."[J]" (brackets optional).
+  QString mname = QString::fromStdString(args[0]).trimmed();
+  mname.remove('[').remove(']');
+  const QChar mc = mname.size() == 1 ? mname.at(0).toUpper() : QChar();
+  if (mname.size() != 1 || mc < QChar('A') || mc > QChar('J')) {
+    out.ok = false; out.error = "ERR:DATA TYPE"; return;
+  }
+  const Token mtok = static_cast<Token>(static_cast<int>(Token::MatA) +
+                                        (mc.unicode() - 'A'));
+  auto mi = MathStateMachine::matrixRegistry.find(mtok);
+  if (mi == MathStateMachine::matrixRegistry.end()) {
+    out.ok = false; out.error = "ERR:UNDEFINED"; return;
+  }
+  const auto &mat = mi->second;
+
+  // List targets — L1..L6, one per column.
+  QVector<Token> lists;
+  for (std::size_t i = 1; i < args.size(); ++i) {
+    const QString nm = QString::fromStdString(args[i]).trimmed();
+    if (nm.size() == 2 && nm[0] == 'L' && nm[1] >= '1' && nm[1] <= '6')
+      lists.push_back(static_cast<Token>(static_cast<int>(Token::L1) +
+                                         nm[1].digitValue() - 1));
+    else { out.ok = false; out.error = "ERR:DATA TYPE"; return; }
+  }
+  if (lists.size() != mat.cols) {  // one list per column of the matrix
+    out.ok = false; out.error = "ERR:INVALID DIM"; return;
+  }
+  for (int c = 0; c < mat.cols; ++c) {
+    std::vector<double> col(static_cast<std::size_t>(mat.rows));
+    for (int r = 0; r < mat.rows; ++r)
+      col[static_cast<std::size_t>(r)] = mat.at(r, c);
+    MathStateMachine::listRegistry[lists[c]] = std::move(col);
+  }
+  out.ok = true;
+  out.value = 0.0;
+}
+
 bool UIController::resolvePxlTest(QString &q, std::string &err) {
   const QString tag = QStringLiteral("Pxl-Test(");
   for (int guard = 0; guard < 1000; ++guard) {
@@ -1566,6 +1611,27 @@ tux_ti83::EvalResult UIController::evalProgramSource(const std::string &src) {
         t.startsWith(QStringLiteral("SortD("))) {
       sortLists(t, out);
       return out;
+    }
+  }
+
+  // Matr▶List([A],L1,L2,…) — all-column split into lists (multi-target). The
+  // value form Matr▶List([A],col) has a numeric 2nd arg and is left to the
+  // engine; we only intercept when the 2nd argument is a list name.
+  {
+    const QString t = q.trimmed();
+    if (t.startsWith(QStringLiteral("Matr▶List("))) {
+      const int lp = t.indexOf('('), rp = t.lastIndexOf(')');
+      if (rp > lp) {
+        const auto args = tux_ti83::Interpreter::splitArgs(
+            t.mid(lp + 1, rp - lp - 1).toStdString());
+        if (args.size() >= 2) {
+          const QString a1 = QString::fromStdString(args[1]).trimmed();
+          if (a1.size() == 2 && a1[0] == 'L' && a1[1] >= '1' && a1[1] <= '6') {
+            splitMatrToLists(t, out);
+            return out;
+          }
+        }
+      }
     }
   }
 

@@ -663,6 +663,10 @@ private:
     // Carry out `SortA(L…)` / `SortD(L…)` — sort the first list and reorder any
     // parallel lists by the same permutation; sets `out` (P7-A1).
     void sortLists(const QString &stmt, tux_ti83::EvalResult &out);
+    // Matr▶List([A],L1,L2,…) — split every column of a matrix into the given
+    // lists (one column per list). The value form Matr▶List([A],col) is left
+    // to the engine; this is the multi-target "all columns" command.
+    void splitMatrToLists(const QString &stmt, tux_ti83::EvalResult &out);
     // If `src` is an element assignment (`<rhs>→Ln(idx)` / `→[X](r,c)`), carry
     // it out and set `out`; returns true if it was one (handled).
     bool tryElementStore(const QString &src, tux_ti83::EvalResult &out);

@@ -1539,6 +1539,40 @@ int main(int argc, char *argv[]) {
     tux_ti83::MathStateMachine::listRegistry.clear();
   }
 
+  section("Matr▶List all-column split");
+  {
+    UIController pc;
+    pc.updateMatrix("[A]", 3, 2, QVariantList{1, 2, 3, 4, 5, 6});  // [[1,2][3,4][5,6]]
+
+    // All-column split: column 1 → L1, column 2 → L2.
+    pc.saveProgram("P", "Matr▶List([A],L1,L2)");
+    pc.runProgram("P");
+    const QVariantList l1 = pc.getList("L1"), l2 = pc.getList("L2");
+    checkTrue("split → L1 = {1,3,5}",
+              l1.size() == 3 && l1[0].toDouble() == 1 &&
+              l1[1].toDouble() == 3 && l1[2].toDouble() == 5);
+    checkTrue("split → L2 = {2,4,6}",
+              l2.size() == 3 && l2[0].toDouble() == 2 &&
+              l2[1].toDouble() == 4 && l2[2].toDouble() == 6);
+    checkTrue("split ran without error", pc.programErrorLine() < 0);
+
+    // Wrong list count (1 list, 2 columns) → INVALID DIM.
+    pc.saveProgram("P", "Matr▶List([A],L3)");
+    pc.runProgram("P");
+    checkTrue("list count ≠ columns → error", pc.programErrorLine() >= 0);
+
+    // The single-column value form is left to the engine.
+    pc.saveProgram("P", "Matr▶List([A],2)→L4");
+    pc.runProgram("P");
+    const QVariantList l4 = pc.getList("L4");
+    checkTrue("value form col 2 → L4 = {2,4,6}",
+              l4.size() == 3 && l4[0].toDouble() == 2 && l4[2].toDouble() == 6);
+
+    pc.deleteProgram("P");
+    tux_ti83::MathStateMachine::listRegistry.clear();
+    tux_ti83::MathStateMachine::matrixRegistry.clear();
+  }
+
   section("Random functions (Phase C — Wave 5)");
   {
     // Determinism: reseeding reproduces the sequence exactly.
