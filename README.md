@@ -28,6 +28,36 @@ Four executables come out of the build:
 | `tux_ti83_repl` | Interactive REPL — prompt-per-line, `Ans` recall, `:quit` to exit. |
 | `tux_ti83_tests` | Regression test suite (**899** assertions, also wired into CTest). |
 
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/home.png" alt="Home screen — evaluation and history"></td>
+    <td width="50%"><img src="docs/screenshots/graph.png" alt="Graphing three functions"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Home screen</b> — evaluation, history, colour-coded keypad</sub></td>
+    <td align="center"><sub><b>Graphing</b> — multiple functions on the shared canvas</sub></td>
+  </tr>
+</table>
+
+**Inequality shading** (Inequalz-style) and three of the five UI themes:
+
+<table>
+  <tr>
+    <td width="25%"><img src="docs/screenshots/inequality-shading.png" alt="Inequality shading"></td>
+    <td width="25%"><img src="docs/screenshots/theme-light.png" alt="Light theme"></td>
+    <td width="25%"><img src="docs/screenshots/theme-amber.png" alt="Amber theme"></td>
+    <td width="25%"><img src="docs/screenshots/theme-green.png" alt="Green retro-LCD theme"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Inequality shading</sub></td>
+    <td align="center"><sub>Light</sub></td>
+    <td align="center"><sub>Amber</sub></td>
+    <td align="center"><sub>Green (retro LCD)</sub></td>
+  </tr>
+</table>
+
 ## Features
 
 ### Calculator math
