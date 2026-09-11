@@ -2662,6 +2662,28 @@ int main(int argc, char *argv[]) {
       pc.deleteProgram(n);
   }
 
+  section("BUG-025 — program assignments are silent");
+  {
+    UIController pc;
+    auto runP = [&](const QString &src) -> QStringList {
+      pc.saveProgram("P", src);
+      pc.runProgram("P");
+      return pc.programOutput();
+    };
+    // Stores run silently in a program (TI-83 behaviour); only Disp and a
+    // bare expression with no store echo. Otherwise a getKey poll loop
+    // floods the screen with 0s.
+    checkTrue("numeric store is silent; Disp + bare expr echo",
+              runP("5->A\nDisp A\nA+3->A\nA") == (QStringList{"5", "8"}));
+    checkTrue("a lone store produces no output",
+              runP("42->A").isEmpty());
+    checkTrue("string store is silent; Disp echoes",
+              runP("\"HI\"->Str1\nDisp Str1") == (QStringList{"HI"}));
+    checkTrue("getKey→K in a loop doesn't flood output",
+              runP("For(I,1,20)\ngetKey->K\nEnd\nDisp 9").size() == 1);
+    pc.deleteProgram("P");
+  }
+
   section("TI-BASIC interpreter — P3 (control flow)");
   {
     UIController pc;
